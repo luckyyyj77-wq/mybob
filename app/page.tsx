@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { FaCamera, FaChartLine, FaHistory, FaUsers, FaCog, FaSignOutAlt, FaSpinner, FaLightbulb, FaCheckCircle, FaExclamationCircle, FaUtensils } from 'react-icons/fa';
 import { supabase } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { motion, Variants } from 'framer-motion';
 
 type Meal = {
   id: string;
@@ -29,7 +29,7 @@ type AIFeedback = {
   };
 };
 
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
@@ -39,7 +39,7 @@ const containerVariants = {
   }
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { y: 20, opacity: 0 },
   visible: {
     y: 0,
@@ -84,7 +84,7 @@ export default function Home() {
           });
 
           const totalCalories = todayMeals.reduce((sum: number, meal: Meal) => sum + (Number(meal.calories) || 0), 0);
-          const totalNutrients = todayMeals.reduce((acc, meal) => {
+          const totalNutrients = todayMeals.reduce((acc: { carbs: number, protein: number, fat: number }, meal: Meal) => {
             acc.carbs += Number(meal.nutrient?.carbohydrates) || 0;
             acc.protein += Number(meal.nutrient?.protein) || 0;
             acc.fat += Number(meal.nutrient?.fat) || 0;
