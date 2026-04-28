@@ -1,23 +1,95 @@
+"use client";
+
+import { useState, useEffect } from 'react';
+import { FaFireAlt, FaClock, FaUserCircle, FaSpinner } from 'react-icons/fa';
+
+interface Meal {
+  id: string;
+  food_name: string;
+  calories: number;
+  photo_url: string;
+  created_at: string;
+  category: string;
+}
+
 export default function CommunityRecommendationPage() {
+  const [meals, setMeals] = useState<Meal[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchCommunityFeed = async () => {
+      try {
+        const response = await fetch('/api/community');
+        const result = await response.json();
+        if (result.success) {
+          setMeals(result.data);
+        }
+      } catch (error) {
+        console.error('Feed error:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCommunityFeed();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-orange-600">
+        <FaSpinner className="animate-spin text-5xl mb-4" />
+        <p className="text-xl font-bold">전 세계의 식단 정보를 불러오는 중...</p>
+      </div>
+    );
+  }
+
   return (
-    <div>
-      <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">맛집 추천</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-xl font-semibold text-blue-700 mb-2">오늘의 추천 맛집: 건강한 샐러드 맛집</h3>
-          <p className="text-gray-700">신선한 재료와 다양한 드레싱으로 건강한 한 끼를 즐겨보세요!</p>
-          <button className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">자세히 보기</button>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      {meals.length > 0 ? (
+        meals.map((meal) => (
+          <div key={meal.id} className="bg-white rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 group">
+            <div className="relative h-64 w-full bg-gray-200 overflow-hidden">
+              <img 
+                src={meal.photo_url} 
+                alt={meal.food_name} 
+                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x300?text=이미지+없음';
+                }}
+              />
+              <div className="absolute top-4 left-4">
+                <span className="bg-orange-500 text-white text-xs font-black px-3 py-1.5 rounded-full shadow-lg">
+                  {meal.category || '일반'}
+                </span>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              <div className="flex items-center mb-4">
+                <FaUserCircle className="text-2xl text-gray-300 mr-2" />
+                <span className="text-sm font-bold text-gray-500">Anonymous User</span>
+              </div>
+              
+              <h3 className="text-2xl font-black text-gray-800 mb-2 truncate">{meal.food_name}</h3>
+              
+              <div className="flex items-center justify-between mt-4 border-t pt-4">
+                <div className="flex items-center text-orange-600 font-black">
+                  <FaFireAlt className="mr-1.5" />
+                  <span>{meal.calories} kcal</span>
+                </div>
+                <div className="flex items-center text-gray-400 text-xs font-medium">
+                  <FaClock className="mr-1.5" />
+                  <span>{new Date(meal.created_at).toLocaleDateString()}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))
+      ) : (
+        <div className="col-span-full text-center py-20 bg-white/50 rounded-3xl border-2 border-dashed border-orange-200">
+          <p className="text-2xl font-bold text-orange-400">아직 공유된 식단이 없습니다.</p>
+          <p className="text-orange-300 mt-2">당신이 첫 번째 주인공이 되어보세요!</p>
         </div>
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-xl font-semibold text-green-700 mb-2">인기 맛집: 매콤한 닭볶음탕</h3>
-          <p className="text-gray-700">스트레스 해소에 딱! 친구들과 함께 즐기기 좋은 곳.</p>
-          <button className="mt-4 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600">자세히 보기</button>
-        </div>
-      </div>
-      <div className="mt-8 bg-gray-50 p-6 rounded-lg shadow-md">
-        <h3 className="text-xl font-semibold text-gray-800 mb-3">내 주변 맛집 찾기 (미구현)</h3>
-        <p className="text-gray-700">위치 기반으로 주변 맛집을 추천해주는 기능이 들어갈 예정입니다.</p>
-      </div>
+      )}
     </div>
   );
 }

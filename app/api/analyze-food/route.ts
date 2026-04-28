@@ -1,97 +1,82 @@
 import { NextResponse } from 'next/server';
 
-// This is a placeholder for the actual AI Food Recognition API call.
-// In a real application, you would use a library like 'axios' or 'node-fetch'
-// to send the image to a service like LogMeal, FatSecret, or another provider.
-
-async function analyzeFoodWithAI(base64Image: string) {
-  // 1. Get API Key from environment variables for security
-  const apiKey = process.env.FOOD_API_KEY;
-  const apiUrl = process.env.FOOD_API_URL;
-
-  // Check if API credentials are provided and valid
-  if (!apiKey || !apiUrl || apiKey === "YOUR_API_KEY_HERE" || apiUrl === "YOUR_API_ENDPOINT_HERE") {
-    console.log("POST /api/analyze-food: AI Food API credentials not set. Returning mock data for demonstration.");
-    // For demonstration, return mock data if API keys are not set
-    return {
-      success: true,
-      food: {
-        name: '비빔밥 (데모)',
-        calories: 580,
-        amount: 1,
-        category: '한식',
-        price: 9000,
-        location: '근처 식당',
-        nutrients: {
-          carbohydrates: 85, // g
-          protein: 20,       // g
-          fat: 15,           // g
-        }
-      }
-    };
-  }
-
-  console.log("POST /api/analyze-food: AI Food API credentials found. Calling external API...");
-  // 2. Prepare the request to the external AI API
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      // The body structure depends on the specific API provider
-      image: base64Image,
-    }),
-  });
-
-  if (!response.ok) {
-    // Handle API errors
-    const errorData = await response.json();
-    console.error("POST /api/analyze-food: External AI Food API Error:", errorData);
-    throw new Error('Failed to analyze food image.');
-  }
-
-  // 3. Parse the response and return it
-  const data = await response.json();
-  console.log("POST /api/analyze-food: Successfully received data from external API.");
-
-  // The structure of 'data' will vary by API. You need to map it to your own format.
-  return {
-    success: true,
-    food: {
-      name: data.food_name,
-      calories: data.calories,
-      amount: data.serving_size,
-      category: data.category,
-      price: data.estimated_price,
-      location: data.estimated_location,
-      nutrients: data.nutritional_info, // e.g., { carbohydrates, protein, fat }
-    }
-  };
-}
-
 export async function POST(request: Request) {
-  console.log('POST /api/analyze-food: Received request');
   try {
-    const body = await request.json();
-    const { image } = body;
+    const { image } = await request.json();
+    const apiKey = process.env.GEMINI_API_KEY?.trim();
+    if (!apiKey) return NextResponse.json({ error: 'API 키가 없습니다.' }, { status: 500 });
 
-    if (!image) {
-      console.error('POST /api/analyze-food: No image data in request body.');
-      return NextResponse.json({ error: 'Image data is required.' }, { status: 400 });
+    const base64Data = image.includes(',') ? image.split(',')[1] : image;
+
+    // 1. 모델 목록 가져오기
+    const listModelsUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
+    const listResponse = await fetch(listModelsUrl);
+    const listData = await listResponse.json();
+    
+    const availableModels = listData.models
+      ?.filter((m: any) => m.supportedGenerationMethods.includes('generateContent'))
+      .map((m: any) => m.name.replace('models/', '')) || [];
+
+    // 2. 우선순위에 따라 모델 시도
+    const modelsToTry = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro-vision"];
+    // 목록에 있는 모델들만 필터링해서 시도 순서 결정
+    const filteredModels = modelsToTry.filter(m => availableModels.includes(m));
+    if (filteredModels.length === 0 && availableModels.length > 0) {
+      filteredModels.push(availableModels[0]);
     }
 
-    // The image data is a base64 string, e.g., "data:image/jpeg;base64,..."
-    // Some APIs might require removing the prefix "data:image/jpeg;base64,"
-    const base64Data = image.split(',')[1];
+    let lastError = "";
 
-    const analysisResult = await analyzeFoodWithAI(base64Data);
+    for (const modelName of filteredModels) {
+      console.log(`Trying model: ${modelName}`);
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
-    console.log('POST /api/analyze-food: Returning analysis result to client.');
-    return NextResponse.json(analysisResult);
-  } catch (error) {
-    console.error('POST /api/analyze-food: Internal Server Error:', error);
-    return NextResponse.json({ error: 'An internal server error occurred.' }, { status: 500 });
+      try {
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{
+              parts: [
+                { text: "Analyze this food image and return ONLY a JSON object: { \"name\": \"음식명\", \"calories\": 0, \"category\": \"\", \"nutrients\": { \"carbohydrates\": 0, \"protein\": 0, \"fat\": 0 } }. Please respond in Korean." },
+                { inline_data: { mime_type: "image/jpeg", data: base64Data } }
+              ]
+            }],
+            generationConfig: { response_mime_type: "application/json" }
+          })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          const aiText = result.candidates[0].content.parts[0].text;
+          return NextResponse.json({ 
+            success: true, 
+            food: JSON.parse(aiText),
+            modelUsed: modelName 
+          });
+        } else {
+          lastError = result.error?.message || "Unknown error";
+          // 만약 "High Demand" 에러라면 다음 모델로 즉시 넘어감
+          if (lastError.includes("high demand") || lastError.includes("overloaded")) {
+            console.warn(`Model ${modelName} is overloaded, trying next...`);
+            continue;
+          }
+          break; // 다른 심각한 에러라면 중단
+        }
+      } catch (err: any) {
+        lastError = err.message;
+        continue;
+      }
+    }
+
+    return NextResponse.json({ 
+      error: 'AI 분석 실패', 
+      details: lastError,
+      availableModels: availableModels
+    }, { status: 500 });
+
+  } catch (error: any) {
+    return NextResponse.json({ error: '서버 오류', details: error.message }, { status: 500 });
   }
 }

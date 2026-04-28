@@ -4,89 +4,82 @@ import { v4 as uuidv4 } from 'uuid';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+
+// Helper function to get user from token
+async function getUser(request: Request) {
+  const authHeader = request.headers.get('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+  
+  const token = authHeader.split(' ')[1];
+  const supabase = createClient(supabaseUrl, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  
+  if (error || !user) return null;
+  return user;
+}
 
 export async function GET(request: Request) {
   console.log('GET /api/meals: Received request');
   try {
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      console.error('GET /api/meals: Unauthorized - No user found.');
+    const user = await getUser(request);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    console.log(`GET /api/meals: Authenticated user ID: ${user.id}`);
 
+    const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
     const { data, error } = await supabase
       .from('meals')
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('GET /api/meals: Supabase Select Error:', error);
-      throw new Error(error.message);
-    }
-
-    console.log(`GET /api/meals: Successfully fetched ${data.length} meals.`);
+    if (error) throw new Error(error.message);
     return NextResponse.json({ success: true, data: data });
 
-  } catch (error) {
-    console.error('GET /api/meals: Internal Server Error:', error);
-    if (error instanceof Error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-    return NextResponse.json({ error: 'An internal server error occurred.' }, { status: 500 });
+  } catch (error: any) {
+    console.error('GET /api/meals error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   console.log('POST /api/meals: Received request');
   try {
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      console.error('POST /api/meals: Unauthorized - No user found.');
+    const user = await getUser(request);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    console.log(`POST /api/meals: Authenticated user ID: ${user.id}`);
 
     const { mealData, imageBase64 } = await request.json();
-
     if (!mealData || !imageBase64) {
       return NextResponse.json({ error: 'Meal data and image are required.' }, { status: 400 });
     }
 
+    const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
     let photo_url: string | null = null;
-    console.log('POST /api/meals: Starting image upload to Supabase Storage...');
+
+    // Image Upload
     try {
         const fileExtension = imageBase64.substring("data:image/".length, imageBase64.indexOf(";base64"));
         const fileName = `${user.id}/${uuidv4()}.${fileExtension}`;
         
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
             .from('meal_photos')
             .upload(fileName, decodeBase64(imageBase64), {
                 contentType: `image/${fileExtension}`,
                 upsert: false,
             });
 
-        if (uploadError) {
-            console.error('POST /api/meals: Supabase Storage Upload Error:', uploadError);
-            throw new Error(`Image upload failed: ${uploadError.message}`);
-        }
+        if (uploadError) throw new Error(uploadError.message);
 
         const { data: publicUrlData } = supabase.storage
             .from('meal_photos')
             .getPublicUrl(fileName);
         
-        if (publicUrlData) {
-            photo_url = publicUrlData.publicUrl;
-            console.log(`POST /api/meals: Image uploaded successfully. URL: ${photo_url}`);
-        }
-
-    } catch (uploadError) {
-        console.error("POST /api/meals: Error uploading image to Supabase Storage:", uploadError);
-        return NextResponse.json({ error: 'Failed to upload image.', details: uploadError instanceof Error ? uploadError.message : String(uploadError) }, { status: 500 });
+        photo_url = publicUrlData.publicUrl;
+    } catch (uploadError: any) {
+        console.error("Upload error:", uploadError);
+        return NextResponse.json({ error: 'Failed to upload image.', details: uploadError.message }, { status: 500 });
     }
 
     const dataToInsert = {
@@ -101,26 +94,17 @@ export async function POST(request: Request) {
       photo_url: photo_url,
     };
 
-    console.log('POST /api/meals: Inserting meal data into database:', dataToInsert);
     const { data, error } = await supabase
       .from('meals')
       .insert([dataToInsert])
       .select();
 
-    if (error) {
-      console.error('POST /api/meals: Supabase Insert Error:', error);
-      throw new Error(error.message);
-    }
-
-    console.log('POST /api/meals: Meal data inserted successfully.');
+    if (error) throw new Error(error.message);
     return NextResponse.json({ success: true, data: data });
 
-  } catch (error) {
-    console.error('POST /api/meals: Internal Server Error:', error);
-    if (error instanceof Error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-    return NextResponse.json({ error: 'An internal server error occurred.' }, { status: 500 });
+  } catch (error: any) {
+    console.error('POST /api/meals error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
@@ -134,4 +118,3 @@ function decodeBase64(base64String: string): ArrayBuffer {
     }
     return bytes.buffer;
 }
-
