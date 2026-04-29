@@ -69,8 +69,13 @@ export default function Home() {
         const { data: { session } } = await supabase.auth.getSession();
         const token = session?.access_token;
 
+        const headers: Record<string, string> = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+
         const response = await fetch('/api/meals', {
-          headers: { 'Authorization': `Bearer ${token}` }
+          headers
         });
         const result = await response.json();
 
