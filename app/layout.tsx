@@ -150,31 +150,31 @@ export default function RootLayout({
           )}
         </AnimatePresence>
 
-        <main className={`min-h-screen ${showNav ? 'pb-24' : ''}`}>
+        <main className={`min-h-screen relative ${showNav ? 'pb-32' : ''}`}>
           {children}
         </main>
 
         {showNav && (
-          <nav className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-slate-900 px-6 py-4 pb-8 z-50 flex justify-between items-center">
+          <nav className="fixed bottom-0 left-0 right-0 bg-white border-t-4 border-slate-900 px-6 py-4 pb-10 z-[100] flex justify-between items-center shadow-[0_-10px_40px_rgba(0,0,0,0.1)]">
             {/* Hamburger Menu */}
             <button 
               onClick={() => setIsMenuOpen(true)}
-              className="p-2 text-3xl text-slate-900"
+              className="p-3 text-4xl text-slate-900 hover:scale-110 transition-transform"
             >
               <FaBars />
             </button>
 
             {/* Camera Scan */}
-            <Link href="/capture" className="bg-indigo-600 p-4 rounded-2xl shadow-lg border-2 border-slate-900 transform -translate-y-2">
-              <FaCamera className="text-2xl text-white" />
+            <Link href="/capture" className="bg-indigo-600 p-5 rounded-3xl shadow-2xl border-4 border-slate-900 transform -translate-y-6 hover:-translate-y-8 transition-all active:scale-95">
+              <FaCamera className="text-3xl text-white" />
             </Link>
 
             {/* Timeline */}
-            <Link href="/history" className="flex flex-col items-center">
-              <div className="text-3xl text-slate-900">
+            <Link href="/history" className="flex flex-col items-center group">
+              <div className="text-4xl text-slate-900 group-hover:scale-110 transition-transform">
                 <FaHistory />
               </div>
-              <span className="text-[10px] font-black uppercase tracking-tighter text-indigo-600 mt-1">TIMELINE</span>
+              <span className="text-[11px] font-black uppercase tracking-tighter text-indigo-600 mt-1">TIMELINE</span>
             </Link>
           </nav>
         )}
