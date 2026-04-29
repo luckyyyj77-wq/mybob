@@ -285,12 +285,11 @@ export default function Home() {
       </main>
 
       {/* Main Navigation */}
-      <motion.nav variants={itemVariants} className="w-full max-w-4xl grid grid-cols-5 gap-4 mt-12 pb-10">
+      <motion.nav variants={itemVariants} className="w-full max-w-4xl grid grid-cols-4 gap-4 mt-12 pb-10">
         {[
           { icon: FaCamera, label: 'Capture', href: '/capture', color: 'text-indigo-600' },
           { icon: FaChartLine, label: 'Report', href: '/report/daily', color: 'text-green-600' },
           { icon: FaHistory, label: 'History', href: '/history', color: 'text-purple-600' },
-          { icon: FaUsers, label: 'Social', href: '/community/recommendation', color: 'text-orange-600' },
           { icon: FaCog, label: 'Settings', href: '/settings', color: 'text-gray-600' }
         ].map((nav) => (
           <Link key={nav.label} href={nav.href}>
