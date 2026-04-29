@@ -46,7 +46,94 @@ export default function CameraCapturePage() {
     }
   }, [webcamRef]);
 
-  // ... (rest of handles remain same)
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImageSrc(reader.result as string);
+        setAnalysis(null);
+        setSaved(false);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleAnalysis = async () => {
+    if (!imageSrc) return;
+    setLoadingAnalysis(true);
+    setSaved(false);
+    try {
+      const response = await fetch('/api/analyze-food', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: imageSrc }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.details || result.error || '분석 중 오류가 발생했습니다.');
+      if (result.success) {
+        setAnalysis(result.food);
+        setModelUsed(result.modelUsed);
+      }
+    } catch (error: any) {
+      alert(`음식 분석 실패: ${error.message}`);
+    } finally {
+      setLoadingAnalysis(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!analysis) return;
+    setLoadingSave(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    
+    // 1. Prepare data for LocalStorage backup
+    const localMeal = {
+      id: Date.now().toString(),
+      food_name: analysis.name,
+      calories: analysis.calories,
+      nutrient: analysis.nutrients,
+      photo_url: imageSrc, // Save base64 image locally
+      created_at: new Date().toISOString(),
+      is_local: true
+    };
+
+    try {
+      // 2. Save to LocalStorage first (Instant success)
+      const existingMeals = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
+      localStorage.setItem('mybob_meals', JSON.stringify([localMeal, ...existingMeals]));
+      
+      // 3. Try saving to Cloud (Server)
+      const response = await fetch('/api/meals', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({ mealData: analysis, imageBase64: imageSrc }),
+      });
+      const result = await response.json();
+      
+      if (result.success) setSaved(true);
+      else {
+        setSaved(true); 
+        console.warn("Saved to LocalStorage only due to server error");
+      }
+    } catch (error: any) {
+      console.error(`Cloud save failed, but saved to LocalStorage: ${error.message}`);
+      setSaved(true);
+    } finally {
+      setLoadingSave(false);
+    }
+  };
+
+  const resetCapture = () => {
+    setImageSrc(null);
+    setAnalysis(null);
+    setSaved(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4 pb-24">
