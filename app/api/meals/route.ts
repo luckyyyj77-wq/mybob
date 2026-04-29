@@ -8,13 +8,19 @@ const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.
 // Helper function to get user from token
 async function getUser(request: Request) {
   const authHeader = request.headers.get('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // Fallback for guest mode
+    return { id: '00000000-0000-0000-0000-000000000000', email: 'guest@example.com' };
+  }
   
   const token = authHeader.split(' ')[1];
   const supabase = createClient(supabaseUrl, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
   const { data: { user }, error } = await supabase.auth.getUser(token);
   
-  if (error || !user) return null;
+  if (error || !user) {
+    // Fallback for guest mode even if token is invalid
+    return { id: '00000000-0000-0000-0000-000000000000', email: 'guest@example.com' };
+  }
   return user;
 }
 
@@ -22,15 +28,15 @@ export async function GET(request: Request) {
   console.log('GET /api/meals: Received request');
   try {
     const user = await getUser(request);
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    // if (!user) {
+    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // }
 
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
     const { data, error } = await supabase
       .from('meals')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', user!.id)
       .order('created_at', { ascending: false });
 
     if (error) throw new Error(error.message);
@@ -46,9 +52,9 @@ export async function POST(request: Request) {
   console.log('POST /api/meals: Received request');
   try {
     const user = await getUser(request);
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    // if (!user) {
+    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // }
 
     const { mealData, imageBase64 } = await request.json();
     if (!mealData || !imageBase64) {
@@ -61,7 +67,7 @@ export async function POST(request: Request) {
     // Image Upload
     try {
         const fileExtension = imageBase64.substring("data:image/".length, imageBase64.indexOf(";base64"));
-        const fileName = `${user.id}/${uuidv4()}.${fileExtension}`;
+        const fileName = `${user!.id}/${uuidv4()}.${fileExtension}`;
         
         const { error: uploadError } = await supabase.storage
             .from('meal_photos')
@@ -83,7 +89,7 @@ export async function POST(request: Request) {
     }
 
     const dataToInsert = {
-      user_id: user.id,
+      user_id: user!.id,
       food_name: mealData.name,
       category: mealData.category || '기타',
       calories: mealData.calories,
