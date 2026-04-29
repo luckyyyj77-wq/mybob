@@ -23,9 +23,6 @@ export default function RootLayout({
 
   useEffect(() => {
     const checkSession = async () => {
-      // Authentication disabled temporarily
-      setLoading(false);
-      /*
       setLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
@@ -34,14 +31,12 @@ export default function RootLayout({
       if (!session && isProtectedRoute && !isAuthRoute) {
         router.push('/auth/login');
       } else if (session && isAuthRoute) {
-        router.push('/'); 
+        router.push('/'); // If already logged in, redirect from auth pages
       }
-      */
     };
 
     checkSession();
 
-    /*
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setLoading(false);
@@ -56,7 +51,6 @@ export default function RootLayout({
     return () => {
       authListener?.subscription.unsubscribe();
     };
-    */
   }, [pathname, router, isProtectedRoute, isAuthRoute]);
 
 
