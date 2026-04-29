@@ -1,10 +1,8 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { FaCamera, FaChartLine, FaHistory, FaCog, FaSignOutAlt, FaSpinner, FaLightbulb, FaCheckCircle, FaExclamationCircle, FaUtensils } from 'react-icons/fa';
+import { FaSpinner, FaLightbulb, FaCircle } from 'react-icons/fa';
 import { supabase } from '@/lib/supabase/client';
-import { useRouter } from 'next/navigation';
 import { motion, Variants } from 'framer-motion';
 
 type Meal = {
@@ -33,21 +31,20 @@ const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: { staggerChildren: 0.05 }
+    transition: { staggerChildren: 0.1 }
   }
 };
 
 const itemVariants: Variants = {
-  hidden: { y: 10, opacity: 0 },
+  hidden: { opacity: 0, y: 15 },
   visible: {
-    y: 0,
     opacity: 1,
-    transition: { type: "spring", stiffness: 120 }
+    y: 0,
+    transition: { type: "spring", stiffness: 100 }
   }
 };
 
 export default function Home() {
-  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [loadingFeedback, setLoadingFeedback] = useState(false);
   const [todayStats, setTodayStats] = useState({
@@ -121,87 +118,80 @@ export default function Home() {
     fetchTodayData();
   }, []);
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/auth/login');
-  };
+  if (loading) return null;
 
   return (
     <motion.div 
       initial="hidden" animate="visible" variants={containerVariants}
-      className="min-h-screen bg-slate-50 flex flex-col p-4"
+      className="min-h-screen bg-white flex flex-col"
     >
-      <motion.header variants={itemVariants} className="w-full flex justify-between items-center py-4 mb-2">
-        <h1 className="text-3xl font-black text-indigo-700 tracking-tighter">뭐먹었어</h1>
-        <button onClick={handleLogout} className="text-slate-300 text-sm font-bold uppercase tracking-widest">Sign Out</button>
-      </motion.header>
-
-      <main className="w-full space-y-4">
-        {/* 요약 카드 */}
-        <motion.section variants={itemVariants} className="bg-white rounded-3xl shadow-sm p-6 border border-slate-100">
-          <div className="flex items-baseline gap-1 mb-4">
-            <span className="text-5xl font-black text-slate-900 tracking-tighter">{todayStats.totalCalories}</span>
-            <span className="text-lg font-bold text-slate-300 uppercase">kcal</span>
-          </div>
-          
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { label: 'Carb', value: todayStats.nutrients.carbs, color: 'bg-indigo-500' },
-              { label: 'Prot', value: todayStats.nutrients.protein, color: 'bg-rose-500' },
-              { label: 'Fat', value: todayStats.nutrients.fat, color: 'bg-emerald-500' }
-            ].map((nut) => (
-              <div key={nut.label} className="bg-slate-50 p-2.5 rounded-2xl">
-                <p className="text-[9px] text-slate-400 font-black uppercase mb-1">{nut.label}</p>
-                <p className="text-sm font-black text-slate-800">{nut.value.toFixed(1)}g</p>
-              </div>
-            ))}
-          </div>
-        </motion.section>
-
-        {/* AI 피드백 - 더 콤팩트하게 */}
-        <motion.section variants={itemVariants} className="bg-indigo-600 rounded-3xl shadow-lg p-6 text-white overflow-hidden">
-          <h2 className="text-xs font-black uppercase tracking-widest mb-3 flex items-center gap-2">
-            <FaLightbulb className="text-yellow-300" /> AI Coach
-          </h2>
-          
-          {loadingFeedback ? (
-            <div className="py-2 flex justify-center"><FaSpinner className="animate-spin text-xl opacity-50" /></div>
-          ) : aiFeedback ? (
-            <div className="space-y-4">
-              <p className="text-sm font-bold leading-snug">"{aiFeedback.feedback}"</p>
-              
-              <div className="grid grid-cols-1 gap-2 bg-white/10 rounded-2xl p-3">
-                <div className="flex gap-2 items-center text-[10px]">
-                  <FaCheckCircle className="text-emerald-400 flex-shrink-0" />
-                  <p className="opacity-90">{aiFeedback.goodPoint}</p>
-                </div>
-                <div className="flex gap-2 items-center text-[10px]">
-                  <FaExclamationCircle className="text-orange-400 flex-shrink-0" />
-                  <p className="opacity-90">{aiFeedback.improvement}</p>
-                </div>
-              </div>
-
-              <div className="bg-white text-indigo-700 p-4 rounded-2xl">
-                <p className="text-[9px] font-black uppercase mb-1 opacity-50">Recommended</p>
-                <p className="text-lg font-black">{aiFeedback.recommendation.menu}</p>
-              </div>
+      <main className="flex-grow flex flex-col">
+        {/* Section 1: 무엇을 드시나요? */}
+        <motion.section 
+          variants={itemVariants}
+          className="flex-1 flex flex-col items-center justify-center border-b-2 border-slate-900 px-10"
+        >
+          <h1 className="text-4xl font-black text-slate-900 tracking-tighter mb-4">무엇을 드시나요?</h1>
+          {todayStats.count > 0 ? (
+            <div className="text-indigo-600 font-bold uppercase tracking-widest text-xs">
+              오늘 {todayStats.count}개의 식단이 기록되었습니다.
             </div>
           ) : (
-            <div className="text-center py-4 opacity-40"><p className="text-[10px] font-black uppercase">Ready for your meal</p></div>
+            <div className="text-slate-300 font-bold uppercase tracking-widest text-xs">
+              식단을 기록하고 분석을 시작하세요.
+            </div>
           )}
         </motion.section>
 
-        {/* 하단 바로가기 버튼 */}
-        <motion.div variants={itemVariants} className="grid grid-cols-2 gap-3">
-          <Link href="/capture" className="bg-slate-900 text-white p-5 rounded-3xl flex flex-col items-center justify-center gap-2 shadow-xl active:scale-95 transition-transform">
-            <FaCamera className="text-xl" />
-            <span className="text-[10px] font-black uppercase">Start Scan</span>
-          </Link>
-          <Link href="/history" className="bg-white text-slate-900 p-5 rounded-3xl flex flex-col items-center justify-center gap-2 border border-slate-100 shadow-sm active:scale-95 transition-transform">
-            <FaHistory className="text-xl" />
-            <span className="text-[10px] font-black uppercase">Timeline</span>
-          </Link>
-        </motion.div>
+        {/* Section 2: AI COACH */}
+        <motion.section 
+          variants={itemVariants}
+          className="flex-1 flex flex-col p-10 bg-slate-50/30"
+        >
+          <div className="max-w-md mx-auto w-full">
+            <h2 className="text-2xl font-black text-slate-900 flex items-center gap-3 mb-10">
+              <FaLightbulb className="text-indigo-600" /> AI COACH
+            </h2>
+
+            <ul className="space-y-8">
+              <li className="flex items-start gap-5">
+                <FaCircle className="text-[8px] mt-2.5 text-indigo-400" />
+                <div>
+                  <p className="text-sm font-bold text-slate-400 tracking-wider uppercase mb-1">오늘섭취 칼로리</p>
+                  <p className="text-4xl font-black text-slate-900">{todayStats.totalCalories} <span className="text-sm font-bold text-slate-300">KCAL</span></p>
+                </div>
+              </li>
+              
+              <li className="flex items-start gap-5">
+                <FaCircle className="text-[8px] mt-2.5 text-rose-400" />
+                <div>
+                  <p className="text-sm font-bold text-slate-400 tracking-wider uppercase mb-1">영양밸런스</p>
+                  <div className="flex gap-4">
+                    <span className="text-sm font-black text-indigo-600">C {todayStats.nutrients.carbs.toFixed(0)}g</span>
+                    <span className="text-sm font-black text-rose-600">P {todayStats.nutrients.protein.toFixed(0)}g</span>
+                    <span className="text-sm font-black text-emerald-600">F {todayStats.nutrients.fat.toFixed(0)}g</span>
+                  </div>
+                </div>
+              </li>
+
+              <li className="flex items-start gap-5">
+                <FaCircle className="text-[8px] mt-2.5 text-amber-400" />
+                <div className="flex-grow">
+                  <p className="text-sm font-bold text-slate-400 tracking-wider uppercase mb-1">AI 코치 코멘트</p>
+                  {loadingFeedback ? (
+                    <div className="h-4 w-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mt-2" />
+                  ) : aiFeedback ? (
+                    <p className="text-base font-bold text-slate-700 leading-relaxed italic">
+                      "{aiFeedback.feedback}"
+                    </p>
+                  ) : (
+                    <p className="text-sm text-slate-300 font-medium">기록이 쌓이면 코칭이 시작됩니다.</p>
+                  )}
+                </div>
+              </li>
+            </ul>
+          </div>
+        </motion.section>
       </main>
     </motion.div>
   );
