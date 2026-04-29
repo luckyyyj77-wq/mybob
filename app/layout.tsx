@@ -20,31 +20,30 @@ export default function RootLayout({
   const [session, setSession] = useState<Session | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const protectedRoutes = ['/', '/capture', '/report', '/history', '/community', '/settings'];
-  const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
-  const isAuthRoute = pathname.startsWith('/auth');
+  // Safely check for auth routes
+  const isAuthRoute = pathname?.startsWith('/auth') || false;
+  const isProtectedRoute = pathname === '/' || ['/capture', '/report', '/history', '/community', '/settings'].some(route => pathname?.startsWith(route));
 
   useEffect(() => {
     const checkSession = async () => {
       setLoading(true);
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      setSession(currentSession);
       setLoading(false);
 
-      if (!session && isProtectedRoute && !isAuthRoute) {
+      if (!currentSession && isProtectedRoute && !isAuthRoute) {
         router.push('/auth/login');
-      } else if (session && isAuthRoute) {
+      } else if (currentSession && isAuthRoute) {
         router.push('/'); 
       }
     };
     checkSession();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setLoading(false);
-      if (!session && isProtectedRoute && !isAuthRoute) {
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
+      if (!newSession && isProtectedRoute && !isAuthRoute) {
         router.push('/auth/login');
-      } else if (session && isAuthRoute) {
+      } else if (newSession && isAuthRoute) {
         router.push('/');
       }
     });
@@ -52,14 +51,17 @@ export default function RootLayout({
     return () => {
       authListener?.subscription.unsubscribe();
     };
-  }, [pathname, router, isProtectedRoute, isAuthRoute]);
+  }, [pathname, isProtectedRoute, isAuthRoute, router]);
 
   if (loading) {
     return (
       <html lang="en">
         <body>
-          <div className="min-h-screen flex items-center justify-center bg-gray-100">
-            <p className="text-xl text-gray-700 font-black">LOADING...</p>
+          <div className="min-h-screen flex items-center justify-center bg-white text-slate-900 antialiased">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+              <p className="text-xs font-black uppercase tracking-widest text-slate-400">Loading MyBob...</p>
+            </div>
           </div>
         </body>
       </html>
