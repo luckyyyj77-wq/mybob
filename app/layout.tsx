@@ -151,8 +151,22 @@ export default function RootLayout({
         </main>
 
         {showNav && (
-          <div className="fixed bottom-10 left-0 right-0 flex justify-center z-[999] px-6 pointer-events-none">
-            <nav className="w-full max-w-md bg-white border-[5px] border-slate-900 rounded-[2.5rem] px-8 py-4 flex justify-between items-center shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] pointer-events-auto">
+          <div 
+            style={{ 
+              position: 'fixed', 
+              bottom: '40px', 
+              left: '50%', 
+              transform: 'translateX(-50%)', 
+              width: '100%', 
+              maxWidth: '450px',
+              zIndex: 9999,
+              pointerEvents: 'none',
+              display: 'flex',
+              justifyContent: 'center',
+              padding: '0 24px'
+            }}
+          >
+            <nav className="w-full bg-white border-[5px] border-slate-900 rounded-[2.5rem] px-8 py-4 flex justify-between items-center shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] pointer-events-auto">
               {/* Hamburger Menu */}
               <button 
                 onClick={() => setIsMenuOpen(true)}
