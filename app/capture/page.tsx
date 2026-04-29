@@ -87,7 +87,24 @@ export default function CameraCapturePage() {
     setLoadingSave(true);
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
+    
+    // 1. Prepare data for LocalStorage backup
+    const localMeal = {
+      id: Date.now().toString(),
+      food_name: analysis.name,
+      calories: analysis.calories,
+      nutrient: analysis.nutrients,
+      photo_url: imageSrc, // Save base64 image locally
+      created_at: new Date().toISOString(),
+      is_local: true
+    };
+
     try {
+      // 2. Save to LocalStorage first (Instant success)
+      const existingMeals = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
+      localStorage.setItem('mybob_meals', JSON.stringify([localMeal, ...existingMeals]));
+      
+      // 3. Try saving to Cloud (Server)
       const response = await fetch('/api/meals', {
         method: 'POST',
         headers: { 
@@ -97,10 +114,17 @@ export default function CameraCapturePage() {
         body: JSON.stringify({ mealData: analysis, imageBase64: imageSrc }),
       });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.details || result.error || '식단 저장에 실패했습니다.');
+      
+      // If server save succeeds, we're double-safe
       if (result.success) setSaved(true);
+      else {
+        // Even if server fails, we have it in LocalStorage
+        setSaved(true); 
+        console.warn("Saved to LocalStorage only due to server error");
+      }
     } catch (error: any) {
-      alert(`저장 실패: ${error.message}`);
+      console.error(`Cloud save failed, but saved to LocalStorage: ${error.message}`);
+      setSaved(true); // Still mark as saved because LocalStorage worked
     } finally {
       setLoadingSave(false);
     }

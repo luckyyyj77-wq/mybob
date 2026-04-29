@@ -74,16 +74,33 @@ export default function Home() {
           headers['Authorization'] = `Bearer ${token}`;
         }
 
-        const response = await fetch('/api/meals', {
-          headers
-        });
-        const result = await response.json();
+        let combinedData: Meal[] = [];
 
-        if (result.success && Array.isArray(result.data)) {
+        // 1. Get Local Data
+        const localData = localStorage.getItem('mybob_meals');
+        if (localData) {
+          combinedData = JSON.parse(localData);
+        }
+
+        // 2. Try Server Data
+        try {
+          const response = await fetch('/api/meals', { headers });
+          const result = await response.json();
+          if (result.success && Array.isArray(result.data)) {
+            const serverMeals = result.data;
+            const serverKeys = new Set(serverMeals.map((m: Meal) => `${m.food_name}_${m.calories}`));
+            const uniqueLocal = combinedData.filter(m => !serverKeys.has(`${m.food_name}_${m.calories}`));
+            combinedData = [...serverMeals, ...uniqueLocal];
+          }
+        } catch (err) {
+          console.warn("Server stats failed, using local only");
+        }
+
+        if (combinedData.length >= 0) {
           const now = new Date();
           const todayStr = now.toLocaleDateString();
           
-          const todayMeals = result.data.filter((meal: Meal) => {
+          const todayMeals = combinedData.filter((meal: Meal) => {
             const mealDate = new Date(meal.created_at).toLocaleDateString();
             return mealDate === todayStr;
           });

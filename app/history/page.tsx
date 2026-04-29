@@ -38,18 +38,39 @@ export default function HistoryPage() {
   useEffect(() => {
     const fetchMeals = async () => {
       try {
-        const response = await fetch('/api/meals');
-        if (!response.ok) throw new Error('데이터를 불러오는데 실패했습니다.');
-        const data = await response.json();
+        let allMeals: Meal[] = [];
         
-        if (data.success && Array.isArray(data.data)) {
-            const sortedMeals = data.data.sort((a: Meal, b: Meal) => 
-                new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-            );
-            setMeals(sortedMeals);
-        } else {
-            setMeals([]);
+        // 1. Get from LocalStorage
+        const localData = localStorage.getItem('mybob_meals');
+        if (localData) {
+          allMeals = JSON.parse(localData);
         }
+
+        // 2. Try to get from Server
+        try {
+          const response = await fetch('/api/meals');
+          if (response.ok) {
+            const result = await response.json();
+            if (result.success && Array.isArray(result.data)) {
+              // Combine and remove duplicates based on a combination of date and food name
+              // (Simplistic approach: preference given to server data)
+              const serverMeals = result.data;
+              const serverKeys = new Set(serverMeals.map((m: Meal) => `${m.food_name}_${m.calories}`));
+              
+              const uniqueLocal = allMeals.filter(m => !serverKeys.has(`${m.food_name}_${m.calories}`));
+              allMeals = [...serverMeals, ...uniqueLocal];
+            }
+          }
+        } catch (serverErr) {
+          console.warn("Server fetch failed, using local data only:", serverErr);
+        }
+        
+        // 3. Sort and set
+        const sortedMeals = allMeals.sort((a: Meal, b: Meal) => 
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+        setMeals(sortedMeals);
+        setError(null);
       } catch (err: any) {
         setError(err.message);
       } finally {
