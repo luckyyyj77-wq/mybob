@@ -146,33 +146,35 @@ export default function RootLayout({
           )}
         </AnimatePresence>
 
-        <main className={`flex-grow relative ${showNav ? 'pb-40' : ''}`}>
+        <main className={`flex-grow relative ${showNav ? 'pb-48' : ''}`}>
           {children}
         </main>
 
         {showNav && (
-          <nav className="fixed bottom-0 left-0 right-0 bg-white border-t-[6px] border-slate-900 px-8 py-6 pb-12 z-[999] flex justify-between items-center shadow-[0_-20px_50px_rgba(0,0,0,0.15)]">
-            {/* Hamburger Menu */}
-            <button 
-              onClick={() => setIsMenuOpen(true)}
-              className="p-4 text-5xl text-slate-900 hover:scale-110 active:scale-90 transition-all"
-            >
-              <FaBars />
-            </button>
+          <div className="fixed bottom-10 left-0 right-0 flex justify-center z-[999] px-6 pointer-events-none">
+            <nav className="w-full max-w-md bg-white border-[5px] border-slate-900 rounded-[2.5rem] px-8 py-4 flex justify-between items-center shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] pointer-events-auto">
+              {/* Hamburger Menu */}
+              <button 
+                onClick={() => setIsMenuOpen(true)}
+                className="p-2 text-4xl text-slate-900 hover:scale-110 active:scale-90 transition-all"
+              >
+                <FaBars />
+              </button>
 
-            {/* Camera Scan */}
-            <Link href="/capture" className="bg-indigo-600 p-6 rounded-[2.5rem] shadow-[0_20px_40px_rgba(79,70,229,0.4)] border-[6px] border-slate-900 transform -translate-y-10 hover:-translate-y-12 transition-all active:scale-95">
-              <FaCamera className="text-4xl text-white" />
-            </Link>
+              {/* Camera Scan */}
+              <Link href="/capture" className="bg-indigo-600 p-5 rounded-3xl shadow-[0_15px_30px_-5px_rgba(79,70,229,0.5)] border-[5px] border-slate-900 transform -translate-y-8 hover:-translate-y-10 transition-all active:scale-95">
+                <FaCamera className="text-3xl text-white" />
+              </Link>
 
-            {/* Timeline */}
-            <Link href="/history" className="flex flex-col items-center group">
-              <div className="text-5xl text-slate-900 group-hover:scale-110 active:scale-90 transition-all">
-                <FaHistory />
-              </div>
-              <span className="text-xs font-black uppercase tracking-widest text-indigo-600 mt-2">TIMELINE</span>
-            </Link>
-          </nav>
+              {/* Timeline */}
+              <Link href="/history" className="flex flex-col items-center group">
+                <div className="text-4xl text-slate-900 group-hover:scale-110 active:scale-90 transition-all">
+                  <FaHistory />
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 mt-1">TIMELINE</span>
+              </Link>
+            </nav>
+          </div>
         )}
       </body>
     </html>
