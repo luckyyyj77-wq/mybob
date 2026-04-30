@@ -27,8 +27,8 @@ export async function POST(request: Request) {
       한국어로 답변해주세요.
     `;
 
-    // Gemini API 호출 (1.5 Flash 사용)
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    // Gemini API 호출 (2.0 Flash 우선, fallback 1.5)
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
     const response = await fetch(apiUrl, {
       method: 'POST',

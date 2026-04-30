@@ -10,7 +10,22 @@ import { motion, AnimatePresence } from 'framer-motion';
 type AnalysisResult = {
   name: string;
   calories: number;
-  nutrients: { carbohydrates: number; protein: number; fat: number };
+  category?: string;
+  amount?: string;
+  nutrients: {
+    carbohydrates: number;
+    protein: number;
+    fat: number;
+    fiber?: number;
+    sugar?: number;
+    sodium?: number;
+    vitaminA?: number;
+    vitaminC?: number;
+    vitaminD?: number;
+    calcium?: number;
+    iron?: number;
+    potassium?: number;
+  };
 };
 
 export default function CameraCapturePage() {
@@ -216,26 +231,65 @@ export default function CameraCapturePage() {
                   animate={{ opacity: 1, y: 0 }}
                   style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}
                 >
+                  {/* 음식명 + 칼로리 */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <h3 style={{ fontSize: '19px', fontWeight: 400, color: 'black' }}>{analysis.name}</h3>
+                    <div>
+                      <h3 style={{ fontSize: '18px', fontWeight: 400, color: 'black', marginBottom: '2px' }}>{analysis.name}</h3>
+                      {analysis.category && (
+                        <span style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1px' }}>{analysis.category} · {analysis.amount || '1인분'}</span>
+                      )}
+                    </div>
                     <div style={{ textAlign: 'right' }}>
-                      <p style={{ fontSize: '19px', color: '#6B21A8', lineHeight: 1 }}>{analysis.calories}</p>
+                      <p style={{ fontSize: '20px', color: '#6B21A8', lineHeight: 1 }}>{analysis.calories}</p>
                       <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1px' }}>KCAL</p>
                     </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                  {/* 탄단지 + 식이섬유 + 나트륨 */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
                     {[
-                      { label: '탄수화물', value: analysis.nutrients.carbohydrates },
-                      { label: '단백질', value: analysis.nutrients.protein },
-                      { label: '지방', value: analysis.nutrients.fat },
-                    ].map(n => (
-                      <div key={n.label} style={{ padding: '10px', border: '1px solid #e5e7eb', textAlign: 'center' }}>
-                        <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '3px' }}>{n.label}</p>
-                        <p style={{ fontSize: '14px', color: 'black' }}>{n.value}g</p>
+                      { label: '탄수화물', value: analysis.nutrients.carbohydrates, unit: 'g' },
+                      { label: '단백질', value: analysis.nutrients.protein, unit: 'g' },
+                      { label: '지방', value: analysis.nutrients.fat, unit: 'g' },
+                      { label: '식이섬유', value: analysis.nutrients.fiber, unit: 'g' },
+                      { label: '당류', value: analysis.nutrients.sugar, unit: 'g' },
+                      { label: '나트륨', value: analysis.nutrients.sodium, unit: 'mg' },
+                    ].filter(n => n.value != null && n.value !== 0).map(n => (
+                      <div key={n.label} style={{ padding: '8px 6px', border: '1px solid #e5e7eb', textAlign: 'center' }}>
+                        <p style={{ fontSize: '9px', color: '#9ca3af', letterSpacing: '0.5px', marginBottom: '2px' }}>{n.label}</p>
+                        <p style={{ fontSize: '13px', color: 'black' }}>{n.value}{n.unit}</p>
                       </div>
                     ))}
                   </div>
+
+                  {/* 비타민·무기질 (값 있는 것만) */}
+                  {[
+                    { label: '비타민A', value: analysis.nutrients.vitaminA, unit: 'μg' },
+                    { label: '비타민C', value: analysis.nutrients.vitaminC, unit: 'mg' },
+                    { label: '비타민D', value: analysis.nutrients.vitaminD, unit: 'μg' },
+                    { label: '칼슘', value: analysis.nutrients.calcium, unit: 'mg' },
+                    { label: '철분', value: analysis.nutrients.iron, unit: 'mg' },
+                    { label: '칼륨', value: analysis.nutrients.potassium, unit: 'mg' },
+                  ].filter(n => n.value != null && n.value !== 0).length > 0 && (
+                    <div>
+                      <p style={{ fontSize: '9px', color: '#9ca3af', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '6px' }}>비타민 · 무기질</p>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                        {[
+                          { label: '비타민A', value: analysis.nutrients.vitaminA, unit: 'μg' },
+                          { label: '비타민C', value: analysis.nutrients.vitaminC, unit: 'mg' },
+                          { label: '비타민D', value: analysis.nutrients.vitaminD, unit: 'μg' },
+                          { label: '칼슘', value: analysis.nutrients.calcium, unit: 'mg' },
+                          { label: '철분', value: analysis.nutrients.iron, unit: 'mg' },
+                          { label: '칼륨', value: analysis.nutrients.potassium, unit: 'mg' },
+                        ].filter(n => n.value != null && n.value !== 0).map(n => (
+                          <div key={n.label} style={{ padding: '5px 10px', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', display: 'flex', gap: '4px', alignItems: 'baseline' }}>
+                            <span style={{ fontSize: '10px', color: '#6b7280' }}>{n.label}</span>
+                            <span style={{ fontSize: '11px', color: '#6B21A8' }}>{n.value}{n.unit}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {saved && (
                     <div style={{ padding: '9px', backgroundColor: 'black', textAlign: 'center' }}>
