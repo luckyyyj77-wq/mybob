@@ -31,24 +31,24 @@ export default function SignUpPage() {
   return (
     <div style={{ minHeight: '100svh', backgroundColor: 'white', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
-      <div style={{ padding: '48px 32px 0', borderBottom: '4px solid black' }}>
-        <h1 style={{ fontSize: '48px', fontWeight: 900, color: 'black', letterSpacing: '-2px', lineHeight: 1, marginBottom: '8px' }}>
+      <div style={{ padding: '48px 32px 0', borderBottom: '1px solid #e5e7eb' }}>
+        <h1 style={{ fontSize: '40px', fontWeight: 400, color: 'black', letterSpacing: '-1px', lineHeight: 1, marginBottom: '8px' }}>
           MYBOB
         </h1>
-        <p style={{ fontSize: '13px', fontWeight: 700, color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', paddingBottom: '24px' }}>
+        <p style={{ fontSize: '12px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', paddingBottom: '24px' }}>
           식단 기록 & AI 분석
         </p>
       </div>
 
       {/* Form */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '40px 32px' }}>
-        <h2 style={{ fontSize: '24px', fontWeight: 900, color: 'black', marginBottom: '32px', letterSpacing: '-0.5px' }}>
+        <h2 style={{ fontSize: '22px', fontWeight: 400, color: 'black', marginBottom: '32px' }}>
           회원가입
         </h2>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#6b7280', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '8px' }}>
+            <label style={{ display: 'block', fontSize: '11px', color: '#6b7280', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px' }}>
               이메일
             </label>
             <input
@@ -59,10 +59,9 @@ export default function SignUpPage() {
               onChange={(e) => setEmail(e.target.value)}
               style={{
                 width: '100%',
-                padding: '14px 16px',
+                padding: '13px 16px',
                 fontSize: '15px',
-                fontWeight: 600,
-                border: '3px solid black',
+                border: '1px solid #d1d5db',
                 borderRadius: 0,
                 outline: 'none',
                 backgroundColor: 'white',
@@ -72,7 +71,7 @@ export default function SignUpPage() {
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#6b7280', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '8px' }}>
+            <label style={{ display: 'block', fontSize: '11px', color: '#6b7280', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px' }}>
               비밀번호
             </label>
             <input
@@ -83,10 +82,9 @@ export default function SignUpPage() {
               onChange={(e) => setPassword(e.target.value)}
               style={{
                 width: '100%',
-                padding: '14px 16px',
+                padding: '13px 16px',
                 fontSize: '15px',
-                fontWeight: 600,
-                border: '3px solid black',
+                border: '1px solid #d1d5db',
                 borderRadius: 0,
                 outline: 'none',
                 backgroundColor: 'white',
@@ -96,7 +94,7 @@ export default function SignUpPage() {
           </div>
 
           {error && (
-            <p style={{ fontSize: '13px', color: '#ef4444', fontWeight: 600, padding: '12px 16px', backgroundColor: '#fef2f2', border: '2px solid #ef4444' }}>
+            <p style={{ fontSize: '13px', color: '#ef4444', padding: '10px 14px', backgroundColor: '#fef2f2', border: '1px solid #fca5a5' }}>
               {error}
             </p>
           )}
@@ -106,27 +104,24 @@ export default function SignUpPage() {
             disabled={loading}
             style={{
               width: '100%',
-              padding: '16px',
+              padding: '15px',
               fontSize: '14px',
-              fontWeight: 900,
               color: 'white',
               backgroundColor: loading ? '#9ca3af' : 'black',
-              border: '3px solid black',
+              border: 'none',
               cursor: loading ? 'not-allowed' : 'pointer',
-              letterSpacing: '2px',
+              letterSpacing: '1px',
               textTransform: 'uppercase',
               marginTop: '8px',
-              boxShadow: loading ? 'none' : '4px 4px 0px #6B21A8',
-              transition: 'box-shadow 0.1s',
             }}
           >
             {loading ? '가입 중...' : '회원가입'}
           </button>
         </form>
 
-        <p style={{ marginTop: '32px', fontSize: '14px', color: '#6b7280', fontWeight: 500, textAlign: 'center' }}>
+        <p style={{ marginTop: '28px', fontSize: '14px', color: '#6b7280', textAlign: 'center' }}>
           이미 계정이 있으신가요?{' '}
-          <Link href="/auth/login" style={{ fontWeight: 900, color: '#6B21A8', textDecoration: 'none' }}>
+          <Link href="/auth/login" style={{ color: '#6B21A8', textDecoration: 'none' }}>
             로그인
           </Link>
         </p>

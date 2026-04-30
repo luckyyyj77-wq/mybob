@@ -11,21 +11,20 @@ export default function SettingsPage() {
   return (
     <div style={{ minHeight: '100svh', backgroundColor: 'white', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
-      <div style={{ padding: '40px 32px 24px', borderBottom: '4px solid black', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+      <div style={{ padding: '40px 32px 24px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
         <div>
-          <p style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', letterSpacing: '3px', textTransform: 'uppercase', marginBottom: '6px' }}>
+          <p style={{ fontSize: '11px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '6px' }}>
             APP
           </p>
-          <h1 style={{ fontSize: '36px', fontWeight: 900, color: 'black', letterSpacing: '-1.5px', lineHeight: 1 }}>
+          <h1 style={{ fontSize: '30px', fontWeight: 400, color: 'black', letterSpacing: '-0.5px', lineHeight: 1 }}>
             설정
           </h1>
         </div>
         <Link href="/" style={{ textDecoration: 'none' }}>
           <div style={{
             padding: '10px 16px',
-            border: '3px solid black',
+            border: '1px solid #e5e7eb',
             fontSize: '12px',
-            fontWeight: 900,
             color: 'black',
             letterSpacing: '1px',
             display: 'flex',
@@ -40,22 +39,21 @@ export default function SettingsPage() {
       {/* Content */}
       <main style={{ flex: 1, padding: '32px', display: 'flex', flexDirection: 'column', gap: '0' }}>
         {/* 알림 설정 */}
-        <section style={{ borderBottom: '3px solid black', paddingBottom: '32px', marginBottom: '32px' }}>
-          <h2 style={{ fontSize: '13px', fontWeight: 700, color: '#9ca3af', letterSpacing: '3px', textTransform: 'uppercase', marginBottom: '20px' }}>
+        <section style={{ borderBottom: '1px solid #e5e7eb', paddingBottom: '32px', marginBottom: '32px' }}>
+          <h2 style={{ fontSize: '11px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '20px' }}>
             알림 설정
           </h2>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', border: '3px solid black' }}>
-              <span style={{ fontSize: '15px', fontWeight: 700, color: 'black' }}>푸시 알림 주기</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: '#e5e7eb' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', backgroundColor: 'white' }}>
+              <span style={{ fontSize: '15px', color: 'black' }}>푸시 알림 주기</span>
               <select
                 value={notifFreq}
                 onChange={(e) => setNotifFreq(e.target.value)}
                 style={{
-                  padding: '8px 12px',
-                  border: '2px solid black',
+                  padding: '6px 10px',
+                  border: '1px solid #e5e7eb',
                   fontSize: '13px',
-                  fontWeight: 700,
                   backgroundColor: 'white',
                   cursor: 'pointer',
                   outline: 'none',
@@ -67,15 +65,15 @@ export default function SettingsPage() {
               </select>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', border: '3px solid black' }}>
-              <span style={{ fontSize: '15px', fontWeight: 700, color: 'black' }}>AI 분석 알림</span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', backgroundColor: 'white' }}>
+              <span style={{ fontSize: '15px', color: 'black' }}>AI 분석 알림</span>
               <button
                 onClick={() => setAiAlert(!aiAlert)}
                 style={{
-                  width: '52px',
-                  height: '28px',
-                  borderRadius: '14px',
-                  border: '3px solid black',
+                  width: '48px',
+                  height: '26px',
+                  borderRadius: '13px',
+                  border: '1px solid #e5e7eb',
                   backgroundColor: aiAlert ? 'black' : 'white',
                   cursor: 'pointer',
                   position: 'relative',
@@ -85,12 +83,12 @@ export default function SettingsPage() {
               >
                 <span style={{
                   position: 'absolute',
-                  top: '2px',
-                  left: aiAlert ? '22px' : '2px',
+                  top: '3px',
+                  left: aiAlert ? '22px' : '3px',
                   width: '18px',
                   height: '18px',
                   borderRadius: '50%',
-                  backgroundColor: aiAlert ? 'white' : 'black',
+                  backgroundColor: aiAlert ? 'white' : '#d1d5db',
                   transition: 'left 0.2s',
                 }} />
               </button>
@@ -100,23 +98,22 @@ export default function SettingsPage() {
 
         {/* 개인 정보 */}
         <section>
-          <h2 style={{ fontSize: '13px', fontWeight: 700, color: '#9ca3af', letterSpacing: '3px', textTransform: 'uppercase', marginBottom: '20px' }}>
+          <h2 style={{ fontSize: '11px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '20px' }}>
             개인 정보
           </h2>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ padding: '16px', border: '3px solid black' }}>
-              <p style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '8px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: '#e5e7eb' }}>
+            <div style={{ padding: '16px', backgroundColor: 'white' }}>
+              <p style={{ fontSize: '11px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px' }}>
                 이메일 주소
               </p>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-                <p style={{ fontSize: '15px', fontWeight: 700, color: 'black' }}>user@example.com</p>
+                <p style={{ fontSize: '15px', color: 'black' }}>user@example.com</p>
                 <button style={{
-                  padding: '8px 16px',
-                  border: '2px solid black',
+                  padding: '7px 14px',
+                  border: '1px solid #e5e7eb',
                   backgroundColor: 'white',
                   fontSize: '12px',
-                  fontWeight: 900,
                   cursor: 'pointer',
                   letterSpacing: '1px',
                 }}>
@@ -125,21 +122,18 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <div style={{ padding: '16px', border: '3px solid #ef4444' }}>
-              <p style={{ fontSize: '11px', fontWeight: 700, color: '#ef4444', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>
+            <div style={{ padding: '16px', backgroundColor: 'white' }}>
+              <p style={{ fontSize: '11px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '12px' }}>
                 위험 구역
               </p>
               <button style={{
-                padding: '12px 20px',
-                backgroundColor: '#ef4444',
-                color: 'white',
-                border: '2px solid #ef4444',
+                padding: '10px 18px',
+                backgroundColor: 'white',
+                color: '#ef4444',
+                border: '1px solid #fca5a5',
                 fontSize: '13px',
-                fontWeight: 900,
                 cursor: 'pointer',
                 letterSpacing: '1px',
-                textTransform: 'uppercase',
-                boxShadow: '3px 3px 0px black',
               }}>
                 회원 탈퇴
               </button>

@@ -10,53 +10,51 @@ export default function CommunityChallengePage() {
   ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
       {/* Coming Soon Banner */}
       <div style={{
         padding: '24px',
-        border: '3px solid black',
         backgroundColor: 'black',
         color: 'white',
-        boxShadow: '4px 4px 0px #6B21A8',
+        marginBottom: '1px',
       }}>
-        <p style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '3px', textTransform: 'uppercase', color: '#9ca3af', marginBottom: '8px' }}>
+        <p style={{ fontSize: '11px', color: '#6b7280', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '8px' }}>
           COMING SOON
         </p>
-        <h2 style={{ fontSize: '22px', fontWeight: 900, letterSpacing: '-0.5px', marginBottom: '8px' }}>
+        <h2 style={{ fontSize: '20px', fontWeight: 400, marginBottom: '8px' }}>
           챌린지 시스템 준비 중
         </h2>
-        <p style={{ fontSize: '13px', color: '#9ca3af', lineHeight: 1.6 }}>
+        <p style={{ fontSize: '13px', color: '#6b7280', lineHeight: 1.6 }}>
           친구들과 함께 목표를 달성하고 포인트와 뱃지를 획득하세요!
         </p>
       </div>
 
       {/* Challenge List */}
-      {challenges.map((challenge, index) => (
-        <div
-          key={index}
-          style={{
-            padding: '20px',
-            border: '3px solid #e5e7eb',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            opacity: 0.5,
-          }}
-        >
-          <div>
-            <p style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '6px' }}>
-              {challenge.period}
-            </p>
-            <h3 style={{ fontSize: '16px', fontWeight: 900, color: 'black', letterSpacing: '-0.3px' }}>
-              {challenge.title}
-            </h3>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: '#e5e7eb' }}>
+        {challenges.map((challenge, index) => (
+          <div
+            key={index}
+            style={{
+              padding: '20px',
+              backgroundColor: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              opacity: 0.5,
+            }}
+          >
+            <div>
+              <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '6px' }}>
+                {challenge.period}
+              </p>
+              <h3 style={{ fontSize: '15px', fontWeight: 400, color: 'black' }}>
+                {challenge.title}
+              </h3>
+            </div>
+            <FaLock size={13} color="#d1d5db" />
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <FaLock size={14} color="#9ca3af" />
-            <span style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', letterSpacing: '1px' }}>준비 중</span>
-          </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }

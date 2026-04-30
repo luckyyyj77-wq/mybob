@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
 import { motion } from 'framer-motion';
 
@@ -116,25 +115,25 @@ export default function Home() {
           alignItems: 'flex-start',
           justifyContent: 'center',
           padding: '40px 32px',
-          borderBottom: '4px solid black',
+          borderBottom: '1px solid #e5e7eb',
         }}
       >
         <h1 style={{
-          fontSize: '32px',
-          fontWeight: 900,
+          fontSize: '30px',
+          fontWeight: 400,
           color: 'black',
-          letterSpacing: '-1px',
-          lineHeight: 1.1,
-          marginBottom: '16px',
+          letterSpacing: '-0.5px',
+          lineHeight: 1.2,
+          marginBottom: '14px',
         }}>
           무엇을 드시나요?
         </h1>
         {todayStats.count > 0 ? (
-          <p style={{ fontSize: '13px', fontWeight: 700, color: '#6B21A8', letterSpacing: '1px' }}>
+          <p style={{ fontSize: '13px', color: '#6B21A8', letterSpacing: '0.5px' }}>
             오늘 {todayStats.count}개의 식단이 기록되었습니다.
           </p>
         ) : (
-          <p style={{ fontSize: '13px', fontWeight: 500, color: '#9ca3af' }}>
+          <p style={{ fontSize: '13px', color: '#9ca3af' }}>
             식단을 기록하고 분석을 시작하세요.
           </p>
         )}
@@ -153,50 +152,50 @@ export default function Home() {
           backgroundColor: 'white',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '32px' }}>
-          <span style={{ fontSize: '20px' }}>&#128161;</span>
-          <h2 style={{ fontSize: '22px', fontWeight: 900, color: 'black', letterSpacing: '-0.5px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '28px' }}>
+          <span style={{ fontSize: '18px' }}>&#128161;</span>
+          <h2 style={{ fontSize: '18px', fontWeight: 400, color: 'black', letterSpacing: '-0.3px' }}>
             AI COACH
           </h2>
         </div>
 
-        <ul style={{ display: 'flex', flexDirection: 'column', gap: '20px', listStyle: 'none', padding: 0, margin: 0 }}>
+        <ul style={{ display: 'flex', flexDirection: 'column', gap: '22px', listStyle: 'none', padding: 0, margin: 0 }}>
           <li style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#6B21A8', flexShrink: 0, marginTop: '6px' }} />
+            <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#6B21A8', flexShrink: 0, marginTop: '6px' }} />
             <div>
-              <p style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '4px' }}>
-                오늘섭취 칼로리
+              <p style={{ fontSize: '11px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '4px' }}>
+                오늘 섭취 칼로리
               </p>
-              <p style={{ fontSize: '28px', fontWeight: 900, color: 'black', lineHeight: 1 }}>
-                {todayStats.totalCalories} <span style={{ fontSize: '12px', fontWeight: 700, color: '#9ca3af' }}>KCAL</span>
+              <p style={{ fontSize: '26px', fontWeight: 400, color: 'black', lineHeight: 1 }}>
+                {todayStats.totalCalories} <span style={{ fontSize: '12px', color: '#9ca3af' }}>KCAL</span>
               </p>
             </div>
           </li>
 
           <li style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#9ca3af', flexShrink: 0, marginTop: '6px' }} />
+            <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#9ca3af', flexShrink: 0, marginTop: '6px' }} />
             <div>
-              <p style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '4px' }}>
-                영양밸런스
+              <p style={{ fontSize: '11px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '4px' }}>
+                영양 밸런스
               </p>
               <div style={{ display: 'flex', gap: '16px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 900, color: 'black' }}>탄 {todayStats.nutrients.carbs.toFixed(0)}g</span>
-                <span style={{ fontSize: '14px', fontWeight: 900, color: 'black' }}>단 {todayStats.nutrients.protein.toFixed(0)}g</span>
-                <span style={{ fontSize: '14px', fontWeight: 900, color: 'black' }}>지 {todayStats.nutrients.fat.toFixed(0)}g</span>
+                <span style={{ fontSize: '14px', color: 'black' }}>탄 {todayStats.nutrients.carbs.toFixed(0)}g</span>
+                <span style={{ fontSize: '14px', color: 'black' }}>단 {todayStats.nutrients.protein.toFixed(0)}g</span>
+                <span style={{ fontSize: '14px', color: 'black' }}>지 {todayStats.nutrients.fat.toFixed(0)}g</span>
               </div>
             </div>
           </li>
 
           <li style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#d1d5db', flexShrink: 0, marginTop: '6px' }} />
+            <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#d1d5db', flexShrink: 0, marginTop: '6px' }} />
             <div style={{ flex: 1 }}>
-              <p style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '4px' }}>
+              <p style={{ fontSize: '11px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '4px' }}>
                 코치 코멘트
               </p>
               {loadingFeedback ? (
-                <div style={{ width: '16px', height: '16px', border: '2px solid black', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                <div style={{ width: '16px', height: '16px', border: '2px solid #9ca3af', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
               ) : aiFeedback ? (
-                <p style={{ fontSize: '14px', fontWeight: 600, color: '#374151', lineHeight: 1.6 }}>
+                <p style={{ fontSize: '14px', color: '#374151', lineHeight: 1.6 }}>
                   "{aiFeedback.feedback}"
                 </p>
               ) : (

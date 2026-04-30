@@ -10,22 +10,21 @@ export default function CommunityLayout({ children }: { children: React.ReactNod
   return (
     <div style={{ minHeight: '100svh', backgroundColor: 'white', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
-      <div style={{ padding: '40px 32px 0', borderBottom: '4px solid black' }}>
+      <div style={{ padding: '40px 32px 0', borderBottom: '1px solid #e5e7eb' }}>
         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
           <div>
-            <p style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', letterSpacing: '3px', textTransform: 'uppercase', marginBottom: '6px' }}>
+            <p style={{ fontSize: '11px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '6px' }}>
               SOCIAL
             </p>
-            <h1 style={{ fontSize: '36px', fontWeight: 900, color: 'black', letterSpacing: '-1.5px', lineHeight: 1 }}>
+            <h1 style={{ fontSize: '30px', fontWeight: 400, color: 'black', letterSpacing: '-0.5px', lineHeight: 1 }}>
               커뮤니티
             </h1>
           </div>
           <Link href="/" style={{ textDecoration: 'none' }}>
             <div style={{
               padding: '10px 16px',
-              border: '3px solid black',
+              border: '1px solid #e5e7eb',
               fontSize: '12px',
-              fontWeight: 900,
               color: 'black',
               letterSpacing: '1px',
               display: 'flex',
@@ -38,7 +37,7 @@ export default function CommunityLayout({ children }: { children: React.ReactNod
         </div>
 
         {/* Tab Nav */}
-        <nav style={{ display: 'flex', gap: '0', marginTop: '24px' }}>
+        <nav style={{ display: 'flex', marginTop: '24px' }}>
           {[
             { label: '추천 피드', href: '/community/recommendation' },
             { label: '챌린지', href: '/community/challenge' },
@@ -49,14 +48,12 @@ export default function CommunityLayout({ children }: { children: React.ReactNod
               style={{
                 padding: '12px 24px',
                 fontSize: '13px',
-                fontWeight: 900,
-                color: pathname === tab.href ? 'white' : 'black',
+                color: pathname === tab.href ? 'white' : '#9ca3af',
                 backgroundColor: pathname === tab.href ? 'black' : 'white',
                 textDecoration: 'none',
-                borderRight: '3px solid black',
+                borderRight: '1px solid #e5e7eb',
                 letterSpacing: '1px',
                 textTransform: 'uppercase',
-                transition: 'all 0.15s',
               }}
             >
               {tab.label}

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
 import './globals.css';
 import { Session } from '@supabase/supabase-js';
-import { FaBars, FaCamera, FaHistory, FaTimes, FaHome, FaChartPie, FaUsers, FaCog, FaHandshake } from 'react-icons/fa';
+import { FaCamera, FaHistory, FaHome, FaChartPie, FaUsers, FaCog, FaHandshake, FaSignInAlt, FaSignOutAlt } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function RootLayout({
@@ -57,10 +57,7 @@ export default function RootLayout({
       <html lang="ko" className="h-full">
         <body className="h-full bg-white text-black antialiased">
           <div className="min-h-screen flex items-center justify-center">
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-8 h-8 border-4 border-black border-t-transparent rounded-full animate-spin" />
-              <p className="text-xs font-black uppercase tracking-widest text-gray-400">Loading...</p>
-            </div>
+            <div className="w-7 h-7 border-2 border-black border-t-transparent rounded-full animate-spin" />
           </div>
         </body>
       </html>
@@ -70,7 +67,7 @@ export default function RootLayout({
   const showNav = !isAuthRoute;
 
   const menuItems = [
-    { icon: FaHome, label: '홈버튼', href: '/' },
+    { icon: FaHome, label: '홈', href: '/' },
     { icon: FaChartPie, label: '리포트', href: '/report/daily' },
     { icon: FaUsers, label: '커뮤니티', href: '/community/recommendation' },
     { icon: FaCog, label: '설정', href: '/settings' },
@@ -80,65 +77,132 @@ export default function RootLayout({
   return (
     <html lang="ko" className="h-full">
       <body className="h-full bg-white text-black antialiased overflow-x-hidden flex flex-col">
-        {/* Sidebar Overlay */}
-        <AnimatePresence mode="wait">
+
+        {/* Fullscreen Sidebar */}
+        <AnimatePresence>
           {isMenuOpen && (
-            <div key="sidebar-container" className="fixed inset-0 z-[1000]">
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 0.4 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setIsMenuOpen(false)}
-                className="absolute inset-0 bg-black"
-              />
-              <motion.div
-                initial={{ x: '-100%' }}
-                animate={{ x: 0 }}
-                exit={{ x: '-100%' }}
-                transition={{ type: 'tween', duration: 0.25, ease: 'easeOut' }}
-                className="absolute top-0 left-0 bottom-0 w-64 bg-white border-r-4 border-black flex flex-col"
-              >
-                <div className="p-8 border-b-4 border-black">
-                  <h2 className="text-2xl font-black tracking-tighter">MYBOB</h2>
-                </div>
+            <motion.div
+              key="sidebar"
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'tween', duration: 0.28, ease: 'easeInOut' }}
+              style={{
+                position: 'fixed',
+                inset: 0,
+                zIndex: 1000,
+                backgroundColor: 'white',
+                display: 'flex',
+                flexDirection: 'column',
+              }}
+            >
+              {/* 상단: 타이틀 + 닫기(햄버거 재클릭) */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '20px 24px',
+                borderBottom: '1px solid #e5e7eb',
+              }}>
+                <span style={{ fontSize: '18px', letterSpacing: '-0.5px' }}>MYBOB</span>
 
-                <nav className="flex-grow flex flex-col py-6">
-                  {menuItems.map((item) => (
-                    <Link
-                      key={item.label}
-                      href={item.href}
-                      onClick={() => setIsMenuOpen(false)}
-                      className="px-8 py-4 text-lg font-bold text-black hover:bg-black hover:text-white transition-colors border-b border-gray-100"
-                    >
-                      {item.label}
-                    </Link>
-                  ))}
-                </nav>
+                {/* 닫기 버튼 — 햄버거 동일 위치/모양 */}
+                <button
+                  onClick={() => setIsMenuOpen(false)}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '5px',
+                    padding: '8px',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                  }}
+                  aria-label="메뉴 닫기"
+                >
+                  {/* X 모양 (두 선 교차) */}
+                  <span style={{
+                    display: 'block', width: '26px', height: '2px',
+                    backgroundColor: 'black',
+                    transform: 'translateY(7px) rotate(45deg)',
+                    transformOrigin: 'center',
+                  }} />
+                  <span style={{
+                    display: 'block', width: '26px', height: '2px',
+                    backgroundColor: 'black',
+                    transform: 'rotate(-45deg)',
+                    transformOrigin: 'center',
+                  }} />
+                </button>
+              </div>
 
-                <div className="p-8 border-t-4 border-black">
-                  {!session ? (
-                    <Link
-                      href="/auth/login"
-                      onClick={() => setIsMenuOpen(false)}
-                      className="text-base font-black text-purple-700 hover:text-purple-900 transition-colors"
-                    >
-                      로그인
-                    </Link>
-                  ) : (
-                    <button
-                      onClick={async () => {
-                        await supabase.auth.signOut();
-                        setIsMenuOpen(false);
-                        router.push('/auth/login');
-                      }}
-                      className="text-base font-black text-red-500 hover:text-red-700 transition-colors text-left"
-                    >
-                      로그아웃
-                    </button>
-                  )}
-                </div>
-              </motion.div>
-            </div>
+              {/* 메뉴 아이템 — 아이콘 중심 */}
+              <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '0', padding: '0 24px' }}>
+                {menuItems.map((item) => (
+                  <Link
+                    key={item.label}
+                    href={item.href}
+                    onClick={() => setIsMenuOpen(false)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '20px',
+                      padding: '20px 16px',
+                      textDecoration: 'none',
+                      color: 'black',
+                      borderBottom: '1px solid #f3f4f6',
+                    }}
+                  >
+                    <item.icon size={22} style={{ flexShrink: 0, color: '#6B21A8' }} />
+                    <span style={{ fontSize: '20px', letterSpacing: '-0.3px' }}>{item.label}</span>
+                  </Link>
+                ))}
+              </nav>
+
+              {/* 하단: 로그인/로그아웃 */}
+              <div style={{
+                padding: '24px 40px',
+                borderTop: '1px solid #e5e7eb',
+              }}>
+                {!session ? (
+                  <Link
+                    href="/auth/login"
+                    onClick={() => setIsMenuOpen(false)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      textDecoration: 'none',
+                      color: '#6B21A8',
+                    }}
+                  >
+                    <FaSignInAlt size={18} />
+                    <span style={{ fontSize: '16px' }}>로그인</span>
+                  </Link>
+                ) : (
+                  <button
+                    onClick={async () => {
+                      await supabase.auth.signOut();
+                      setIsMenuOpen(false);
+                      router.push('/auth/login');
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: '#ef4444',
+                      padding: 0,
+                    }}
+                  >
+                    <FaSignOutAlt size={18} />
+                    <span style={{ fontSize: '16px' }}>로그아웃</span>
+                  </button>
+                )}
+              </div>
+            </motion.div>
           )}
         </AnimatePresence>
 
@@ -162,11 +226,11 @@ export default function RootLayout({
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 backgroundColor: 'white',
-                borderTop: '4px solid black',
+                borderTop: '1px solid #e5e7eb',
                 padding: '12px 40px 20px 40px',
               }}
             >
-              {/* Hamburger Menu */}
+              {/* 햄버거 — 열기 */}
               <button
                 onClick={() => setIsMenuOpen(true)}
                 style={{
@@ -178,37 +242,47 @@ export default function RootLayout({
                   border: 'none',
                   cursor: 'pointer',
                 }}
+                aria-label="메뉴 열기"
               >
-                <span style={{ display: 'block', width: '28px', height: '3px', backgroundColor: 'black' }} />
-                <span style={{ display: 'block', width: '28px', height: '3px', backgroundColor: 'black' }} />
-                <span style={{ display: 'block', width: '28px', height: '3px', backgroundColor: 'black' }} />
+                <span style={{ display: 'block', width: '26px', height: '2px', backgroundColor: 'black' }} />
+                <span style={{ display: 'block', width: '26px', height: '2px', backgroundColor: 'black' }} />
+                <span style={{ display: 'block', width: '26px', height: '2px', backgroundColor: 'black' }} />
               </button>
 
-              {/* Camera Scan */}
+              {/* 카메라 */}
               <Link
                 href="/capture"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  width: '60px',
-                  height: '60px',
+                  width: '56px',
+                  height: '56px',
                   backgroundColor: 'white',
-                  border: '4px solid black',
+                  border: '1px solid #e5e7eb',
                   borderRadius: '50%',
-                  marginTop: '-30px',
-                  boxShadow: '4px 4px 0px black',
+                  marginTop: '-28px',
                   textDecoration: 'none',
                   color: 'black',
                 }}
               >
-                <FaCamera size={24} />
+                <FaCamera size={22} />
               </Link>
 
-              {/* Timeline */}
-              <Link href="/history" style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
-                <FaHistory size={24} color="black" />
-                <span style={{ fontSize: '9px', fontWeight: 900, letterSpacing: '2px', color: '#6B21A8', textTransform: 'uppercase' }}>TIMELINE</span>
+              {/* 타임라인 */}
+              <Link
+                href="/history"
+                style={{
+                  textDecoration: 'none',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '3px',
+                  color: 'black',
+                }}
+              >
+                <FaHistory size={22} />
+                <span style={{ fontSize: '9px', letterSpacing: '1px', color: '#6B21A8', textTransform: 'uppercase' }}>TIMELINE</span>
               </Link>
             </nav>
           </div>
