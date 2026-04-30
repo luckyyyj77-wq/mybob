@@ -1,32 +1,68 @@
 import Link from 'next/link';
+import { FaArrowLeft } from 'react-icons/fa';
 
 export default function ReportLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-100 to-pink-100 flex flex-col items-center p-4">
-      <header className="w-full max-w-4xl text-center py-6">
-        <h1 className="text-5xl font-extrabold text-purple-800 mb-2">리포트</h1>
-        <p className="text-xl text-purple-600">식단 분석 리포트</p>
-      </header>
+    <div style={{ minHeight: '100svh', backgroundColor: 'white', display: 'flex', flexDirection: 'column' }}>
+      {/* Header */}
+      <div style={{ padding: '40px 32px 0', borderBottom: '4px solid black' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: '0' }}>
+          <div>
+            <p style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', letterSpacing: '3px', textTransform: 'uppercase', marginBottom: '6px' }}>
+              ANALYSIS
+            </p>
+            <h1 style={{ fontSize: '36px', fontWeight: 900, color: 'black', letterSpacing: '-1.5px', lineHeight: 1 }}>
+              리포트
+            </h1>
+          </div>
+          <Link href="/" style={{ textDecoration: 'none' }}>
+            <div style={{
+              padding: '10px 16px',
+              border: '3px solid black',
+              fontSize: '12px',
+              fontWeight: 900,
+              color: 'black',
+              letterSpacing: '1px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}>
+              <FaArrowLeft size={10} /> 홈
+            </div>
+          </Link>
+        </div>
 
-      <nav className="w-full max-w-lg flex justify-center space-x-4 mb-8">
-        <Link href="/report/daily" className="px-6 py-2 rounded-full text-lg font-semibold text-white bg-purple-500 hover:bg-purple-600 transition duration-300">
-          일간
-        </Link>
-        <Link href="/report/weekly" className="px-6 py-2 rounded-full text-lg font-semibold text-white bg-purple-500 hover:bg-purple-600 transition duration-300">
-          주간
-        </Link>
-        <Link href="/report/monthly" className="px-6 py-2 rounded-full text-lg font-semibold text-white bg-purple-500 hover:bg-purple-600 transition duration-300">
-          월간
-        </Link>
-      </nav>
+        {/* Tab Nav */}
+        <nav style={{ display: 'flex', gap: '0', marginTop: '24px' }}>
+          {[
+            { label: '일간', href: '/report/daily' },
+            { label: '주간', href: '/report/weekly' },
+            { label: '월간', href: '/report/monthly' },
+          ].map((tab) => (
+            <Link
+              key={tab.href}
+              href={tab.href}
+              style={{
+                padding: '12px 24px',
+                fontSize: '13px',
+                fontWeight: 900,
+                color: 'black',
+                textDecoration: 'none',
+                borderRight: '3px solid black',
+                letterSpacing: '1px',
+                textTransform: 'uppercase',
+              }}
+            >
+              {tab.label}
+            </Link>
+          ))}
+        </nav>
+      </div>
 
-      <main className="w-full max-w-4xl bg-white rounded-xl shadow-lg p-6 md:p-8">
+      {/* Content */}
+      <main style={{ flex: 1, padding: '32px' }}>
         {children}
       </main>
-
-      <Link href="/" className="mt-8 text-purple-600 hover:underline">
-        홈으로 돌아가기
-      </Link>
     </div>
   );
 }

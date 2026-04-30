@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { FaSpinner, FaCalendarAlt, FaUtensils, FaArrowLeft, FaHistory } from 'react-icons/fa';
-import { motion, AnimatePresence, Variants } from 'framer-motion';
+import { motion } from 'framer-motion';
+import { FaArrowLeft } from 'react-icons/fa';
 
 type Meal = {
   id: string;
@@ -11,23 +11,6 @@ type Meal = {
   calories: number;
   created_at: string;
   photo_url?: string;
-};
-
-const containerVariants: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.1 }
-  }
-};
-
-const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 30 },
-  visible: { 
-    opacity: 1, 
-    y: 0,
-    transition: { type: "spring", stiffness: 100 }
-  }
 };
 
 export default function HistoryPage() {
@@ -39,24 +22,19 @@ export default function HistoryPage() {
     const fetchMeals = async () => {
       try {
         let allMeals: Meal[] = [];
-        
-        // 1. Get from LocalStorage
+
         const localData = localStorage.getItem('mybob_meals');
         if (localData) {
           allMeals = JSON.parse(localData);
         }
 
-        // 2. Try to get from Server
         try {
           const response = await fetch('/api/meals');
           if (response.ok) {
             const result = await response.json();
             if (result.success && Array.isArray(result.data)) {
-              // Combine and remove duplicates based on a combination of date and food name
-              // (Simplistic approach: preference given to server data)
               const serverMeals = result.data;
               const serverKeys = new Set(serverMeals.map((m: Meal) => `${m.food_name}_${m.calories}`));
-              
               const uniqueLocal = allMeals.filter(m => !serverKeys.has(`${m.food_name}_${m.calories}`));
               allMeals = [...serverMeals, ...uniqueLocal];
             }
@@ -64,10 +42,9 @@ export default function HistoryPage() {
         } catch (serverErr) {
           console.warn("Server fetch failed, using local data only:", serverErr);
         }
-        
-        // 3. Sort and set
-        const sortedMeals = allMeals.sort((a: Meal, b: Meal) => 
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+
+        const sortedMeals = allMeals.sort((a: Meal, b: Meal) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
         setMeals(sortedMeals);
         setError(null);
@@ -82,105 +59,121 @@ export default function HistoryPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-white p-4 sm:p-8">
-      <motion.header 
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="max-w-4xl mx-auto text-center mb-16 pt-8"
-      >
-        <div className="inline-block p-4 bg-indigo-500/10 rounded-3xl mb-6 border border-indigo-500/20">
-          <FaHistory className="text-4xl text-indigo-400" />
+    <div style={{ minHeight: '100svh', backgroundColor: 'white', display: 'flex', flexDirection: 'column' }}>
+      {/* Header */}
+      <div style={{ padding: '40px 32px 24px', borderBottom: '4px solid black', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+        <div>
+          <p style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', letterSpacing: '3px', textTransform: 'uppercase', marginBottom: '6px' }}>
+            TIMELINE
+          </p>
+          <h1 style={{ fontSize: '36px', fontWeight: 900, color: 'black', letterSpacing: '-1.5px', lineHeight: 1 }}>
+            기록
+          </h1>
         </div>
-        <h1 className="text-5xl font-black mb-2 tracking-tighter">HISTORY</h1>
-        <p className="text-slate-400 font-medium uppercase tracking-widest text-xs">나의 모든 식단 기록</p>
-      </motion.header>
-      
-      <main className="max-w-2xl mx-auto">
+        <Link href="/" style={{ textDecoration: 'none' }}>
+          <div style={{
+            padding: '10px 16px',
+            border: '3px solid black',
+            fontSize: '12px',
+            fontWeight: 900,
+            color: 'black',
+            letterSpacing: '1px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}>
+            <FaArrowLeft size={10} /> 홈
+          </div>
+        </Link>
+      </div>
+
+      {/* Content */}
+      <main style={{ flex: 1, padding: '32px' }}>
         {loading ? (
-          <div className="flex flex-col justify-center items-center py-20 text-indigo-400">
-            <FaSpinner className="animate-spin text-4xl mb-4" />
-            <span className="font-black text-xs tracking-widest uppercase">Loading Timeline...</span>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingTop: '80px', gap: '12px' }}>
+            <div style={{ width: '32px', height: '32px', border: '3px solid black', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+            <p style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '3px', textTransform: 'uppercase', color: '#9ca3af' }}>Loading...</p>
           </div>
         ) : error ? (
-          <div className="text-center py-20 bg-red-500/10 rounded-3xl border border-red-500/20">
-            <p className="text-red-400 font-bold mb-4">{error}</p>
-            <button onClick={() => window.location.reload()} className="px-6 py-2 bg-red-500 text-white rounded-full text-xs font-black">RETRY</button>
+          <div style={{ textAlign: 'center', paddingTop: '60px' }}>
+            <p style={{ color: '#ef4444', fontWeight: 700, marginBottom: '16px' }}>{error}</p>
+            <button onClick={() => window.location.reload()} style={{ padding: '10px 20px', backgroundColor: 'black', color: 'white', border: 'none', fontWeight: 900, cursor: 'pointer', fontSize: '12px', letterSpacing: '2px' }}>
+              재시도
+            </button>
+          </div>
+        ) : meals.length === 0 ? (
+          <div style={{ textAlign: 'center', paddingTop: '80px', borderTop: '2px dashed #e5e7eb' }}>
+            <p style={{ fontSize: '14px', color: '#9ca3af', fontWeight: 600, marginBottom: '16px' }}>기록된 식단이 없습니다.</p>
+            <Link href="/capture" style={{ fontSize: '13px', fontWeight: 900, color: '#6B21A8', textDecoration: 'none', letterSpacing: '1px' }}>
+              지금 기록 시작하기 →
+            </Link>
           </div>
         ) : (
-          <motion.div 
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-            className="space-y-8"
-          >
-            {meals.length > 0 ? (
-              meals.map((meal) => (
-                <motion.div 
-                  key={meal.id} 
-                  variants={itemVariants}
-                  whileHover={{ x: 10 }}
-                  className="group relative flex gap-6"
-                >
-                  {/* Timeline Line */}
-                  <div className="absolute left-[19px] top-10 bottom-[-40px] w-0.5 bg-slate-800 group-last:hidden" />
-                  
-                  {/* Timeline Dot */}
-                  <div className="relative z-10 flex-shrink-0 w-10 h-10 rounded-full bg-slate-800 border-4 border-[#0f172a] flex items-center justify-center group-hover:bg-indigo-500 transition-colors">
-                    <div className="w-2 h-2 rounded-full bg-slate-600 group-hover:bg-white" />
-                  </div>
+          <div style={{ display: 'flex', flexDirection: 'column', position: 'relative' }}>
+            {/* Timeline line */}
+            <div style={{ position: 'absolute', left: '11px', top: '24px', bottom: '24px', width: '2px', backgroundColor: '#e5e7eb' }} />
 
-                  {/* Content Card */}
-                  <div className="flex-grow bg-slate-800/40 backdrop-blur-sm rounded-[2rem] border border-slate-700/50 p-6 shadow-xl group-hover:bg-slate-800/60 transition-all">
-                    <div className="flex items-center text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">
-                      <FaCalendarAlt className="mr-2" />
-                      <span>{new Date(meal.created_at).toLocaleString('ko-KR')}</span>
-                    </div>
+            {meals.map((meal, index) => (
+              <motion.div
+                key={meal.id}
+                initial={{ opacity: 0, x: -16 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.05 }}
+                style={{ display: 'flex', gap: '24px', marginBottom: '28px', position: 'relative' }}
+              >
+                {/* Timeline dot */}
+                <div style={{
+                  width: '24px',
+                  height: '24px',
+                  borderRadius: '50%',
+                  border: '4px solid black',
+                  backgroundColor: 'white',
+                  flexShrink: 0,
+                  marginTop: '14px',
+                  zIndex: 1,
+                }} />
 
-                    {meal.photo_url && (
-                      <div className="mb-6 rounded-2xl overflow-hidden shadow-2xl border border-slate-700">
-                        <img 
-                          src={meal.photo_url} 
-                          alt={meal.food_name} 
-                          className="w-full h-56 object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
-                      </div>
-                    )}
-                    
-                    <div className="flex justify-between items-end">
-                      <div>
-                        <h3 className="text-2xl font-black text-white group-hover:text-indigo-400 transition-colors mb-1">{meal.food_name}</h3>
-                        <p className="text-slate-400 text-xs font-bold uppercase tracking-tighter">Recorded Successfully</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-2xl font-black text-teal-400 mb-[-4px]">{meal.calories}</p>
-                        <p className="text-[10px] font-black text-slate-500 uppercase">kcal</p>
-                      </div>
+                {/* Card */}
+                <div style={{
+                  flex: 1,
+                  border: '3px solid black',
+                  padding: '16px',
+                  backgroundColor: 'white',
+                  boxShadow: '4px 4px 0px black',
+                }}>
+                  <p style={{ fontSize: '10px', fontWeight: 700, color: '#9ca3af', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '8px' }}>
+                    {new Date(meal.created_at).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </p>
+
+                  {meal.photo_url && (
+                    <div style={{ marginBottom: '12px', overflow: 'hidden', border: '2px solid black' }}>
+                      <img
+                        src={meal.photo_url}
+                        alt={meal.food_name}
+                        style={{ width: '100%', height: '160px', objectFit: 'cover', display: 'block' }}
+                      />
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                    <h3 style={{ fontSize: '18px', fontWeight: 900, color: 'black', letterSpacing: '-0.5px' }}>
+                      {meal.food_name}
+                    </h3>
+                    <div style={{ textAlign: 'right' }}>
+                      <p style={{ fontSize: '20px', fontWeight: 900, color: '#6B21A8', lineHeight: 1 }}>{meal.calories}</p>
+                      <p style={{ fontSize: '10px', fontWeight: 700, color: '#9ca3af', letterSpacing: '1px' }}>KCAL</p>
                     </div>
                   </div>
-                </motion.div>
-              ))
-            ) : (
-              <div className="text-center py-20 bg-slate-800/20 rounded-[3rem] border border-dashed border-slate-700">
-                <p className="text-slate-500 font-bold uppercase tracking-widest text-sm mb-2">No records found</p>
-                <Link href="/capture" className="text-indigo-400 hover:text-indigo-300 font-black text-xs underline">START RECORDING NOW</Link>
-              </div>
-            )}
-          </motion.div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
         )}
       </main>
 
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.5 }}
-        className="text-center mt-20 pb-20"
-      >
-        <Link href="/">
-          <button className="inline-flex items-center px-8 py-4 bg-white text-slate-900 font-black rounded-full shadow-2xl hover:scale-105 transition-transform active:scale-95 text-sm uppercase">
-            <FaArrowLeft className="mr-3" /> Dashboard
-          </button>
-        </Link>
-      </motion.div>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+      `}</style>
     </div>
   );
 }

@@ -2,50 +2,73 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { FaUsers, FaTrophy, FaArrowLeft } from 'react-icons/fa';
+import { FaArrowLeft } from 'react-icons/fa';
 
 export default function CommunityLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-100 flex flex-col items-center p-4">
-      <header className="w-full max-w-4xl text-center py-8">
-        <h1 className="text-5xl font-extrabold text-orange-800 mb-2 flex items-center justify-center">
-          <FaUsers className="mr-4" /> 커뮤니티
-        </h1>
-        <p className="text-xl text-orange-600 font-medium">함께 먹고, 함께 힘내요!</p>
-      </header>
+    <div style={{ minHeight: '100svh', backgroundColor: 'white', display: 'flex', flexDirection: 'column' }}>
+      {/* Header */}
+      <div style={{ padding: '40px 32px 0', borderBottom: '4px solid black' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+          <div>
+            <p style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', letterSpacing: '3px', textTransform: 'uppercase', marginBottom: '6px' }}>
+              SOCIAL
+            </p>
+            <h1 style={{ fontSize: '36px', fontWeight: 900, color: 'black', letterSpacing: '-1.5px', lineHeight: 1 }}>
+              커뮤니티
+            </h1>
+          </div>
+          <Link href="/" style={{ textDecoration: 'none' }}>
+            <div style={{
+              padding: '10px 16px',
+              border: '3px solid black',
+              fontSize: '12px',
+              fontWeight: 900,
+              color: 'black',
+              letterSpacing: '1px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}>
+              <FaArrowLeft size={10} /> 홈
+            </div>
+          </Link>
+        </div>
 
-      <nav className="w-full max-w-lg flex justify-center space-x-2 mb-8 bg-white/50 p-1.5 rounded-2xl backdrop-blur-sm border border-orange-200">
-        <Link 
-          href="/community/recommendation" 
-          className={`flex-1 text-center py-3 rounded-xl text-sm font-bold transition duration-300 ${
-            pathname === '/community/recommendation' 
-              ? 'bg-orange-500 text-white shadow-md' 
-              : 'text-orange-600 hover:bg-orange-100'
-          }`}
-        >
-          <FaUsers className="inline mr-2" /> 추천 피드
-        </Link>
-        <Link 
-          href="/community/challenge" 
-          className={`flex-1 text-center py-3 rounded-xl text-sm font-bold transition duration-300 ${
-            pathname === '/community/challenge' 
-              ? 'bg-orange-500 text-white shadow-md' 
-              : 'text-orange-600 hover:bg-orange-100'
-          }`}
-        >
-          <FaTrophy className="inline mr-2" /> 챌린지
-        </Link>
-      </nav>
+        {/* Tab Nav */}
+        <nav style={{ display: 'flex', gap: '0', marginTop: '24px' }}>
+          {[
+            { label: '추천 피드', href: '/community/recommendation' },
+            { label: '챌린지', href: '/community/challenge' },
+          ].map((tab) => (
+            <Link
+              key={tab.href}
+              href={tab.href}
+              style={{
+                padding: '12px 24px',
+                fontSize: '13px',
+                fontWeight: 900,
+                color: pathname === tab.href ? 'white' : 'black',
+                backgroundColor: pathname === tab.href ? 'black' : 'white',
+                textDecoration: 'none',
+                borderRight: '3px solid black',
+                letterSpacing: '1px',
+                textTransform: 'uppercase',
+                transition: 'all 0.15s',
+              }}
+            >
+              {tab.label}
+            </Link>
+          ))}
+        </nav>
+      </div>
 
-      <main className="w-full max-w-5xl">
+      {/* Content */}
+      <main style={{ flex: 1, padding: '32px' }}>
         {children}
       </main>
-
-      <Link href="/" className="my-10 text-orange-600 hover:underline flex items-center font-bold bg-white px-6 py-2 rounded-full shadow-sm">
-        <FaArrowLeft className="mr-2" /> 홈으로 돌아가기
-      </Link>
     </div>
   );
 }

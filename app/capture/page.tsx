@@ -3,7 +3,7 @@
 import React, { useRef, useState, useCallback } from 'react';
 import Webcam from 'react-webcam';
 import Link from 'next/link';
-import { FaCamera, FaSpinner, FaCheckCircle, FaSave, FaRedo, FaUpload, FaArrowLeft } from 'react-icons/fa';
+import { FaCamera, FaSpinner, FaUpload, FaArrowLeft, FaRedo } from 'react-icons/fa';
 import { supabase } from '@/lib/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -34,7 +34,6 @@ export default function CameraCapturePage() {
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
   const [loadingSave, setLoadingSave] = useState(false);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
-  const [modelUsed, setModelUsed] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
   const capture = useCallback(() => {
@@ -73,7 +72,6 @@ export default function CameraCapturePage() {
       if (!response.ok) throw new Error(result.details || result.error || '분석 중 오류가 발생했습니다.');
       if (result.success) {
         setAnalysis(result.food);
-        setModelUsed(result.modelUsed);
       }
     } catch (error: any) {
       alert(`음식 분석 실패: ${error.message}`);
@@ -87,37 +85,33 @@ export default function CameraCapturePage() {
     setLoadingSave(true);
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
-    
-    // 1. Prepare data for LocalStorage backup
+
     const localMeal = {
       id: Date.now().toString(),
       food_name: analysis.name,
       calories: analysis.calories,
       nutrient: analysis.nutrients,
-      photo_url: imageSrc, // Save base64 image locally
+      photo_url: imageSrc,
       created_at: new Date().toISOString(),
       is_local: true
     };
 
     try {
-      // 2. Save to LocalStorage first (Instant success)
       const existingMeals = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
       localStorage.setItem('mybob_meals', JSON.stringify([localMeal, ...existingMeals]));
-      
-      // 3. Try saving to Cloud (Server)
+
       const response = await fetch('/api/meals', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` 
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ mealData: analysis, imageBase64: imageSrc }),
       });
       const result = await response.json();
-      
       if (result.success) setSaved(true);
       else {
-        setSaved(true); 
+        setSaved(true);
         console.warn("Saved to LocalStorage only due to server error");
       }
     } catch (error: any) {
@@ -136,133 +130,255 @@ export default function CameraCapturePage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4 pb-24">
-      <motion.div 
-        initial={{ y: -10, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        className="w-full max-w-md flex items-center justify-between py-4 mb-2"
-      >
-        <Link href="/">
-          <div className="p-3 bg-white rounded-2xl shadow-sm border border-slate-100 text-slate-400">
-            <FaArrowLeft />
+    <div style={{ minHeight: '100svh', backgroundColor: 'white', display: 'flex', flexDirection: 'column' }}>
+      {/* Header */}
+      <div style={{ padding: '40px 32px 24px', borderBottom: '4px solid black', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+        <div>
+          <p style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', letterSpacing: '3px', textTransform: 'uppercase', marginBottom: '6px' }}>
+            SCAN
+          </p>
+          <h1 style={{ fontSize: '36px', fontWeight: 900, color: 'black', letterSpacing: '-1.5px', lineHeight: 1 }}>
+            음식 촬영
+          </h1>
+        </div>
+        <Link href="/" style={{ textDecoration: 'none' }}>
+          <div style={{
+            padding: '10px 16px',
+            border: '3px solid black',
+            fontSize: '12px',
+            fontWeight: 900,
+            color: 'black',
+            letterSpacing: '1px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}>
+            <FaArrowLeft size={10} /> 홈
           </div>
         </Link>
-        <h1 className="text-xl font-black text-slate-800 tracking-tight uppercase">Scan Meal</h1>
-        <div className="w-10" /> {/* Spacer */}
-      </motion.div>
-      
-      <AnimatePresence mode="wait">
-        {!imageSrc ? (
-          <motion.div 
-            key="camera"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="w-full max-w-md flex flex-col items-center"
-          >
-            {/* Reduced Camera Size: Aspect-square or 4:3 for better fit */}
-            <div className="relative w-full aspect-square max-h-[350px] rounded-[2.5rem] overflow-hidden border-4 border-white shadow-2xl bg-black mb-6">
-              <Webcam
-                audio={false}
-                ref={webcamRef}
-                screenshotFormat="image/jpeg"
-                videoConstraints={{
-                  ...videoConstraints,
-                  width: { ideal: 720 },
-                  height: { ideal: 720 }
-                }}
-                onUserMediaError={() => alert('카메라 접근 권한이 필요합니다.')}
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 border-[1.5rem] border-black/10 pointer-events-none" />
-            </div>
-            
-            <div className="flex gap-4 w-full">
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={capture}
-                className="flex-grow flex items-center justify-center py-5 bg-indigo-600 text-white rounded-3xl shadow-xl shadow-indigo-100 text-lg font-black"
-              >
-                <FaCamera className="mr-3" /> 촬영하기
-              </motion.button>
-              
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={() => fileInputRef.current?.click()}
-                className="px-6 py-5 bg-white text-slate-400 rounded-3xl shadow-sm border border-slate-100 font-black transition-all"
-              >
-                <FaUpload />
-              </motion.button>
-              
-              <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" className="hidden" />
-            </div>
-          </motion.div>
-        ) : (
-          <motion.div 
-            key="preview"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="w-full max-w-md flex flex-col items-center"
-          >
-            <div className="bg-white p-4 rounded-[2.5rem] shadow-sm border border-slate-100 w-full mb-6">
-              <div className="rounded-3xl overflow-hidden mb-4 aspect-square max-h-[300px]">
-                <img src={imageSrc} alt="Captured" className="w-full h-full object-cover" />
+      </div>
+
+      {/* Main Content */}
+      <div style={{ flex: 1, padding: '24px 32px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <AnimatePresence mode="wait">
+          {!imageSrc ? (
+            <motion.div
+              key="camera"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
+            >
+              {/* Camera View */}
+              <div style={{
+                position: 'relative',
+                width: '100%',
+                aspectRatio: '1',
+                border: '4px solid black',
+                overflow: 'hidden',
+                backgroundColor: 'black',
+                boxShadow: '6px 6px 0px black',
+              }}>
+                <Webcam
+                  audio={false}
+                  ref={webcamRef}
+                  screenshotFormat="image/jpeg"
+                  videoConstraints={{ ...videoConstraints, width: { ideal: 720 }, height: { ideal: 720 } }}
+                  onUserMediaError={() => alert('카메라 접근 권한이 필요합니다.')}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                />
+                {/* Crosshair */}
+                <div style={{
+                  position: 'absolute', inset: 0, pointerEvents: 'none',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <div style={{ width: '60px', height: '60px', border: '2px solid rgba(255,255,255,0.6)', borderRadius: '50%' }} />
+                </div>
               </div>
-              
-              {/* Analysis Results - More compact */}
+
+              {/* Buttons */}
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  onClick={capture}
+                  style={{
+                    flex: 1,
+                    padding: '18px',
+                    backgroundColor: 'black',
+                    color: 'white',
+                    border: '3px solid black',
+                    fontSize: '14px',
+                    fontWeight: 900,
+                    cursor: 'pointer',
+                    letterSpacing: '2px',
+                    textTransform: 'uppercase',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '10px',
+                    boxShadow: '4px 4px 0px #6B21A8',
+                  }}
+                >
+                  <FaCamera /> 촬영하기
+                </button>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{
+                    padding: '18px 20px',
+                    backgroundColor: 'white',
+                    color: 'black',
+                    border: '3px solid black',
+                    cursor: 'pointer',
+                    boxShadow: '4px 4px 0px black',
+                  }}
+                >
+                  <FaUpload size={18} />
+                </button>
+                <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" style={{ display: 'none' }} />
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="preview"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
+            >
+              {/* Preview Image */}
+              <div style={{ border: '4px solid black', overflow: 'hidden', boxShadow: '6px 6px 0px black' }}>
+                <img
+                  src={imageSrc}
+                  alt="Captured"
+                  style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', display: 'block' }}
+                />
+              </div>
+
+              {/* Analysis Results */}
               <AnimatePresence>
                 {loadingAnalysis && (
-                  <div className="flex flex-col items-center py-4">
-                    <FaSpinner className="animate-spin text-3xl text-indigo-500 mb-2" />
-                    <p className="text-slate-400 font-black text-[10px] tracking-widest">ANALYZING...</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px', gap: '12px', border: '3px solid black' }}>
+                    <FaSpinner style={{ fontSize: '24px', animation: 'spin 1s linear infinite' }} />
+                    <p style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '3px', textTransform: 'uppercase', color: '#9ca3af' }}>AI 분석 중...</p>
                   </div>
                 )}
 
-                {analysis && (
-                  <motion.div 
+                {analysis && !loadingAnalysis && (
+                  <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="p-5 bg-slate-50 rounded-3xl border border-slate-100 mb-4"
+                    style={{ border: '3px solid black', padding: '20px', boxShadow: '4px 4px 0px black' }}
                   >
-                    <div className="flex justify-between items-start mb-3">
-                      <h3 className="text-xl font-black text-slate-800">{analysis.name}</h3>
-                      <span className="text-lg font-black text-indigo-600">{analysis.calories} <span className="text-[10px] opacity-50">kcal</span></span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                      <h3 style={{ fontSize: '22px', fontWeight: 900, color: 'black', letterSpacing: '-0.5px' }}>{analysis.name}</h3>
+                      <div style={{ textAlign: 'right' }}>
+                        <p style={{ fontSize: '22px', fontWeight: 900, color: '#6B21A8', lineHeight: 1 }}>{analysis.calories}</p>
+                        <p style={{ fontSize: '10px', fontWeight: 700, color: '#9ca3af', letterSpacing: '1px' }}>KCAL</p>
+                      </div>
                     </div>
-                    
-                    <div className="grid grid-cols-3 gap-2">
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
                       {[
-                        { label: 'Carb', value: analysis.nutrients.carbohydrates, color: 'bg-indigo-500' },
-                        { label: 'Prot', value: analysis.nutrients.protein, color: 'bg-rose-500' },
-                        { label: 'Fat', value: analysis.nutrients.fat, color: 'bg-emerald-500' }
+                        { label: '탄수화물', value: analysis.nutrients.carbohydrates },
+                        { label: '단백질', value: analysis.nutrients.protein },
+                        { label: '지방', value: analysis.nutrients.fat },
                       ].map(n => (
-                        <div key={n.label} className="bg-white p-2 rounded-xl border border-slate-100">
-                          <p className="text-[9px] text-slate-400 font-black uppercase mb-1">{n.label}</p>
-                          <p className="text-sm font-black text-slate-800">{n.value}g</p>
+                        <div key={n.label} style={{ padding: '12px', border: '2px solid black', textAlign: 'center' }}>
+                          <p style={{ fontSize: '10px', fontWeight: 700, color: '#9ca3af', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '4px' }}>{n.label}</p>
+                          <p style={{ fontSize: '16px', fontWeight: 900, color: 'black' }}>{n.value}g</p>
                         </div>
                       ))}
                     </div>
+
                     {saved && (
-                      <p className="mt-4 text-emerald-500 font-black text-[10px] text-center uppercase tracking-widest bg-emerald-50 py-2 rounded-xl">Saved Successfully</p>
+                      <div style={{ marginTop: '12px', padding: '10px', backgroundColor: 'black', textAlign: 'center' }}>
+                        <p style={{ fontSize: '11px', fontWeight: 900, color: 'white', letterSpacing: '2px', textTransform: 'uppercase' }}>저장 완료</p>
+                      </div>
                     )}
                   </motion.div>
                 )}
               </AnimatePresence>
 
-              <div className="flex gap-3">
-                <button onClick={resetCapture} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-xs uppercase tracking-widest">Retake</button>
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  onClick={resetCapture}
+                  style={{
+                    flex: 1,
+                    padding: '16px',
+                    backgroundColor: 'white',
+                    color: 'black',
+                    border: '3px solid black',
+                    fontSize: '13px',
+                    fontWeight: 900,
+                    cursor: 'pointer',
+                    letterSpacing: '1px',
+                    textTransform: 'uppercase',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                  }}
+                >
+                  <FaRedo size={12} /> 다시 찍기
+                </button>
+
                 {!analysis ? (
-                  <button onClick={handleAnalysis} disabled={loadingAnalysis} className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest disabled:opacity-50">
-                    {loadingAnalysis ? <FaSpinner className="animate-spin mx-auto" /> : 'AI 분석 시작'}
+                  <button
+                    onClick={handleAnalysis}
+                    disabled={loadingAnalysis}
+                    style={{
+                      flex: 2,
+                      padding: '16px',
+                      backgroundColor: loadingAnalysis ? '#9ca3af' : 'black',
+                      color: 'white',
+                      border: `3px solid ${loadingAnalysis ? '#9ca3af' : 'black'}`,
+                      fontSize: '13px',
+                      fontWeight: 900,
+                      cursor: loadingAnalysis ? 'not-allowed' : 'pointer',
+                      letterSpacing: '1px',
+                      textTransform: 'uppercase',
+                      boxShadow: loadingAnalysis ? 'none' : '4px 4px 0px #6B21A8',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                    }}
+                  >
+                    {loadingAnalysis ? <FaSpinner style={{ animation: 'spin 1s linear infinite' }} /> : 'AI 분석 시작'}
                   </button>
                 ) : (
-                  <button onClick={handleSave} disabled={loadingSave || saved} className={`flex-[2] py-4 rounded-2xl font-black text-xs uppercase tracking-widest ${saved ? 'bg-slate-100 text-slate-300' : 'bg-slate-900 text-white'}`}>
-                    {loadingSave ? <FaSpinner className="animate-spin mx-auto" /> : (saved ? '저장됨' : '일기에 저장')}
+                  <button
+                    onClick={handleSave}
+                    disabled={loadingSave || saved}
+                    style={{
+                      flex: 2,
+                      padding: '16px',
+                      backgroundColor: saved ? '#f3f4f6' : 'black',
+                      color: saved ? '#9ca3af' : 'white',
+                      border: `3px solid ${saved ? '#e5e7eb' : 'black'}`,
+                      fontSize: '13px',
+                      fontWeight: 900,
+                      cursor: (loadingSave || saved) ? 'not-allowed' : 'pointer',
+                      letterSpacing: '1px',
+                      textTransform: 'uppercase',
+                      boxShadow: saved ? 'none' : '4px 4px 0px #6B21A8',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {loadingSave ? <FaSpinner style={{ animation: 'spin 1s linear infinite' }} /> : (saved ? '저장됨' : '기록에 저장')}
                   </button>
                 )}
               </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+      `}</style>
     </div>
   );
 }

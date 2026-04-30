@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { FaSpinner, FaLightbulb, FaCircle } from 'react-icons/fa';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
-import { motion, Variants } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 type Meal = {
   id: string;
@@ -25,23 +25,6 @@ type AIFeedback = {
     menu: string;
     reason: string;
   };
-};
-
-const containerVariants: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.1 }
-  }
-};
-
-const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 15 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { type: "spring", stiffness: 100 }
-  }
 };
 
 export default function Home() {
@@ -78,27 +61,25 @@ export default function Home() {
           }
         } catch (err) { console.warn("Server fetch failed"); }
 
-        if (combinedData.length >= 0) {
-          const now = new Date();
-          const todayStr = now.toLocaleDateString();
-          const todayMeals = combinedData.filter((meal: Meal) => new Date(meal.created_at).toLocaleDateString() === todayStr);
-          const totalCalories = todayMeals.reduce((sum, meal) => sum + (Number(meal.calories) || 0), 0);
-          const totalNutrients = todayMeals.reduce((acc, meal) => {
-            acc.carbs += Number(meal.nutrient?.carbohydrates) || 0;
-            acc.protein += Number(meal.nutrient?.protein) || 0;
-            acc.fat += Number(meal.nutrient?.fat) || 0;
-            return acc;
-          }, { carbs: 0, protein: 0, fat: 0 });
+        const now = new Date();
+        const todayStr = now.toLocaleDateString();
+        const todayMeals = combinedData.filter((meal: Meal) => new Date(meal.created_at).toLocaleDateString() === todayStr);
+        const totalCalories = todayMeals.reduce((sum, meal) => sum + (Number(meal.calories) || 0), 0);
+        const totalNutrients = todayMeals.reduce((acc, meal) => {
+          acc.carbs += Number(meal.nutrient?.carbohydrates) || 0;
+          acc.protein += Number(meal.nutrient?.protein) || 0;
+          acc.fat += Number(meal.nutrient?.fat) || 0;
+          return acc;
+        }, { carbs: 0, protein: 0, fat: 0 });
 
-          const stats = {
-            totalCalories,
-            mealNames: todayMeals.map(m => m.food_name),
-            count: todayMeals.length,
-            nutrients: totalNutrients
-          };
-          setTodayStats(stats);
-          if (todayMeals.length > 0) getAIFeedback(stats);
-        }
+        const stats = {
+          totalCalories,
+          mealNames: todayMeals.map(m => m.food_name),
+          count: todayMeals.length,
+          nutrients: totalNutrients
+        };
+        setTodayStats(stats);
+        if (todayMeals.length > 0) getAIFeedback(stats);
       } catch (error) { console.error('Error:', error); } finally { setLoading(false); }
     };
 
@@ -121,78 +102,114 @@ export default function Home() {
   if (loading) return null;
 
   return (
-    <motion.div 
-      initial="hidden" animate="visible" variants={containerVariants}
-      className="min-h-screen bg-white flex flex-col"
-    >
-      <main className="flex-grow flex flex-col">
-        {/* Section 1: 무엇을 드시나요? */}
-        <motion.section 
-          variants={itemVariants}
-          className="flex-1 flex flex-col items-center justify-center border-b-2 border-slate-900 px-10"
-        >
-          <h1 className="text-4xl font-black text-slate-900 tracking-tighter mb-4">무엇을 드시나요?</h1>
-          {todayStats.count > 0 ? (
-            <div className="text-indigo-600 font-bold uppercase tracking-widest text-xs">
-              오늘 {todayStats.count}개의 식단이 기록되었습니다.
+    <div style={{ minHeight: '100svh', display: 'flex', flexDirection: 'column', backgroundColor: 'white' }}>
+
+      {/* Section 1: 무엇을 드시나요? */}
+      <motion.section
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4 }}
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-start',
+          justifyContent: 'center',
+          padding: '40px 32px',
+          borderBottom: '4px solid black',
+        }}
+      >
+        <h1 style={{
+          fontSize: '32px',
+          fontWeight: 900,
+          color: 'black',
+          letterSpacing: '-1px',
+          lineHeight: 1.1,
+          marginBottom: '16px',
+        }}>
+          무엇을 드시나요?
+        </h1>
+        {todayStats.count > 0 ? (
+          <p style={{ fontSize: '13px', fontWeight: 700, color: '#6B21A8', letterSpacing: '1px' }}>
+            오늘 {todayStats.count}개의 식단이 기록되었습니다.
+          </p>
+        ) : (
+          <p style={{ fontSize: '13px', fontWeight: 500, color: '#9ca3af' }}>
+            식단을 기록하고 분석을 시작하세요.
+          </p>
+        )}
+      </motion.section>
+
+      {/* Section 2: AI COACH */}
+      <motion.section
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4, delay: 0.15 }}
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          padding: '40px 32px',
+          backgroundColor: 'white',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '32px' }}>
+          <span style={{ fontSize: '20px' }}>&#128161;</span>
+          <h2 style={{ fontSize: '22px', fontWeight: 900, color: 'black', letterSpacing: '-0.5px' }}>
+            AI COACH
+          </h2>
+        </div>
+
+        <ul style={{ display: 'flex', flexDirection: 'column', gap: '20px', listStyle: 'none', padding: 0, margin: 0 }}>
+          <li style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#6B21A8', flexShrink: 0, marginTop: '6px' }} />
+            <div>
+              <p style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '4px' }}>
+                오늘섭취 칼로리
+              </p>
+              <p style={{ fontSize: '28px', fontWeight: 900, color: 'black', lineHeight: 1 }}>
+                {todayStats.totalCalories} <span style={{ fontSize: '12px', fontWeight: 700, color: '#9ca3af' }}>KCAL</span>
+              </p>
             </div>
-          ) : (
-            <div className="text-slate-300 font-bold uppercase tracking-widest text-xs">
-              식단을 기록하고 분석을 시작하세요.
+          </li>
+
+          <li style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#9ca3af', flexShrink: 0, marginTop: '6px' }} />
+            <div>
+              <p style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '4px' }}>
+                영양밸런스
+              </p>
+              <div style={{ display: 'flex', gap: '16px' }}>
+                <span style={{ fontSize: '14px', fontWeight: 900, color: 'black' }}>탄 {todayStats.nutrients.carbs.toFixed(0)}g</span>
+                <span style={{ fontSize: '14px', fontWeight: 900, color: 'black' }}>단 {todayStats.nutrients.protein.toFixed(0)}g</span>
+                <span style={{ fontSize: '14px', fontWeight: 900, color: 'black' }}>지 {todayStats.nutrients.fat.toFixed(0)}g</span>
+              </div>
             </div>
-          )}
-        </motion.section>
+          </li>
 
-        {/* Section 2: AI COACH */}
-        <motion.section 
-          variants={itemVariants}
-          className="flex-1 flex flex-col p-10 bg-slate-50/30"
-        >
-          <div className="max-w-md mx-auto w-full">
-            <h2 className="text-2xl font-black text-slate-900 flex items-center gap-3 mb-10">
-              <FaLightbulb className="text-indigo-600" /> AI COACH
-            </h2>
+          <li style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#d1d5db', flexShrink: 0, marginTop: '6px' }} />
+            <div style={{ flex: 1 }}>
+              <p style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '4px' }}>
+                코치 코멘트
+              </p>
+              {loadingFeedback ? (
+                <div style={{ width: '16px', height: '16px', border: '2px solid black', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+              ) : aiFeedback ? (
+                <p style={{ fontSize: '14px', fontWeight: 600, color: '#374151', lineHeight: 1.6 }}>
+                  "{aiFeedback.feedback}"
+                </p>
+              ) : (
+                <p style={{ fontSize: '13px', color: '#9ca3af' }}>기록이 쌓이면 코칭이 시작됩니다.</p>
+              )}
+            </div>
+          </li>
+        </ul>
+      </motion.section>
 
-            <ul className="space-y-8">
-              <li className="flex items-start gap-5">
-                <FaCircle className="text-[8px] mt-2.5 text-indigo-400" />
-                <div>
-                  <p className="text-sm font-bold text-slate-400 tracking-wider uppercase mb-1">오늘섭취 칼로리</p>
-                  <p className="text-4xl font-black text-slate-900">{todayStats.totalCalories} <span className="text-sm font-bold text-slate-300">KCAL</span></p>
-                </div>
-              </li>
-              
-              <li className="flex items-start gap-5">
-                <FaCircle className="text-[8px] mt-2.5 text-rose-400" />
-                <div>
-                  <p className="text-sm font-bold text-slate-400 tracking-wider uppercase mb-1">영양밸런스</p>
-                  <div className="flex gap-4">
-                    <span className="text-sm font-black text-indigo-600">C {todayStats.nutrients.carbs.toFixed(0)}g</span>
-                    <span className="text-sm font-black text-rose-600">P {todayStats.nutrients.protein.toFixed(0)}g</span>
-                    <span className="text-sm font-black text-emerald-600">F {todayStats.nutrients.fat.toFixed(0)}g</span>
-                  </div>
-                </div>
-              </li>
-
-              <li className="flex items-start gap-5">
-                <FaCircle className="text-[8px] mt-2.5 text-amber-400" />
-                <div className="flex-grow">
-                  <p className="text-sm font-bold text-slate-400 tracking-wider uppercase mb-1">AI 코치 코멘트</p>
-                  {loadingFeedback ? (
-                    <div className="h-4 w-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mt-2" />
-                  ) : aiFeedback ? (
-                    <p className="text-base font-bold text-slate-700 leading-relaxed italic">
-                      "{aiFeedback.feedback}"
-                    </p>
-                  ) : (
-                    <p className="text-sm text-slate-300 font-medium">기록이 쌓이면 코칭이 시작됩니다.</p>
-                  )}
-                </div>
-              </li>
-            </ul>
-          </div>
-        </motion.section>
-      </main>
-    </motion.div>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+      `}</style>
+    </div>
   );
 }

@@ -17,63 +17,115 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
       setError(error.message);
     } else {
-      alert('로그인 성공!');
-      router.push('/'); // Redirect to home after successful login
+      router.push('/');
     }
     setLoading(false);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center p-4">
-      <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
-        <h1 className="text-4xl font-bold text-center text-indigo-800 mb-8">로그인</h1>
-        <form onSubmit={handleSubmit} className="space-y-6">
+    <div style={{ minHeight: '100svh', backgroundColor: 'white', display: 'flex', flexDirection: 'column' }}>
+      {/* Header */}
+      <div style={{ padding: '48px 32px 0', borderBottom: '4px solid black' }}>
+        <h1 style={{ fontSize: '48px', fontWeight: 900, color: 'black', letterSpacing: '-2px', lineHeight: 1, marginBottom: '8px' }}>
+          MYBOB
+        </h1>
+        <p style={{ fontSize: '13px', fontWeight: 700, color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', paddingBottom: '24px' }}>
+          식단 기록 & AI 분석
+        </p>
+      </div>
+
+      {/* Form */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '40px 32px' }}>
+        <h2 style={{ fontSize: '24px', fontWeight: 900, color: 'black', marginBottom: '32px', letterSpacing: '-0.5px' }}>
+          로그인
+        </h2>
+
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div>
-            <label htmlFor="email" className="block text-lg font-medium text-gray-700">이메일</label>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#6b7280', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '8px' }}>
+              이메일
+            </label>
             <input
               type="email"
-              id="email"
-              name="email"
               required
-              className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-lg"
               placeholder="user@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '14px 16px',
+                fontSize: '15px',
+                fontWeight: 600,
+                border: '3px solid black',
+                borderRadius: 0,
+                outline: 'none',
+                backgroundColor: 'white',
+                boxSizing: 'border-box',
+              }}
             />
           </div>
+
           <div>
-            <label htmlFor="password" className="block text-lg font-medium text-gray-700">비밀번호</label>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#6b7280', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '8px' }}>
+              비밀번호
+            </label>
             <input
               type="password"
-              id="password"
-              name="password"
               required
-              className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-lg"
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '14px 16px',
+                fontSize: '15px',
+                fontWeight: 600,
+                border: '3px solid black',
+                borderRadius: 0,
+                outline: 'none',
+                backgroundColor: 'white',
+                boxSizing: 'border-box',
+              }}
             />
           </div>
-          {error && <p className="text-red-500 text-sm">{error}</p>}
+
+          {error && (
+            <p style={{ fontSize: '13px', color: '#ef4444', fontWeight: 600, padding: '12px 16px', backgroundColor: '#fef2f2', border: '2px solid #ef4444' }}>
+              {error}
+            </p>
+          )}
+
           <button
             type="submit"
-            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-300 disabled:opacity-50"
             disabled={loading}
+            style={{
+              width: '100%',
+              padding: '16px',
+              fontSize: '14px',
+              fontWeight: 900,
+              color: 'white',
+              backgroundColor: loading ? '#9ca3af' : 'black',
+              border: '3px solid black',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              letterSpacing: '2px',
+              textTransform: 'uppercase',
+              marginTop: '8px',
+              boxShadow: loading ? 'none' : '4px 4px 0px #6B21A8',
+              transition: 'box-shadow 0.1s',
+            }}
           >
             {loading ? '로그인 중...' : '로그인'}
           </button>
         </form>
-        <p className="mt-8 text-center text-lg text-gray-600">
+
+        <p style={{ marginTop: '32px', fontSize: '14px', color: '#6b7280', fontWeight: 500, textAlign: 'center' }}>
           계정이 없으신가요?{' '}
-          <Link href="/auth/signup" className="font-medium text-indigo-600 hover:text-indigo-500">
+          <Link href="/auth/signup" style={{ fontWeight: 900, color: '#6B21A8', textDecoration: 'none' }}>
             회원가입
           </Link>
         </p>

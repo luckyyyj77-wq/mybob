@@ -33,7 +33,7 @@ export default function RootLayout({
       if (!currentSession && isProtectedRoute && !isAuthRoute) {
         router.push('/auth/login');
       } else if (currentSession && isAuthRoute) {
-        router.push('/'); 
+        router.push('/');
       }
     };
     checkSession();
@@ -54,12 +54,12 @@ export default function RootLayout({
 
   if (loading) {
     return (
-      <html lang="en" className="h-full">
-        <body className="h-full bg-white text-slate-900 antialiased">
+      <html lang="ko" className="h-full">
+        <body className="h-full bg-white text-black antialiased">
           <div className="min-h-screen flex items-center justify-center">
-            <div className="flex flex-col items-center gap-4">
-              <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-              <p className="text-sm font-black uppercase tracking-widest text-slate-400">Loading...</p>
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-8 h-8 border-4 border-black border-t-transparent rounded-full animate-spin" />
+              <p className="text-xs font-black uppercase tracking-widest text-gray-400">Loading...</p>
             </div>
           </div>
         </body>
@@ -78,114 +78,137 @@ export default function RootLayout({
   ];
 
   return (
-    <html lang="en" className="h-full">
-      <body className="h-full bg-white text-slate-900 antialiased overflow-x-hidden flex flex-col">
+    <html lang="ko" className="h-full">
+      <body className="h-full bg-white text-black antialiased overflow-x-hidden flex flex-col">
         {/* Sidebar Overlay */}
         <AnimatePresence mode="wait">
           {isMenuOpen && (
             <div key="sidebar-container" className="fixed inset-0 z-[1000]">
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
+                animate={{ opacity: 0.4 }}
                 exit={{ opacity: 0 }}
                 onClick={() => setIsMenuOpen(false)}
-                className="absolute inset-0 bg-black/60 backdrop-blur-md"
+                className="absolute inset-0 bg-black"
               />
-              <motion.div 
+              <motion.div
                 initial={{ x: '-100%' }}
                 animate={{ x: 0 }}
                 exit={{ x: '-100%' }}
-                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                className="absolute top-0 left-0 bottom-0 w-80 bg-white shadow-2xl p-10 flex flex-col"
+                transition={{ type: 'tween', duration: 0.25, ease: 'easeOut' }}
+                className="absolute top-0 left-0 bottom-0 w-64 bg-white border-r-4 border-black flex flex-col"
               >
-                <div className="flex justify-between items-center mb-16">
-                  <h2 className="text-4xl font-black text-slate-900 tracking-tighter italic">MYBOB</h2>
-                  <button onClick={() => setIsMenuOpen(false)} className="text-slate-300 hover:text-slate-900 transition-colors">
-                    <FaTimes size={32} />
-                  </button>
+                <div className="p-8 border-b-4 border-black">
+                  <h2 className="text-2xl font-black tracking-tighter">MYBOB</h2>
                 </div>
 
-                <nav className="flex-grow flex flex-col gap-10">
+                <nav className="flex-grow flex flex-col py-6">
                   {menuItems.map((item) => (
-                    <Link 
-                      key={item.label} 
+                    <Link
+                      key={item.label}
                       href={item.href}
                       onClick={() => setIsMenuOpen(false)}
-                      className="flex items-center gap-6 text-2xl font-black text-slate-400 hover:text-indigo-600 transition-all group"
+                      className="px-8 py-4 text-lg font-bold text-black hover:bg-black hover:text-white transition-colors border-b border-gray-100"
                     >
-                      <item.icon className="text-2xl opacity-40 group-hover:opacity-100 group-hover:scale-110 transition-transform" />
-                      <span className="group-hover:translate-x-2 transition-transform">{item.label}</span>
+                      {item.label}
                     </Link>
                   ))}
-                  
-                  <div className="mt-4 pt-10 border-t-2 border-slate-50">
-                    {!session ? (
-                      <Link 
-                        href="/auth/login"
-                        onClick={() => setIsMenuOpen(false)}
-                        className="text-2xl font-black text-indigo-600 hover:text-indigo-800 transition-colors"
-                      >
-                        로그인
-                      </Link>
-                    ) : (
-                      <button 
-                        onClick={async () => {
-                          await supabase.auth.signOut();
-                          setIsMenuOpen(false);
-                          router.push('/auth/login');
-                        }}
-                        className="text-2xl font-black text-rose-500 hover:text-rose-700 transition-colors text-left"
-                      >
-                        로그아웃
-                      </button>
-                    )}
-                  </div>
                 </nav>
+
+                <div className="p-8 border-t-4 border-black">
+                  {!session ? (
+                    <Link
+                      href="/auth/login"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="text-base font-black text-purple-700 hover:text-purple-900 transition-colors"
+                    >
+                      로그인
+                    </Link>
+                  ) : (
+                    <button
+                      onClick={async () => {
+                        await supabase.auth.signOut();
+                        setIsMenuOpen(false);
+                        router.push('/auth/login');
+                      }}
+                      className="text-base font-black text-red-500 hover:text-red-700 transition-colors text-left"
+                    >
+                      로그아웃
+                    </button>
+                  )}
+                </div>
               </motion.div>
             </div>
           )}
         </AnimatePresence>
 
-        <main className={`flex-grow relative ${showNav ? 'pb-48' : ''}`}>
+        <main className={`flex-grow relative ${showNav ? 'pb-24' : ''}`}>
           {children}
         </main>
 
         {showNav && (
-          <div 
-            style={{ 
-              position: 'fixed', 
-              bottom: '40px', 
-              left: '50%', 
-              transform: 'translateX(-50%)', 
-              width: '100%', 
-              maxWidth: '450px',
+          <div
+            style={{
+              position: 'fixed',
+              bottom: 0,
+              left: 0,
+              right: 0,
               zIndex: 9999,
-              pointerEvents: 'none',
-              display: 'flex',
-              justifyContent: 'center',
-              padding: '0 24px'
             }}
           >
-            <nav className="w-full bg-white border-[5px] border-slate-900 rounded-[2.5rem] px-8 py-4 flex justify-between items-center shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] pointer-events-auto">
+            <nav
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                backgroundColor: 'white',
+                borderTop: '4px solid black',
+                padding: '12px 40px 20px 40px',
+              }}
+            >
               {/* Hamburger Menu */}
-              <button 
+              <button
                 onClick={() => setIsMenuOpen(true)}
-                className="p-2 text-4xl text-slate-900 hover:scale-110 active:scale-90 transition-all"
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '5px',
+                  padding: '8px',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
               >
-                <FaBars />
+                <span style={{ display: 'block', width: '28px', height: '3px', backgroundColor: 'black' }} />
+                <span style={{ display: 'block', width: '28px', height: '3px', backgroundColor: 'black' }} />
+                <span style={{ display: 'block', width: '28px', height: '3px', backgroundColor: 'black' }} />
               </button>
 
               {/* Camera Scan */}
-              <Link href="/capture" className="bg-indigo-600 p-5 rounded-3xl shadow-[0_15px_30px_-5px_rgba(79,70,229,0.5)] border-[5px] border-slate-900 transform -translate-y-8 hover:-translate-y-10 transition-all active:scale-95">
-                <FaCamera className="text-3xl text-white" />
+              <Link
+                href="/capture"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '60px',
+                  height: '60px',
+                  backgroundColor: 'white',
+                  border: '4px solid black',
+                  borderRadius: '50%',
+                  marginTop: '-30px',
+                  boxShadow: '4px 4px 0px black',
+                  textDecoration: 'none',
+                  color: 'black',
+                }}
+              >
+                <FaCamera size={24} />
               </Link>
 
               {/* Timeline */}
-              <Link href="/history" className="flex flex-col items-center group">
-                <div className="text-4xl text-slate-900 group-hover:scale-110 active:scale-90 transition-all">
-                  <FaHistory />
-                </div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 mt-1">TIMELINE</span>
+              <Link href="/history" style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                <FaHistory size={24} color="black" />
+                <span style={{ fontSize: '9px', fontWeight: 900, letterSpacing: '2px', color: '#6B21A8', textTransform: 'uppercase' }}>TIMELINE</span>
               </Link>
             </nav>
           </div>

@@ -1,42 +1,62 @@
 "use client";
 
-import { FaTrophy, FaLock, FaCalendarAlt } from 'react-icons/fa';
+import { FaLock } from 'react-icons/fa';
 
 export default function CommunityChallengePage() {
   const challenges = [
-    { title: "7일 클린 식단 챌린지", period: "1주", status: "준비 중" },
-    { title: "노슈가(No Sugar) 도전", period: "14일", status: "준비 중" },
-    { title: "매일 아침 샐러드 먹기", period: "30일", status: "준비 중" },
+    { title: "7일 클린 식단 챌린지", period: "1주" },
+    { title: "노슈가(No Sugar) 도전", period: "14일" },
+    { title: "매일 아침 샐러드 먹기", period: "30일" },
   ];
 
   return (
-    <div className="space-y-8">
-      <div className="bg-white p-10 rounded-3xl shadow-lg border border-orange-100 text-center">
-        <div className="bg-orange-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-          <FaTrophy className="text-4xl text-orange-500" />
-        </div>
-        <h2 className="text-3xl font-black text-gray-800 mb-2">챌린지 시스템 업데이트 예정</h2>
-        <p className="text-gray-500 font-medium">친구들과 함께 목표를 달성하고 포인트와 뱃지를 획득하세요!</p>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      {/* Coming Soon Banner */}
+      <div style={{
+        padding: '24px',
+        border: '3px solid black',
+        backgroundColor: 'black',
+        color: 'white',
+        boxShadow: '4px 4px 0px #6B21A8',
+      }}>
+        <p style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '3px', textTransform: 'uppercase', color: '#9ca3af', marginBottom: '8px' }}>
+          COMING SOON
+        </p>
+        <h2 style={{ fontSize: '22px', fontWeight: 900, letterSpacing: '-0.5px', marginBottom: '8px' }}>
+          챌린지 시스템 준비 중
+        </h2>
+        <p style={{ fontSize: '13px', color: '#9ca3af', lineHeight: 1.6 }}>
+          친구들과 함께 목표를 달성하고 포인트와 뱃지를 획득하세요!
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {challenges.map((challenge, index) => (
-          <div key={index} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between opacity-70 grayscale relative overflow-hidden">
-            <div className="absolute top-2 right-2">
-              <FaLock className="text-gray-300" />
-            </div>
-            <div>
-              <div className="flex items-center text-xs text-orange-600 font-bold mb-1">
-                <FaCalendarAlt className="mr-1" /> {challenge.period}
-              </div>
-              <h3 className="text-xl font-bold text-gray-800">{challenge.title}</h3>
-            </div>
-            <span className="bg-gray-100 text-gray-400 text-xs font-bold px-3 py-1.5 rounded-full">
-              {challenge.status}
-            </span>
+      {/* Challenge List */}
+      {challenges.map((challenge, index) => (
+        <div
+          key={index}
+          style={{
+            padding: '20px',
+            border: '3px solid #e5e7eb',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            opacity: 0.5,
+          }}
+        >
+          <div>
+            <p style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '6px' }}>
+              {challenge.period}
+            </p>
+            <h3 style={{ fontSize: '16px', fontWeight: 900, color: 'black', letterSpacing: '-0.3px' }}>
+              {challenge.title}
+            </h3>
           </div>
-        ))}
-      </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <FaLock size={14} color="#9ca3af" />
+            <span style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', letterSpacing: '1px' }}>준비 중</span>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

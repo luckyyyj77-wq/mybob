@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { FaFireAlt, FaClock, FaUserCircle, FaSpinner } from 'react-icons/fa';
+import { FaSpinner } from 'react-icons/fa';
 
 interface Meal {
   id: string;
@@ -35,61 +35,74 @@ export default function CommunityRecommendationPage() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-orange-600">
-        <FaSpinner className="animate-spin text-5xl mb-4" />
-        <p className="text-xl font-bold">전 세계의 식단 정보를 불러오는 중...</p>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: '80px', gap: '12px' }}>
+        <div style={{ width: '32px', height: '32px', border: '3px solid black', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+        <p style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '3px', textTransform: 'uppercase', color: '#9ca3af' }}>불러오는 중...</p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  if (meals.length === 0) {
+    return (
+      <div style={{ textAlign: 'center', paddingTop: '80px', border: '3px dashed #e5e7eb', padding: '60px 32px' }}>
+        <p style={{ fontSize: '15px', fontWeight: 700, color: '#9ca3af', marginBottom: '8px' }}>아직 공유된 식단이 없습니다.</p>
+        <p style={{ fontSize: '13px', color: '#d1d5db' }}>당신이 첫 번째 주인공이 되어보세요!</p>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-      {meals.length > 0 ? (
-        meals.map((meal) => (
-          <div key={meal.id} className="bg-white rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 group">
-            <div className="relative h-64 w-full bg-gray-200 overflow-hidden">
-              <img 
-                src={meal.photo_url} 
-                alt={meal.food_name} 
-                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      {meals.map((meal, index) => (
+        <div
+          key={meal.id}
+          style={{
+            border: '3px solid black',
+            overflow: 'hidden',
+            boxShadow: '4px 4px 0px black',
+            display: 'flex',
+            gap: '0',
+          }}
+        >
+          {meal.photo_url && (
+            <div style={{ width: '100px', flexShrink: 0, overflow: 'hidden' }}>
+              <img
+                src={meal.photo_url}
+                alt={meal.food_name}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x300?text=이미지+없음';
+                  (e.target as HTMLImageElement).style.display = 'none';
                 }}
               />
-              <div className="absolute top-4 left-4">
-                <span className="bg-orange-500 text-white text-xs font-black px-3 py-1.5 rounded-full shadow-lg">
-                  {meal.category || '일반'}
-                </span>
-              </div>
             </div>
-            
-            <div className="p-6">
-              <div className="flex items-center mb-4">
-                <FaUserCircle className="text-2xl text-gray-300 mr-2" />
-                <span className="text-sm font-bold text-gray-500">Anonymous User</span>
-              </div>
-              
-              <h3 className="text-2xl font-black text-gray-800 mb-2 truncate">{meal.food_name}</h3>
-              
-              <div className="flex items-center justify-between mt-4 border-t pt-4">
-                <div className="flex items-center text-orange-600 font-black">
-                  <FaFireAlt className="mr-1.5" />
-                  <span>{meal.calories} kcal</span>
-                </div>
-                <div className="flex items-center text-gray-400 text-xs font-medium">
-                  <FaClock className="mr-1.5" />
-                  <span>{new Date(meal.created_at).toLocaleDateString()}</span>
-                </div>
-              </div>
+          )}
+          <div style={{ flex: 1, padding: '16px', borderLeft: meal.photo_url ? '3px solid black' : 'none' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+              <span style={{
+                fontSize: '10px',
+                fontWeight: 900,
+                color: 'white',
+                backgroundColor: 'black',
+                padding: '3px 8px',
+                letterSpacing: '1px',
+                textTransform: 'uppercase',
+              }}>
+                {meal.category || '일반'}
+              </span>
+              <span style={{ fontSize: '10px', fontWeight: 600, color: '#9ca3af' }}>
+                {new Date(meal.created_at).toLocaleDateString('ko-KR')}
+              </span>
             </div>
+            <h3 style={{ fontSize: '17px', fontWeight: 900, color: 'black', letterSpacing: '-0.3px', marginBottom: '8px' }}>
+              {meal.food_name}
+            </h3>
+            <p style={{ fontSize: '14px', fontWeight: 900, color: '#6B21A8' }}>
+              {meal.calories} <span style={{ fontSize: '10px', fontWeight: 700, color: '#9ca3af' }}>kcal</span>
+            </p>
           </div>
-        ))
-      ) : (
-        <div className="col-span-full text-center py-20 bg-white/50 rounded-3xl border-2 border-dashed border-orange-200">
-          <p className="text-2xl font-bold text-orange-400">아직 공유된 식단이 없습니다.</p>
-          <p className="text-orange-300 mt-2">당신이 첫 번째 주인공이 되어보세요!</p>
         </div>
-      )}
+      ))}
     </div>
   );
 }
