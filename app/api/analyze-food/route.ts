@@ -43,7 +43,7 @@ async function searchOpenFoodFacts(foodName: string) {
 
 // Gemini로 이미지에서 음식명 + 완전한 영양정보 추론
 async function analyzeWithGemini(base64Data: string, apiKey: string, dbNutrients: any | null) {
-  const modelsToTry = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+  const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite'];
 
   // DB 데이터가 있으면 Gemini에게 보완만 요청, 없으면 전체 추론 요청
   const nutritionContext = dbNutrients
