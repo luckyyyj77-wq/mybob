@@ -207,100 +207,104 @@ export default function CameraCapturePage() {
             </div>
 
             {/* 분석 패널 — 하단 55% */}
-            <div style={{ flex: '0 0 55%', display: 'flex', flexDirection: 'column', padding: '20px 24px 28px' }}>
+            <div style={{ flex: '0 0 55%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-              {/* 로딩 */}
-              {loadingAnalysis && (
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-                  <FaSpinner style={{ fontSize: '22px', animation: 'spin 1s linear infinite', color: '#9ca3af' }} />
-                  <p style={{ fontSize: '11px', letterSpacing: '2px', textTransform: 'uppercase', color: '#9ca3af' }}>AI 분석 중...</p>
-                </div>
-              )}
+              {/* 스크롤 가능한 결과 영역 */}
+              <div style={{ flex: 1, overflowY: 'auto', padding: '16px 24px 0' }}>
 
-              {/* 안내 */}
-              {!loadingAnalysis && !analysis && (
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <p style={{ fontSize: '13px', color: '#9ca3af' }}>아래 버튼을 눌러 AI로 분석하세요.</p>
-                </div>
-              )}
-
-              {/* 분석 결과 */}
-              {!loadingAnalysis && analysis && (
-                <motion.div
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}
-                >
-                  {/* 음식명 + 칼로리 */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                      <h3 style={{ fontSize: '18px', fontWeight: 400, color: 'black', marginBottom: '2px' }}>{analysis.name}</h3>
-                      {analysis.category && (
-                        <span style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1px' }}>{analysis.category} · {analysis.amount || '1인분'}</span>
-                      )}
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <p style={{ fontSize: '20px', color: '#6B21A8', lineHeight: 1 }}>{analysis.calories}</p>
-                      <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1px' }}>KCAL</p>
-                    </div>
+                {/* 로딩 */}
+                {loadingAnalysis && (
+                  <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                    <FaSpinner style={{ fontSize: '22px', animation: 'spin 1s linear infinite', color: '#9ca3af' }} />
+                    <p style={{ fontSize: '11px', letterSpacing: '2px', textTransform: 'uppercase', color: '#9ca3af' }}>AI 분석 중...</p>
                   </div>
+                )}
 
-                  {/* 탄단지 + 식이섬유 + 나트륨 */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+                {/* 안내 */}
+                {!loadingAnalysis && !analysis && (
+                  <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <p style={{ fontSize: '13px', color: '#9ca3af' }}>아래 버튼을 눌러 AI로 분석하세요.</p>
+                  </div>
+                )}
+
+                {/* 분석 결과 */}
+                {!loadingAnalysis && analysis && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    style={{ display: 'flex', flexDirection: 'column', gap: '10px', paddingBottom: '8px' }}
+                  >
+                    {/* 음식명 + 칼로리 */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div>
+                        <h3 style={{ fontSize: '18px', fontWeight: 400, color: 'black', marginBottom: '2px' }}>{analysis.name}</h3>
+                        {analysis.category && (
+                          <span style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1px' }}>{analysis.category} · {analysis.amount || '1인분'}</span>
+                        )}
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <p style={{ fontSize: '20px', color: '#6B21A8', lineHeight: 1 }}>{analysis.calories}</p>
+                        <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1px' }}>KCAL</p>
+                      </div>
+                    </div>
+
+                    {/* 탄단지 + 식이섬유 + 나트륨 */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+                      {[
+                        { label: '탄수화물', value: analysis.nutrients.carbohydrates, unit: 'g' },
+                        { label: '단백질', value: analysis.nutrients.protein, unit: 'g' },
+                        { label: '지방', value: analysis.nutrients.fat, unit: 'g' },
+                        { label: '식이섬유', value: analysis.nutrients.fiber, unit: 'g' },
+                        { label: '당류', value: analysis.nutrients.sugar, unit: 'g' },
+                        { label: '나트륨', value: analysis.nutrients.sodium, unit: 'mg' },
+                      ].filter(n => n.value != null && n.value !== 0).map(n => (
+                        <div key={n.label} style={{ padding: '8px 6px', border: '1px solid #e5e7eb', textAlign: 'center' }}>
+                          <p style={{ fontSize: '9px', color: '#9ca3af', letterSpacing: '0.5px', marginBottom: '2px' }}>{n.label}</p>
+                          <p style={{ fontSize: '13px', color: 'black' }}>{n.value}{n.unit}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* 비타민·무기질 (값 있는 것만) */}
                     {[
-                      { label: '탄수화물', value: analysis.nutrients.carbohydrates, unit: 'g' },
-                      { label: '단백질', value: analysis.nutrients.protein, unit: 'g' },
-                      { label: '지방', value: analysis.nutrients.fat, unit: 'g' },
-                      { label: '식이섬유', value: analysis.nutrients.fiber, unit: 'g' },
-                      { label: '당류', value: analysis.nutrients.sugar, unit: 'g' },
-                      { label: '나트륨', value: analysis.nutrients.sodium, unit: 'mg' },
-                    ].filter(n => n.value != null && n.value !== 0).map(n => (
-                      <div key={n.label} style={{ padding: '8px 6px', border: '1px solid #e5e7eb', textAlign: 'center' }}>
-                        <p style={{ fontSize: '9px', color: '#9ca3af', letterSpacing: '0.5px', marginBottom: '2px' }}>{n.label}</p>
-                        <p style={{ fontSize: '13px', color: 'black' }}>{n.value}{n.unit}</p>
+                      { label: '비타민A', value: analysis.nutrients.vitaminA, unit: 'μg' },
+                      { label: '비타민C', value: analysis.nutrients.vitaminC, unit: 'mg' },
+                      { label: '비타민D', value: analysis.nutrients.vitaminD, unit: 'μg' },
+                      { label: '칼슘', value: analysis.nutrients.calcium, unit: 'mg' },
+                      { label: '철분', value: analysis.nutrients.iron, unit: 'mg' },
+                      { label: '칼륨', value: analysis.nutrients.potassium, unit: 'mg' },
+                    ].filter(n => n.value != null && n.value !== 0).length > 0 && (
+                      <div>
+                        <p style={{ fontSize: '9px', color: '#9ca3af', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '6px' }}>비타민 · 무기질</p>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                          {[
+                            { label: '비타민A', value: analysis.nutrients.vitaminA, unit: 'μg' },
+                            { label: '비타민C', value: analysis.nutrients.vitaminC, unit: 'mg' },
+                            { label: '비타민D', value: analysis.nutrients.vitaminD, unit: 'μg' },
+                            { label: '칼슘', value: analysis.nutrients.calcium, unit: 'mg' },
+                            { label: '철분', value: analysis.nutrients.iron, unit: 'mg' },
+                            { label: '칼륨', value: analysis.nutrients.potassium, unit: 'mg' },
+                          ].filter(n => n.value != null && n.value !== 0).map(n => (
+                            <div key={n.label} style={{ padding: '5px 10px', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', display: 'flex', gap: '4px', alignItems: 'baseline' }}>
+                              <span style={{ fontSize: '10px', color: '#6b7280' }}>{n.label}</span>
+                              <span style={{ fontSize: '11px', color: '#6B21A8' }}>{n.value}{n.unit}</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    ))}
-                  </div>
+                    )}
 
-                  {/* 비타민·무기질 (값 있는 것만) */}
-                  {[
-                    { label: '비타민A', value: analysis.nutrients.vitaminA, unit: 'μg' },
-                    { label: '비타민C', value: analysis.nutrients.vitaminC, unit: 'mg' },
-                    { label: '비타민D', value: analysis.nutrients.vitaminD, unit: 'μg' },
-                    { label: '칼슘', value: analysis.nutrients.calcium, unit: 'mg' },
-                    { label: '철분', value: analysis.nutrients.iron, unit: 'mg' },
-                    { label: '칼륨', value: analysis.nutrients.potassium, unit: 'mg' },
-                  ].filter(n => n.value != null && n.value !== 0).length > 0 && (
-                    <div>
-                      <p style={{ fontSize: '9px', color: '#9ca3af', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '6px' }}>비타민 · 무기질</p>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                        {[
-                          { label: '비타민A', value: analysis.nutrients.vitaminA, unit: 'μg' },
-                          { label: '비타민C', value: analysis.nutrients.vitaminC, unit: 'mg' },
-                          { label: '비타민D', value: analysis.nutrients.vitaminD, unit: 'μg' },
-                          { label: '칼슘', value: analysis.nutrients.calcium, unit: 'mg' },
-                          { label: '철분', value: analysis.nutrients.iron, unit: 'mg' },
-                          { label: '칼륨', value: analysis.nutrients.potassium, unit: 'mg' },
-                        ].filter(n => n.value != null && n.value !== 0).map(n => (
-                          <div key={n.label} style={{ padding: '5px 10px', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', display: 'flex', gap: '4px', alignItems: 'baseline' }}>
-                            <span style={{ fontSize: '10px', color: '#6b7280' }}>{n.label}</span>
-                            <span style={{ fontSize: '11px', color: '#6B21A8' }}>{n.value}{n.unit}</span>
-                          </div>
-                        ))}
+                    {saved && (
+                      <div style={{ padding: '9px', backgroundColor: 'black', textAlign: 'center' }}>
+                        <p style={{ fontSize: '11px', color: 'white', letterSpacing: '2px', textTransform: 'uppercase' }}>저장 완료</p>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </motion.div>
+                )}
+              </div>
 
-                  {saved && (
-                    <div style={{ padding: '9px', backgroundColor: 'black', textAlign: 'center' }}>
-                      <p style={{ fontSize: '11px', color: 'white', letterSpacing: '2px', textTransform: 'uppercase' }}>저장 완료</p>
-                    </div>
-                  )}
-                </motion.div>
-              )}
-
-              {/* 액션 버튼 영역 */}
-              <div style={{ marginTop: 'auto', paddingTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {/* 액션 버튼 영역 — 항상 하단 고정 */}
+              <div style={{ flexShrink: 0, padding: '10px 24px 24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
 
                 {/* 분석 전: AI 분석 버튼 */}
                 {!analysis && !loadingAnalysis && (
