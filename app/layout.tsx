@@ -21,6 +21,7 @@ export default function RootLayout({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const isAuthRoute = pathname?.startsWith('/auth') || false;
+  const isCaptureRoute = pathname === '/capture';
   const isProtectedRoute = pathname === '/' || ['/capture', '/report', '/history', '/community', '/settings'].some(route => pathname?.startsWith(route));
 
   useEffect(() => {
@@ -64,7 +65,7 @@ export default function RootLayout({
     );
   }
 
-  const showNav = !isAuthRoute;
+  const showNav = !isAuthRoute && !isCaptureRoute;
 
   const menuItems = [
     { icon: FaHome, label: '홈', href: '/' },
