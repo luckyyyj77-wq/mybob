@@ -8,36 +8,29 @@ export default function CommunityLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
 
   return (
-    <div style={{ minHeight: '100svh', backgroundColor: 'white', display: 'flex', flexDirection: 'column' }}>
+    <div style={{
+      height: 'calc(100svh - 65px)',
+      display: 'flex',
+      flexDirection: 'column',
+      backgroundColor: 'white',
+      overflow: 'hidden',
+    }}>
       {/* Header */}
-      <div style={{ padding: '40px 32px 0', borderBottom: '1px solid #e5e7eb' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+      <div style={{ flexShrink: 0, padding: '24px 24px 0', borderBottom: '1px solid #e5e7eb' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
           <div>
-            <p style={{ fontSize: '11px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '6px' }}>
-              SOCIAL
-            </p>
-            <h1 style={{ fontSize: '30px', fontWeight: 400, color: 'black', letterSpacing: '-0.5px', lineHeight: 1 }}>
-              커뮤니티
-            </h1>
+            <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '4px' }}>SOCIAL</p>
+            <h1 style={{ fontSize: '22px', fontWeight: 400, color: 'black', lineHeight: 1 }}>커뮤니티</h1>
           </div>
           <Link href="/" style={{ textDecoration: 'none' }}>
-            <div style={{
-              padding: '10px 16px',
-              border: '1px solid #e5e7eb',
-              fontSize: '12px',
-              color: 'black',
-              letterSpacing: '1px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-            }}>
-              <FaArrowLeft size={10} /> 홈
+            <div style={{ width: '36px', height: '36px', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <FaArrowLeft size={13} color="black" />
             </div>
           </Link>
         </div>
 
-        {/* Tab Nav */}
-        <nav style={{ display: 'flex', marginTop: '24px' }}>
+        {/* Tabs */}
+        <nav style={{ display: 'flex' }}>
           {[
             { label: '추천 피드', href: '/community/recommendation' },
             { label: '챌린지', href: '/community/challenge' },
@@ -46,8 +39,8 @@ export default function CommunityLayout({ children }: { children: React.ReactNod
               key={tab.href}
               href={tab.href}
               style={{
-                padding: '12px 24px',
-                fontSize: '13px',
+                padding: '10px 20px',
+                fontSize: '12px',
                 color: pathname === tab.href ? 'white' : '#9ca3af',
                 backgroundColor: pathname === tab.href ? 'black' : 'white',
                 textDecoration: 'none',
@@ -62,10 +55,10 @@ export default function CommunityLayout({ children }: { children: React.ReactNod
         </nav>
       </div>
 
-      {/* Content */}
-      <main style={{ flex: 1, padding: '32px' }}>
+      {/* Scrollable content */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
         {children}
-      </main>
+      </div>
     </div>
   );
 }

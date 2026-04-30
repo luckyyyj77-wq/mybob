@@ -206,7 +206,7 @@ export default function RootLayout({
           )}
         </AnimatePresence>
 
-        <main className={`flex-grow relative ${showNav ? 'pb-24' : ''}`}>
+        <main style={{ flexGrow: 1, position: 'relative', paddingBottom: showNav ? '65px' : '0' }}>
           {children}
         </main>
 
