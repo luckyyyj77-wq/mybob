@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import Webcam from 'react-webcam';
 import Link from 'next/link';
-import { FaSpinner, FaUpload, FaArrowLeft, FaRedo } from 'react-icons/fa';
+import { FaSpinner, FaUpload, FaArrowLeft, FaCamera, FaHome } from 'react-icons/fa';
 import { supabase } from '@/lib/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -21,6 +21,8 @@ export default function CameraCapturePage() {
   const [loadingSave, setLoadingSave] = useState(false);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [saved, setSaved] = useState(false);
+  // 카메라 권한을 한 번 얻으면 컴포넌트 생애 동안 유지
+  const [cameraReady, setCameraReady] = useState(false);
 
   const capture = useCallback(() => {
     if (webcamRef.current) {
@@ -90,7 +92,8 @@ export default function CameraCapturePage() {
     setLoadingSave(false);
   };
 
-  const reset = () => {
+  // 추가 촬영 — 웹캠은 유지, 이미지/결과만 초기화
+  const retake = () => {
     setImageSrc(null);
     setAnalysis(null);
     setSaved(false);
@@ -98,7 +101,6 @@ export default function CameraCapturePage() {
   };
 
   return (
-    /* 바텀 네비 없음 → 화면 전체 사용 */
     <div style={{ position: 'fixed', inset: 0, backgroundColor: 'black', display: 'flex', flexDirection: 'column' }}>
       <AnimatePresence mode="wait">
 
@@ -109,17 +111,18 @@ export default function CameraCapturePage() {
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             style={{ position: 'absolute', inset: 0 }}
           >
-            {/* 웹캠 */}
+            {/* 웹캠: audio=false로 고정, 한 번 마운트 후 유지 */}
             <Webcam
               audio={false}
               ref={webcamRef}
               screenshotFormat="image/jpeg"
               videoConstraints={{ facingMode: 'environment' }}
+              onUserMedia={() => setCameraReady(true)}
               onUserMediaError={() => alert('카메라 접근 권한이 필요합니다.')}
               style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
             />
 
-            {/* 뒤로가기 — 좌상단 */}
+            {/* 홈 — 좌상단 */}
             <Link href="/" style={{ position: 'absolute', top: '20px', left: '20px', zIndex: 10, textDecoration: 'none' }}>
               <div style={{
                 width: '40px', height: '40px',
@@ -158,19 +161,20 @@ export default function CameraCapturePage() {
             {/* 촬영 버튼 — 하단 중앙 */}
             <button
               onClick={capture}
+              disabled={!cameraReady}
               style={{
                 position: 'absolute', bottom: '40px', left: '50%', transform: 'translateX(-50%)',
                 width: '68px', height: '68px',
-                backgroundColor: 'white',
+                backgroundColor: cameraReady ? 'white' : 'rgba(255,255,255,0.3)',
                 borderRadius: '50%',
                 border: '4px solid rgba(255,255,255,0.4)',
-                cursor: 'pointer',
+                cursor: cameraReady ? 'pointer' : 'default',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 zIndex: 10,
+                transition: 'background-color 0.3s',
               }}
             >
-              {/* 내부 원 */}
-              <div style={{ width: '44px', height: '44px', backgroundColor: 'white', borderRadius: '50%', border: '2px solid #e5e7eb' }} />
+              <div style={{ width: '44px', height: '44px', backgroundColor: cameraReady ? 'white' : 'rgba(255,255,255,0.4)', borderRadius: '50%', border: '2px solid #e5e7eb' }} />
             </button>
           </motion.div>
         )}
@@ -185,24 +189,10 @@ export default function CameraCapturePage() {
             {/* 이미지 — 상단 45% */}
             <div style={{ flex: '0 0 45%', position: 'relative', overflow: 'hidden', backgroundColor: 'black' }}>
               <img src={imageSrc} alt="촬영됨" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-
-              {/* 다시 찍기 — 좌상단 */}
-              <button
-                onClick={reset}
-                style={{
-                  position: 'absolute', top: '16px', left: '16px', zIndex: 10,
-                  width: '38px', height: '38px',
-                  backgroundColor: 'rgba(0,0,0,0.5)',
-                  borderRadius: '50%', border: 'none', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}
-              >
-                <FaRedo size={13} color="white" />
-              </button>
             </div>
 
             {/* 분석 패널 — 하단 55% */}
-            <div style={{ flex: '0 0 55%', display: 'flex', flexDirection: 'column', padding: '20px 24px 24px' }}>
+            <div style={{ flex: '0 0 55%', display: 'flex', flexDirection: 'column', padding: '20px 24px 28px' }}>
 
               {/* 로딩 */}
               {loadingAnalysis && (
@@ -212,7 +202,7 @@ export default function CameraCapturePage() {
                 </div>
               )}
 
-              {/* 안내 문구 */}
+              {/* 안내 */}
               {!loadingAnalysis && !analysis && (
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <p style={{ fontSize: '13px', color: '#9ca3af' }}>아래 버튼을 눌러 AI로 분석하세요.</p>
@@ -255,43 +245,76 @@ export default function CameraCapturePage() {
                 </motion.div>
               )}
 
-              {/* 액션 버튼 — 항상 하단에 고정 */}
-              <div style={{ marginTop: 'auto', paddingTop: '12px' }}>
-                {!analysis ? (
+              {/* 액션 버튼 영역 */}
+              <div style={{ marginTop: 'auto', paddingTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+
+                {/* 분석 전: AI 분석 버튼 */}
+                {!analysis && !loadingAnalysis && (
                   <button
                     onClick={handleAnalysis}
-                    disabled={loadingAnalysis}
                     style={{
-                      width: '100%', padding: '15px',
-                      backgroundColor: loadingAnalysis ? '#9ca3af' : 'black',
-                      color: 'white', border: 'none',
-                      fontSize: '13px', cursor: loadingAnalysis ? 'not-allowed' : 'pointer',
+                      width: '100%', padding: '14px',
+                      backgroundColor: 'black', color: 'white', border: 'none',
+                      fontSize: '13px', cursor: 'pointer',
                       letterSpacing: '1px', textTransform: 'uppercase',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
                     }}
                   >
-                    {loadingAnalysis
-                      ? <FaSpinner style={{ animation: 'spin 1s linear infinite' }} />
-                      : 'AI 분석 시작'}
+                    AI 분석 시작
                   </button>
-                ) : (
-                  <button
-                    onClick={handleSave}
-                    disabled={loadingSave || saved}
-                    style={{
-                      width: '100%', padding: '15px',
-                      backgroundColor: saved ? '#f3f4f6' : 'black',
-                      color: saved ? '#9ca3af' : 'white',
-                      border: 'none', fontSize: '13px',
-                      cursor: (loadingSave || saved) ? 'not-allowed' : 'pointer',
-                      letterSpacing: '1px', textTransform: 'uppercase',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}
-                  >
-                    {loadingSave
-                      ? <FaSpinner style={{ animation: 'spin 1s linear infinite' }} />
-                      : saved ? '저장됨' : '기록에 저장'}
-                  </button>
+                )}
+
+                {/* 분석 후: 저장 + 추가촬영 + 홈 */}
+                {analysis && (
+                  <>
+                    {/* 저장 */}
+                    <button
+                      onClick={handleSave}
+                      disabled={loadingSave || saved}
+                      style={{
+                        width: '100%', padding: '14px',
+                        backgroundColor: saved ? '#f3f4f6' : 'black',
+                        color: saved ? '#9ca3af' : 'white',
+                        border: 'none', fontSize: '13px',
+                        cursor: (loadingSave || saved) ? 'not-allowed' : 'pointer',
+                        letterSpacing: '1px', textTransform: 'uppercase',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}
+                    >
+                      {loadingSave
+                        ? <FaSpinner style={{ animation: 'spin 1s linear infinite' }} />
+                        : saved ? '저장됨' : '기록에 저장'}
+                    </button>
+
+                    {/* 추가촬영 + 홈 */}
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        onClick={retake}
+                        style={{
+                          flex: 1, padding: '12px',
+                          backgroundColor: 'white', color: 'black',
+                          border: '1px solid #e5e7eb', fontSize: '12px',
+                          cursor: 'pointer', letterSpacing: '1px', textTransform: 'uppercase',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                        }}
+                      >
+                        <FaCamera size={12} /> 추가 촬영
+                      </button>
+                      <Link
+                        href="/"
+                        style={{
+                          flex: 1, padding: '12px',
+                          backgroundColor: 'white', color: 'black',
+                          border: '1px solid #e5e7eb', fontSize: '12px',
+                          cursor: 'pointer', letterSpacing: '1px', textTransform: 'uppercase',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                          textDecoration: 'none',
+                        }}
+                      >
+                        <FaHome size={12} /> 홈으로
+                      </Link>
+                    </div>
+                  </>
                 )}
               </div>
             </div>

@@ -231,9 +231,9 @@ export default function RootLayout({
                 padding: '12px 40px 20px 40px',
               }}
             >
-              {/* 햄버거 — 열기 */}
+              {/* 햄버거 — 열기/닫기 토글 */}
               <button
-                onClick={() => setIsMenuOpen(true)}
+                onClick={() => setIsMenuOpen(prev => !prev)}
                 style={{
                   display: 'flex',
                   flexDirection: 'column',
@@ -243,7 +243,7 @@ export default function RootLayout({
                   border: 'none',
                   cursor: 'pointer',
                 }}
-                aria-label="메뉴 열기"
+                aria-label={isMenuOpen ? '메뉴 닫기' : '메뉴 열기'}
               >
                 <span style={{ display: 'block', width: '26px', height: '2px', backgroundColor: 'black' }} />
                 <span style={{ display: 'block', width: '26px', height: '2px', backgroundColor: 'black' }} />
