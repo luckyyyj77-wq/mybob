@@ -113,32 +113,22 @@ export default function Home() {
   if (loading) return null;
 
   return (
-    <div style={{ minHeight: '100svh', display: 'flex', flexDirection: 'column', backgroundColor: 'white' }}>
+    <div style={{ height: 'calc(100svh - 65px)', display: 'flex', flexDirection: 'column', backgroundColor: 'white', overflow: 'hidden' }}>
 
-      {/* Section 1 */}
+      {/* Section 1: 인삿말 */}
       <motion.section
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4 }}
-        style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'flex-start',
-          justifyContent: 'center',
-          padding: '40px 32px',
-          borderBottom: '1px solid #e5e7eb',
-        }}
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}
+        style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '28px 28px 20px', borderBottom: '1px solid #e5e7eb' }}
       >
-        <h1 style={{ fontSize: '32px', fontWeight: 400, color: 'black', letterSpacing: '-1px', lineHeight: 1.1, marginBottom: '16px' }}>
+        <h1 style={{ fontSize: '26px', fontWeight: 400, color: 'black', letterSpacing: '-0.5px', lineHeight: 1.2, marginBottom: '8px' }}>
           무엇을 드시나요?
         </h1>
         {todayStats.count > 0 ? (
-          <p style={{ fontSize: '13px', fontWeight: 400, color: '#6B21A8', letterSpacing: '1px' }}>
+          <p style={{ fontSize: '12px', color: '#6B21A8', letterSpacing: '0.5px' }}>
             오늘 {todayStats.count}개의 식단이 기록되었습니다.
           </p>
         ) : (
-          <p style={{ fontSize: '13px', fontWeight: 500, color: '#9ca3af' }}>
+          <p style={{ fontSize: '12px', color: '#9ca3af' }}>
             식단을 기록하고 분석을 시작하세요.
           </p>
         )}
@@ -146,51 +136,47 @@ export default function Home() {
 
       {/* Section 2: AI COACH */}
       <motion.section
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4, delay: 0.15 }}
-        style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '40px 32px', backgroundColor: 'white' }}
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.15 }}
+        style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '20px 28px', overflow: 'hidden' }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '32px' }}>
-          <span style={{ fontSize: '20px' }}>💡</span>
-          <h2 style={{ fontSize: '22px', fontWeight: 400, color: 'black', letterSpacing: '-0.5px' }}>AI COACH</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px' }}>
+          <span style={{ fontSize: '16px' }}>💡</span>
+          <h2 style={{ fontSize: '16px', fontWeight: 400, color: 'black', letterSpacing: '0.5px' }}>AI COACH</h2>
         </div>
 
-        <ul style={{ display: 'flex', flexDirection: 'column', gap: '20px', listStyle: 'none', padding: 0, margin: 0 }}>
+        <ul style={{ display: 'flex', flexDirection: 'column', gap: '18px', listStyle: 'none', padding: 0, margin: 0 }}>
           <li style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#6B21A8', flexShrink: 0, marginTop: '6px' }} />
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#6B21A8', flexShrink: 0, marginTop: '5px' }} />
             <div>
-              <p style={{ fontSize: '11px', fontWeight: 400, color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '4px' }}>오늘섭취 칼로리</p>
-              <p style={{ fontSize: '28px', fontWeight: 400, color: 'black', lineHeight: 1 }}>
-                {todayStats.totalCalories} <span style={{ fontSize: '12px', fontWeight: 400, color: '#9ca3af' }}>KCAL</span>
+              <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '4px' }}>오늘 섭취 칼로리</p>
+              <p style={{ fontSize: '24px', color: 'black', lineHeight: 1 }}>
+                {todayStats.totalCalories} <span style={{ fontSize: '11px', color: '#9ca3af' }}>KCAL</span>
               </p>
             </div>
           </li>
 
           <li style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#9ca3af', flexShrink: 0, marginTop: '6px' }} />
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#9ca3af', flexShrink: 0, marginTop: '5px' }} />
             <div>
-              <p style={{ fontSize: '11px', fontWeight: 400, color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '4px' }}>영양밸런스</p>
-              <div style={{ display: 'flex', gap: '16px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 400, color: 'black' }}>탄 {todayStats.nutrients.carbs.toFixed(0)}g</span>
-                <span style={{ fontSize: '14px', fontWeight: 400, color: 'black' }}>단 {todayStats.nutrients.protein.toFixed(0)}g</span>
-                <span style={{ fontSize: '14px', fontWeight: 400, color: 'black' }}>지 {todayStats.nutrients.fat.toFixed(0)}g</span>
+              <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '4px' }}>영양 밸런스</p>
+              <div style={{ display: 'flex', gap: '14px' }}>
+                <span style={{ fontSize: '13px', color: 'black' }}>탄 {todayStats.nutrients.carbs.toFixed(0)}g</span>
+                <span style={{ fontSize: '13px', color: 'black' }}>단 {todayStats.nutrients.protein.toFixed(0)}g</span>
+                <span style={{ fontSize: '13px', color: 'black' }}>지 {todayStats.nutrients.fat.toFixed(0)}g</span>
               </div>
             </div>
           </li>
 
           <li style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#d1d5db', flexShrink: 0, marginTop: '6px' }} />
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#d1d5db', flexShrink: 0, marginTop: '5px' }} />
             <div style={{ flex: 1 }}>
-              <p style={{ fontSize: '11px', fontWeight: 400, color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '4px' }}>코치 코멘트</p>
+              <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '4px' }}>코치 코멘트</p>
               {loadingFeedback ? (
-                <div style={{ width: '16px', height: '16px', border: '2px solid black', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                <div style={{ width: '14px', height: '14px', border: '1.5px solid black', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
               ) : aiFeedback ? (
-                <p style={{ fontSize: '14px', fontWeight: 400, color: '#374151', lineHeight: 1.6 }}>
-                  "{aiFeedback.feedback}"
-                </p>
+                <p style={{ fontSize: '13px', color: '#374151', lineHeight: 1.6 }}>"{aiFeedback.feedback}"</p>
               ) : (
-                <p style={{ fontSize: '13px', color: '#9ca3af' }}>기록이 쌓이면 코칭이 시작됩니다.</p>
+                <p style={{ fontSize: '12px', color: '#9ca3af' }}>기록이 쌓이면 코칭이 시작됩니다.</p>
               )}
             </div>
           </li>
