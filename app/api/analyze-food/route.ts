@@ -1,68 +1,122 @@
 import { NextResponse } from 'next/server';
 
-// OpenFoodFacts에서 음식명으로 영양정보 조회
+// ── 한식 영양DB: 식약처 기반 하드코딩 상위 30종 ──────────────────────────
+// OpenFoodFacts의 한식 커버리지 보완용 (100g 기준)
+const KOREAN_FOOD_DB: Record<string, { calories: number; carbohydrates: number; protein: number; fat: number; sodium: number; fiber: number }> = {
+  '된장찌개':   { calories: 52,  carbohydrates: 4,  protein: 4,  fat: 2,  sodium: 580, fiber: 1 },
+  '김치찌개':   { calories: 58,  carbohydrates: 3,  protein: 4,  fat: 3,  sodium: 640, fiber: 1 },
+  '비빔밥':     { calories: 145, carbohydrates: 26, protein: 5,  fat: 3,  sodium: 380, fiber: 2 },
+  '불고기':     { calories: 178, carbohydrates: 8,  protein: 17, fat: 8,  sodium: 520, fiber: 0 },
+  '삼겹살':     { calories: 331, carbohydrates: 0,  protein: 17, fat: 29, sodium: 60,  fiber: 0 },
+  '삼계탕':     { calories: 120, carbohydrates: 5,  protein: 14, fat: 5,  sodium: 340, fiber: 0 },
+  '갈비탕':     { calories: 110, carbohydrates: 4,  protein: 12, fat: 5,  sodium: 410, fiber: 0 },
+  '순두부찌개': { calories: 60,  carbohydrates: 3,  protein: 5,  fat: 3,  sodium: 520, fiber: 1 },
+  '냉면':       { calories: 130, carbohydrates: 26, protein: 5,  fat: 1,  sodium: 580, fiber: 1 },
+  '잡채':       { calories: 148, carbohydrates: 20, protein: 5,  fat: 5,  sodium: 400, fiber: 1 },
+  '떡볶이':     { calories: 140, carbohydrates: 28, protein: 3,  fat: 2,  sodium: 560, fiber: 1 },
+  '김밥':       { calories: 175, carbohydrates: 29, protein: 6,  fat: 4,  sodium: 420, fiber: 1 },
+  '라면':       { calories: 135, carbohydrates: 19, protein: 3,  fat: 5,  sodium: 690, fiber: 1 },
+  '치킨':       { calories: 239, carbohydrates: 8,  protein: 22, fat: 13, sodium: 490, fiber: 0 },
+  '피자':       { calories: 270, carbohydrates: 33, protein: 11, fat: 10, sodium: 600, fiber: 2 },
+  '햄버거':     { calories: 295, carbohydrates: 30, protein: 15, fat: 13, sodium: 580, fiber: 2 },
+  '초밥':       { calories: 170, carbohydrates: 28, protein: 8,  fat: 3,  sodium: 380, fiber: 0 },
+  '파전':       { calories: 185, carbohydrates: 22, protein: 6,  fat: 8,  sodium: 440, fiber: 1 },
+  '순대':       { calories: 185, carbohydrates: 18, protein: 9,  fat: 8,  sodium: 520, fiber: 1 },
+  '보쌈':       { calories: 155, carbohydrates: 2,  protein: 18, fat: 8,  sodium: 430, fiber: 0 },
+  '설렁탕':     { calories: 95,  carbohydrates: 3,  protein: 11, fat: 4,  sodium: 390, fiber: 0 },
+  '부대찌개':   { calories: 105, carbohydrates: 8,  protein: 7,  fat: 5,  sodium: 720, fiber: 1 },
+  '짜장면':     { calories: 165, carbohydrates: 28, protein: 5,  fat: 4,  sodium: 750, fiber: 2 },
+  '짬뽕':       { calories: 95,  carbohydrates: 14, protein: 6,  fat: 2,  sodium: 860, fiber: 2 },
+  '탕수육':     { calories: 215, carbohydrates: 22, protein: 10, fat: 10, sodium: 480, fiber: 1 },
+  '칼국수':     { calories: 120, carbohydrates: 22, protein: 4,  fat: 2,  sodium: 420, fiber: 1 },
+  '육개장':     { calories: 68,  carbohydrates: 4,  protein: 7,  fat: 3,  sodium: 590, fiber: 2 },
+  '미역국':     { calories: 35,  carbohydrates: 2,  protein: 3,  fat: 1,  sodium: 480, fiber: 1 },
+  '해장국':     { calories: 88,  carbohydrates: 5,  protein: 9,  fat: 3,  sodium: 610, fiber: 1 },
+  '돈가스':     { calories: 265, carbohydrates: 18, protein: 16, fat: 14, sodium: 520, fiber: 1 },
+};
+
+function searchKoreanDB(foodName: string): { source: string; nutrients: any; portion: number } | null {
+  const key = Object.keys(KOREAN_FOOD_DB).find(k => foodName.includes(k) || k.includes(foodName.slice(0, 2)));
+  if (!key) return null;
+  const db = KOREAN_FOOD_DB[key];
+  // 음식 종류별 일반적인 1인분 중량 추정
+  const portionMap: Record<string, number> = {
+    '찌개': 300, '탕': 400, '국': 350, '밥': 250, '면': 350,
+    '구이': 200, '찜': 250, '전': 150, '치킨': 200, '피자': 180,
+  };
+  const portion = Object.entries(portionMap).find(([k]) => key.includes(k))?.[1] || 250;
+  const scale = portion / 100;
+  return {
+    source: 'korean_db',
+    portion,
+    nutrients: {
+      carbohydrates: Math.round(db.carbohydrates * scale),
+      protein:       Math.round(db.protein * scale),
+      fat:           Math.round(db.fat * scale),
+      fiber:         Math.round(db.fiber * scale),
+      sugar:         0,
+      sodium:        Math.round(db.sodium * scale),
+      calories:      Math.round(db.calories * scale),
+    },
+  };
+}
+
+// ── OpenFoodFacts 조회 ────────────────────────────────────────────────────────
 async function searchOpenFoodFacts(foodName: string) {
   try {
     const query = encodeURIComponent(foodName);
     const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${query}&search_simple=1&action=process&json=1&page_size=3&fields=product_name,nutriments,categories_tags`;
-    const res = await fetch(url, { next: { revalidate: 3600 } });
+    const res = await fetch(url, { next: { revalidate: 3600 }, signal: AbortSignal.timeout(4000) });
     if (!res.ok) return null;
-
     const data = await res.json();
-    const products = data.products;
-    if (!products || products.length === 0) return null;
-
-    // 가장 첫 번째 결과 사용
-    const p = products[0];
+    const p = data.products?.[0];
+    if (!p) return null;
     const n = p.nutriments || {};
-
-    // 100g 기준 → 1인분(200g) 기준으로 환산 (일반적인 한식 1인분)
     const portion = 200;
-    const per100 = (val: number | undefined) => val ? Math.round((val * portion) / 100) : 0;
-
+    const s = portion / 100;
     return {
       source: 'openfoodfacts',
+      portion,
       nutrients: {
-        carbohydrates: per100(n['carbohydrates_100g']),
-        protein: per100(n['proteins_100g']),
-        fat: per100(n['fat_100g']),
-        fiber: per100(n['fiber_100g']),
-        sugar: per100(n['sugars_100g']),
-        sodium: per100(n['sodium_100g']) * 1000, // g → mg
-        calories: per100(n['energy-kcal_100g']),
-        // 비타민·무기질은 OpenFoodFacts에 있으면 가져오고 없으면 0
-        vitaminC: per100(n['vitamin-c_100g']) * 1000, // g → mg
-        calcium: per100(n['calcium_100g']) * 1000,
-        iron: per100(n['iron_100g']) * 1000,
-      }
+        carbohydrates: Math.round((n['carbohydrates_100g'] || 0) * s),
+        protein:       Math.round((n['proteins_100g'] || 0) * s),
+        fat:           Math.round((n['fat_100g'] || 0) * s),
+        fiber:         Math.round((n['fiber_100g'] || 0) * s),
+        sugar:         Math.round((n['sugars_100g'] || 0) * s),
+        sodium:        Math.round((n['sodium_100g'] || 0) * s * 1000),
+        calories:      Math.round((n['energy-kcal_100g'] || 0) * s),
+        vitaminC:      Math.round((n['vitamin-c_100g'] || 0) * s * 1000),
+        calcium:       Math.round((n['calcium_100g'] || 0) * s * 1000),
+        iron:          Math.round((n['iron_100g'] || 0) * s * 1000),
+      },
     };
   } catch {
     return null;
   }
 }
 
-// Gemini로 이미지에서 음식명 + 완전한 영양정보 추론
-async function analyzeWithGemini(base64Data: string, apiKey: string, dbNutrients: any | null) {
+// ── Gemini 비전 분석 ──────────────────────────────────────────────────────────
+async function analyzeWithGemini(base64Data: string, apiKey: string, dbNutrients: any | null, dbSource: string | null, estimatedPortion: number) {
   const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite'];
 
-  // DB 데이터가 있으면 Gemini에게 보완만 요청, 없으면 전체 추론 요청
   const nutritionContext = dbNutrients
-    ? `OpenFoodFacts DB에서 가져온 기본 영양정보가 있습니다 (참고용):
-       탄수화물 ${dbNutrients.carbohydrates}g, 단백질 ${dbNutrients.protein}g, 지방 ${dbNutrients.fat}g, 칼로리 ${dbNutrients.calories}kcal.
-       이 값을 기반으로 실제 사진 속 음식의 양을 고려해 조정하고, 비타민·무기질을 추가로 추론해주세요.`
-    : `이미지만 보고 음식명과 영양정보를 추론해주세요. 일반적인 한식 1인분(약 200g) 기준으로 추정하세요.`;
+    ? `[DB 기초 데이터 — 출처: ${dbSource}, 추정 1인분: ${estimatedPortion}g]
+탄수화물 ${dbNutrients.carbohydrates}g, 단백질 ${dbNutrients.protein}g, 지방 ${dbNutrients.fat}g, 칼로리 ${dbNutrients.calories}kcal.
+사진 속 실제 음식의 조리 상태(소스 양, 튀김 정도, 고명)를 분석해 위 수치를 보정하고, 누락된 미량 영양소를 전문가 수준으로 추론하세요.`
+    : `이미지를 시각적으로 분석하여 음식명과 영양 정보를 전부 추론하세요.
+식재료 종류, 조리 방식(찜/튀김/볶음 등), 그릇 크기와 음식 밀도를 고려해 1인분 중량과 영양소를 계산하세요.`;
 
-  const prompt = `당신은 전문 영양사이자 음식 분석 AI입니다.
-이 음식 사진을 분석해서 아래 JSON 형식으로만 응답하세요.
+  const prompt = `당신은 세계 최고 수준의 영양 분석 AI입니다.
+제공된 이미지를 분석해 아래 JSON 형식으로만 응답하세요.
 
 ${nutritionContext}
 
-응답 JSON 형식:
 {
-  "name": "한국어 음식명 (정확하고 구체적으로, 예: 된장찌개, 비빔밥, 삼겹살)",
+  "name": "구체적인 한국어 음식명 (예: 치즈 돈가스, 해물 파전)",
   "calories": 숫자(kcal),
-  "category": "한식/중식/일식/양식/간식/음료 중 하나",
-  "amount": "1인분 또는 추정 중량(g)",
+  "category": "한식/중식/일식/양식/간식/음료",
+  "amount": "추정 중량(g) 또는 수량",
+  "confidence": "high/medium/low",
   "nutrients": {
     "carbohydrates": 숫자(g),
     "protein": 숫자(g),
@@ -79,10 +133,7 @@ ${nutritionContext}
   }
 }
 
-중요:
-- 음식명은 반드시 한국어로, 실제 음식명을 정확히 적어주세요
-- 모르는 값은 0이 아닌 일반적인 추정값을 사용하세요
-- JSON 외 다른 텍스트는 절대 포함하지 마세요`;
+주의: 사진에 보이지 않는 나트륨·당류 등은 해당 음식 레시피 기반으로 추정하세요. JSON 외 텍스트 금지.`;
 
   for (const model of modelsToTry) {
     try {
@@ -91,43 +142,29 @@ ${nutritionContext}
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{
-            parts: [
-              { text: prompt },
-              { inline_data: { mime_type: 'image/jpeg', data: base64Data } }
-            ]
-          }],
-          generationConfig: {
-            response_mime_type: 'application/json',
-            temperature: 0.2, // 낮을수록 일관성 있는 답변
-          }
-        })
+          contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: 'image/jpeg', data: base64Data } }] }],
+          generationConfig: { response_mime_type: 'application/json', temperature: 0.15 },
+        }),
       });
-
       const result = await res.json();
-
       if (res.ok && result.candidates?.[0]?.content?.parts?.[0]?.text) {
-        const parsed = JSON.parse(result.candidates[0].content.parts[0].text);
-        return { success: true, food: parsed, modelUsed: model };
+        return { success: true, food: JSON.parse(result.candidates[0].content.parts[0].text), modelUsed: model };
       }
-
-      // 한도 초과 에러면 다음 모델 시도
       const errMsg = result.error?.message || '';
       if (errMsg.includes('quota') || errMsg.includes('RESOURCE_EXHAUSTED') || errMsg.includes('overloaded')) {
         console.warn(`${model} quota exceeded, trying next...`);
         continue;
       }
-
       return { success: false, error: errMsg };
     } catch (e: any) {
       console.warn(`${model} failed:`, e.message);
       continue;
     }
   }
-
   return { success: false, error: '모든 모델 한도 초과. 잠시 후 다시 시도해주세요.' };
 }
 
+// ── 메인 핸들러 ───────────────────────────────────────────────────────────────
 export async function POST(request: Request) {
   try {
     const { image } = await request.json();
@@ -136,85 +173,91 @@ export async function POST(request: Request) {
 
     const base64Data = image.includes(',') ? image.split(',')[1] : image;
 
-    // Step 1: Gemini로 음식명 먼저 빠르게 인식 (텍스트만 반환, 소모 최소화)
+    // Step 1: 음식명 인식 (빠른 텍스트 전용 호출)
     let foodName = '';
     try {
-      const nameUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-      const nameRes = await fetch(nameUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [
-              { text: '이 음식 사진에서 음식 이름만 한국어로 짧게 답하세요. 예시: 된장찌개, 비빔밥, 삼겹살. 음식 이름만, 다른 텍스트 없이.' },
-              { inline_data: { mime_type: 'image/jpeg', data: base64Data } }
-            ]
-          }],
-          generationConfig: { temperature: 0.1 }
-        })
-      });
+      const nameRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [
+              { text: '이 음식 사진에서 음식 이름만 한국어로 짧게 답하세요. 음식 이름만, 다른 텍스트 없이. 예: 된장찌개' },
+              { inline_data: { mime_type: 'image/jpeg', data: base64Data } },
+            ]}],
+            generationConfig: { temperature: 0.1 },
+          }),
+        }
+      );
       const nameResult = await nameRes.json();
       if (nameRes.ok) {
-        foodName = nameResult.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
-        foodName = foodName.replace(/["\n]/g, '').trim();
+        foodName = (nameResult.candidates?.[0]?.content?.parts?.[0]?.text || '').replace(/["\n]/g, '').trim();
       }
-    } catch { /* 실패해도 계속 진행 */ }
+    } catch { /* 실패 시 DB 조회 생략하고 Gemini 전체 분석으로 진행 */ }
 
-    // Step 2: OpenFoodFacts에서 영양 DB 조회 (음식명 인식 성공 시)
-    let dbNutrients = null;
+    // Step 2: 한식DB + OpenFoodFacts 병렬 조회 (음식명 인식 성공 시)
+    let dbResult: { source: string; nutrients: any; portion: number } | null = null;
     if (foodName) {
-      dbNutrients = await searchOpenFoodFacts(foodName);
-      if (dbNutrients) {
-        console.log(`OpenFoodFacts hit for: ${foodName}`);
+      // 한식 DB 먼저 (로컬, 빠름) — 없으면 OpenFoodFacts
+      const koreanHit = searchKoreanDB(foodName);
+      if (koreanHit) {
+        dbResult = koreanHit;
+        console.log(`Korean DB hit: ${foodName}`);
+      } else {
+        const offHit = await searchOpenFoodFacts(foodName);
+        if (offHit) {
+          dbResult = offHit;
+          console.log(`OpenFoodFacts hit: ${foodName}`);
+        }
       }
     }
 
-    // Step 3: Gemini로 전체 분석 (DB 데이터 있으면 보완, 없으면 전체 추론)
-    const geminiResult = await analyzeWithGemini(base64Data, apiKey, dbNutrients?.nutrients || null);
+    // Step 3: Gemini 비전 분석 (DB 결과를 컨텍스트로 제공)
+    const geminiResult = await analyzeWithGemini(
+      base64Data, apiKey,
+      dbResult?.nutrients || null,
+      dbResult?.source || null,
+      dbResult?.portion || 250
+    );
 
+    // Gemini 완전 실패 → DB 데이터 폴백
     if (!geminiResult.success) {
-      // Gemini 완전 실패 시 DB 데이터라도 반환
-      if (dbNutrients && foodName) {
+      if (dbResult && foodName) {
         return NextResponse.json({
           success: true,
-          food: {
-            name: foodName,
-            calories: dbNutrients.nutrients.calories,
-            category: '기타',
-            amount: '200g(추정)',
-            nutrients: dbNutrients.nutrients,
-          },
-          source: 'openfoodfacts_only',
+          food: { name: foodName, calories: dbResult.nutrients.calories, category: '기타', amount: `${dbResult.portion}g(추정)`, confidence: 'low', nutrients: dbResult.nutrients },
+          source: dbResult.source + '_only',
+          modelUsed: null,
         });
       }
       return NextResponse.json({ error: geminiResult.error }, { status: 429 });
     }
 
-    // Step 4: DB 데이터로 Gemini 결과 보완 (더 신뢰할 수 있는 탄단지 값 적용)
+    // Step 4: DB + Gemini 결과 융합
     const finalFood = geminiResult.food;
-    if (dbNutrients) {
-      // DB 칼로리가 있고 Gemini 값과 크게 차이 안 나면 DB 값 우선
-      const dbCal = dbNutrients.nutrients.calories;
-      const geminiCal = finalFood.calories;
-      if (dbCal > 0 && Math.abs(dbCal - geminiCal) / geminiCal < 0.5) {
-        finalFood.nutrients.carbohydrates = dbNutrients.nutrients.carbohydrates || finalFood.nutrients.carbohydrates;
-        finalFood.nutrients.protein = dbNutrients.nutrients.protein || finalFood.nutrients.protein;
-        finalFood.nutrients.fat = dbNutrients.nutrients.fat || finalFood.nutrients.fat;
-        finalFood.nutrients.fiber = dbNutrients.nutrients.fiber || finalFood.nutrients.fiber;
-        finalFood.nutrients.sodium = dbNutrients.nutrients.sodium || finalFood.nutrients.sodium;
+    if (dbResult) {
+      const dbCal = dbResult.nutrients.calories;
+      const gemCal = finalFood.calories;
+      // 칼로리 차이 50% 이내일 때만 DB 탄단지 신뢰 (더 검증된 값)
+      if (dbCal > 0 && Math.abs(dbCal - gemCal) / Math.max(gemCal, 1) < 0.5) {
+        finalFood.nutrients.carbohydrates = dbResult.nutrients.carbohydrates || finalFood.nutrients.carbohydrates;
+        finalFood.nutrients.protein       = dbResult.nutrients.protein       || finalFood.nutrients.protein;
+        finalFood.nutrients.fat           = dbResult.nutrients.fat           || finalFood.nutrients.fat;
+        finalFood.nutrients.fiber         = dbResult.nutrients.fiber         || finalFood.nutrients.fiber;
+        finalFood.nutrients.sodium        = dbResult.nutrients.sodium        || finalFood.nutrients.sodium;
       }
-      // 비타민·무기질은 DB 값이 있으면 보완
-      if (dbNutrients.nutrients.vitaminC > 0) finalFood.nutrients.vitaminC = dbNutrients.nutrients.vitaminC;
-      if (dbNutrients.nutrients.calcium > 0) finalFood.nutrients.calcium = dbNutrients.nutrients.calcium;
-      if (dbNutrients.nutrients.iron > 0) finalFood.nutrients.iron = dbNutrients.nutrients.iron;
+      // 미량 영양소는 DB 값으로 보완
+      if (dbResult.nutrients.vitaminC > 0) finalFood.nutrients.vitaminC = dbResult.nutrients.vitaminC;
+      if (dbResult.nutrients.calcium  > 0) finalFood.nutrients.calcium  = dbResult.nutrients.calcium;
+      if (dbResult.nutrients.iron     > 0) finalFood.nutrients.iron     = dbResult.nutrients.iron;
     }
 
-    return NextResponse.json({
-      success: true,
-      food: finalFood,
-      modelUsed: geminiResult.modelUsed,
-      source: dbNutrients ? 'hybrid' : 'gemini_only',
-    });
+    const source = dbResult
+      ? (dbResult.source === 'korean_db' ? 'korean_db+gemini' : 'openfoodfacts+gemini')
+      : 'gemini_only';
+
+    return NextResponse.json({ success: true, food: finalFood, modelUsed: geminiResult.modelUsed, source });
 
   } catch (error: any) {
     return NextResponse.json({ error: '서버 오류', details: error.message }, { status: 500 });

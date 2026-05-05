@@ -12,10 +12,13 @@ type Meal = {
   nutrient: { carbohydrates: number; protein: number; fat: number };
 };
 
+type DayStat = { date: string; calories: number; carbs: number; protein: number; fat: number };
+
 type AIFeedback = {
   feedback: string;
   goodPoint: string;
   improvement: string;
+  weeklyInsight?: string;
   recommendation: { menu: string; reason: string };
 };
 
@@ -38,42 +41,66 @@ export default function Home() {
         const headers: Record<string, string> = {};
         if (token) headers['Authorization'] = `Bearer ${token}`;
 
-        let combined: Meal[] = [];
-        const local = localStorage.getItem('mybob_meals');
-        if (local) combined = JSON.parse(local);
+        let combinedData: Meal[] = [];
+        const localData = localStorage.getItem('mybob_meals');
+        if (localData) combinedData = JSON.parse(localData);
 
         try {
-          const res = await fetch('/api/meals', { headers });
-          const r = await res.json();
-          if (r.success && Array.isArray(r.data)) {
-            const keys = new Set(r.data.map((m: Meal) => `${m.food_name}_${m.calories}`));
-            combined = [...r.data, ...combined.filter(m => !keys.has(`${m.food_name}_${m.calories}`))];
+          const response = await fetch('/api/meals', { headers });
+          const result = await response.json();
+          if (result.success && Array.isArray(result.data)) {
+            const serverKeys = new Set(result.data.map((m: Meal) => `${m.food_name}_${m.calories}`));
+            const uniqueLocal = combinedData.filter(m => !serverKeys.has(`${m.food_name}_${m.calories}`));
+            combinedData = [...result.data, ...uniqueLocal];
           }
         } catch { console.warn('Server fetch failed'); }
 
         const todayStr = new Date().toLocaleDateString();
-        const todayMeals = combined.filter(m => new Date(m.created_at).toLocaleDateString() === todayStr);
+        const todayMeals = combinedData.filter(m => new Date(m.created_at).toLocaleDateString() === todayStr);
         const totalCalories = todayMeals.reduce((s, m) => s + (Number(m.calories) || 0), 0);
         const nutrients = todayMeals.reduce((acc, m) => {
-          acc.carbs += Number(m.nutrient?.carbohydrates) || 0;
+          acc.carbs   += Number(m.nutrient?.carbohydrates) || 0;
           acc.protein += Number(m.nutrient?.protein) || 0;
-          acc.fat += Number(m.nutrient?.fat) || 0;
+          acc.fat     += Number(m.nutrient?.fat) || 0;
           return acc;
         }, { carbs: 0, protein: 0, fat: 0 });
 
         const stats = { totalCalories, mealNames: todayMeals.map(m => m.food_name), count: todayMeals.length, nutrients };
         setTodayStats(stats);
-        if (todayMeals.length > 0) getAIFeedback(stats);
+
+        if (todayMeals.length > 0) {
+          // 최근 7일 통계 계산
+          const weekly: DayStat[] = [];
+          for (let i = 6; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            const dateStr = d.toLocaleDateString();
+            const dayMeals = combinedData.filter(m => new Date(m.created_at).toLocaleDateString() === dateStr);
+            weekly.push({
+              date: dateStr,
+              calories: dayMeals.reduce((s, m) => s + (Number(m.calories) || 0), 0),
+              carbs:    dayMeals.reduce((s, m) => s + (Number(m.nutrient?.carbohydrates) || 0), 0),
+              protein:  dayMeals.reduce((s, m) => s + (Number(m.nutrient?.protein) || 0), 0),
+              fat:      dayMeals.reduce((s, m) => s + (Number(m.nutrient?.fat) || 0), 0),
+            });
+          }
+          const goalData = JSON.parse(localStorage.getItem('mybob_goal') || '{"goal":"유지"}');
+          getAIFeedback(stats, weekly, goalData);
+        }
       } catch (e) { console.error(e); } finally { setLoading(false); }
     };
 
-    const getAIFeedback = async (stats: any) => {
+    const getAIFeedback = async (stats: any, weekly: DayStat[], goalData: any) => {
       setLoadingFeedback(true);
       try {
         const res = await fetch('/api/recommendation', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nutrients: { calories: stats.totalCalories, ...stats.nutrients } }),
+          body: JSON.stringify({
+            today: { calories: stats.totalCalories, ...stats.nutrients },
+            weekly,
+            goal: goalData,
+          }),
         });
         const r = await res.json();
         if (r.success) setAiFeedback(r.data);
@@ -86,81 +113,82 @@ export default function Home() {
   if (loading) return null;
 
   return (
-    /* 바텀 네비(65px)를 뺀 남은 높이를 꽉 채움 */
-    <div style={{
-      height: 'calc(100svh - 65px)',
-      display: 'flex',
-      flexDirection: 'column',
-      backgroundColor: 'white',
-      overflow: 'hidden',
-    }}>
+    <div style={{ minHeight: '100svh', display: 'flex', flexDirection: 'column', backgroundColor: 'white' }}>
+
       {/* Section 1 */}
       <motion.section
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4 }}
         style={{
           flex: 1,
-          display: 'flex', flexDirection: 'column',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-start',
           justifyContent: 'center',
-          padding: '0 28px',
+          padding: '40px 32px',
           borderBottom: '1px solid #e5e7eb',
         }}
       >
-        <h1 style={{ fontSize: '26px', fontWeight: 400, color: 'black', letterSpacing: '-0.3px', lineHeight: 1.2, marginBottom: '10px' }}>
+        <h1 style={{ fontSize: '32px', fontWeight: 400, color: 'black', letterSpacing: '-1px', lineHeight: 1.1, marginBottom: '16px' }}>
           무엇을 드시나요?
         </h1>
         {todayStats.count > 0 ? (
-          <p style={{ fontSize: '13px', color: '#6B21A8' }}>오늘 {todayStats.count}개의 식단이 기록되었습니다.</p>
+          <p style={{ fontSize: '13px', fontWeight: 400, color: '#6B21A8', letterSpacing: '1px' }}>
+            오늘 {todayStats.count}개의 식단이 기록되었습니다.
+          </p>
         ) : (
-          <p style={{ fontSize: '13px', color: '#9ca3af' }}>식단을 기록하고 분석을 시작하세요.</p>
+          <p style={{ fontSize: '13px', fontWeight: 500, color: '#9ca3af' }}>
+            식단을 기록하고 분석을 시작하세요.
+          </p>
         )}
       </motion.section>
 
       {/* Section 2: AI COACH */}
       <motion.section
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3, delay: 0.1 }}
-        style={{
-          flex: 2,
-          display: 'flex', flexDirection: 'column',
-          justifyContent: 'center',
-          padding: '0 28px',
-        }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4, delay: 0.15 }}
+        style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '40px 32px', backgroundColor: 'white' }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
-          <span style={{ fontSize: '16px' }}>💡</span>
-          <h2 style={{ fontSize: '16px', fontWeight: 400, color: 'black' }}>AI COACH</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '32px' }}>
+          <span style={{ fontSize: '20px' }}>💡</span>
+          <h2 style={{ fontSize: '22px', fontWeight: 400, color: 'black', letterSpacing: '-0.5px' }}>AI COACH</h2>
         </div>
 
-        <ul style={{ display: 'flex', flexDirection: 'column', gap: '16px', listStyle: 'none', padding: 0, margin: 0 }}>
+        <ul style={{ display: 'flex', flexDirection: 'column', gap: '20px', listStyle: 'none', padding: 0, margin: 0 }}>
           <li style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#6B21A8', flexShrink: 0, marginTop: '5px' }} />
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#6B21A8', flexShrink: 0, marginTop: '6px' }} />
             <div>
-              <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '3px' }}>오늘 섭취 칼로리</p>
-              <p style={{ fontSize: '22px', fontWeight: 400, color: 'black', lineHeight: 1 }}>
-                {todayStats.totalCalories} <span style={{ fontSize: '11px', color: '#9ca3af' }}>KCAL</span>
+              <p style={{ fontSize: '11px', fontWeight: 400, color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '4px' }}>오늘섭취 칼로리</p>
+              <p style={{ fontSize: '28px', fontWeight: 400, color: 'black', lineHeight: 1 }}>
+                {todayStats.totalCalories} <span style={{ fontSize: '12px', fontWeight: 400, color: '#9ca3af' }}>KCAL</span>
               </p>
             </div>
           </li>
 
           <li style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#9ca3af', flexShrink: 0, marginTop: '5px' }} />
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#9ca3af', flexShrink: 0, marginTop: '6px' }} />
             <div>
-              <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '3px' }}>영양 밸런스</p>
-              <div style={{ display: 'flex', gap: '14px' }}>
-                <span style={{ fontSize: '13px', color: 'black' }}>탄 {todayStats.nutrients.carbs.toFixed(0)}g</span>
-                <span style={{ fontSize: '13px', color: 'black' }}>단 {todayStats.nutrients.protein.toFixed(0)}g</span>
-                <span style={{ fontSize: '13px', color: 'black' }}>지 {todayStats.nutrients.fat.toFixed(0)}g</span>
+              <p style={{ fontSize: '11px', fontWeight: 400, color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '4px' }}>영양밸런스</p>
+              <div style={{ display: 'flex', gap: '16px' }}>
+                <span style={{ fontSize: '14px', fontWeight: 400, color: 'black' }}>탄 {todayStats.nutrients.carbs.toFixed(0)}g</span>
+                <span style={{ fontSize: '14px', fontWeight: 400, color: 'black' }}>단 {todayStats.nutrients.protein.toFixed(0)}g</span>
+                <span style={{ fontSize: '14px', fontWeight: 400, color: 'black' }}>지 {todayStats.nutrients.fat.toFixed(0)}g</span>
               </div>
             </div>
           </li>
 
           <li style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#d1d5db', flexShrink: 0, marginTop: '5px' }} />
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#d1d5db', flexShrink: 0, marginTop: '6px' }} />
             <div style={{ flex: 1 }}>
-              <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '3px' }}>코치 코멘트</p>
+              <p style={{ fontSize: '11px', fontWeight: 400, color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '4px' }}>코치 코멘트</p>
               {loadingFeedback ? (
-                <div style={{ width: '14px', height: '14px', border: '1.5px solid #d1d5db', borderTopColor: 'black', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                <div style={{ width: '16px', height: '16px', border: '2px solid black', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
               ) : aiFeedback ? (
-                <p style={{ fontSize: '13px', color: '#374151', lineHeight: 1.5 }}>"{aiFeedback.feedback}"</p>
+                <p style={{ fontSize: '14px', fontWeight: 400, color: '#374151', lineHeight: 1.6 }}>
+                  "{aiFeedback.feedback}"
+                </p>
               ) : (
                 <p style={{ fontSize: '13px', color: '#9ca3af' }}>기록이 쌓이면 코칭이 시작됩니다.</p>
               )}

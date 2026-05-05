@@ -17,6 +17,7 @@ export default function RootLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [loading, setLoading] = useState(true);
+  const [showSplash, setShowSplash] = useState(true);
   const [session, setSession] = useState<Session | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -25,8 +26,12 @@ export default function RootLayout({
   const isProtectedRoute = pathname === '/' || ['/capture', '/report', '/history', '/community', '/settings'].some(route => pathname?.startsWith(route));
 
   useEffect(() => {
+    // Splash timer
+    const splashTimer = setTimeout(() => {
+      setShowSplash(false);
+    }, 2000);
+
     const checkSession = async () => {
-      setLoading(true);
       const { data: { session: currentSession } } = await supabase.auth.getSession();
       setSession(currentSession);
       setLoading(false);
@@ -50,16 +55,55 @@ export default function RootLayout({
 
     return () => {
       authListener?.subscription.unsubscribe();
+      clearTimeout(splashTimer);
     };
   }, [pathname, isProtectedRoute, isAuthRoute, router]);
 
-  if (loading) {
+  if (showSplash || loading) {
     return (
       <html lang="ko" className="h-full">
         <body className="h-full bg-white text-black antialiased">
-          <div className="min-h-screen flex items-center justify-center">
-            <div className="w-7 h-7 border-2 border-black border-t-transparent rounded-full animate-spin" />
-          </div>
+          <AnimatePresence>
+            {showSplash ? (
+              <motion.div
+                key="splash"
+                initial={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.5 }}
+                style={{
+                  position: 'fixed',
+                  inset: 0,
+                  zIndex: 10000,
+                  backgroundColor: 'white',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <motion.h1
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.2, duration: 0.8 }}
+                  style={{ fontSize: '48px', fontWeight: 400, letterSpacing: '-2px', marginBottom: '12px' }}
+                >
+                  MYBOB
+                </motion.h1>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 1, duration: 0.5 }}
+                  style={{ fontSize: '12px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase' }}
+                >
+                  식단 기록 & AI 분석
+                </motion.p>
+              </motion.div>
+            ) : (
+              <div className="min-h-screen flex items-center justify-center">
+                <div className="w-7 h-7 border-2 border-black border-t-transparent rounded-full animate-spin" />
+              </div>
+            )}
+          </AnimatePresence>
         </body>
       </html>
     );
@@ -242,32 +286,32 @@ export default function RootLayout({
                   background: 'none',
                   border: 'none',
                   cursor: 'pointer',
+                  width: '42px',
+                  alignItems: 'center',
                 }}
                 aria-label={isMenuOpen ? '메뉴 닫기' : '메뉴 열기'}
               >
-                <span style={{ display: 'block', width: '26px', height: '2px', backgroundColor: 'black' }} />
-                <span style={{ display: 'block', width: '26px', height: '2px', backgroundColor: 'black' }} />
-                <span style={{ display: 'block', width: '26px', height: '2px', backgroundColor: 'black' }} />
+                <span style={{ display: 'block', width: '24px', height: '1px', backgroundColor: 'black' }} />
+                <span style={{ display: 'block', width: '24px', height: '1px', backgroundColor: 'black' }} />
+                <span style={{ display: 'block', width: '24px', height: '1px', backgroundColor: 'black' }} />
               </button>
 
-              {/* 카메라 */}
+              {/* 카메라 — 같은 선상에 배치 */}
               <Link
                 href="/capture"
                 style={{
                   display: 'flex',
+                  flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  width: '56px',
-                  height: '56px',
-                  backgroundColor: 'white',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '50%',
-                  marginTop: '-28px',
+                  gap: '3px',
                   textDecoration: 'none',
                   color: 'black',
+                  width: '42px',
                 }}
               >
-                <FaCamera size={22} />
+                <FaCamera size={20} />
+                <span style={{ fontSize: '9px', letterSpacing: '1px', color: '#6B21A8', textTransform: 'uppercase' }}>CAPTURE</span>
               </Link>
 
               {/* 타임라인 */}
@@ -280,9 +324,10 @@ export default function RootLayout({
                   alignItems: 'center',
                   gap: '3px',
                   color: 'black',
+                  width: '42px',
                 }}
               >
-                <FaHistory size={22} />
+                <FaHistory size={20} />
                 <span style={{ fontSize: '9px', letterSpacing: '1px', color: '#6B21A8', textTransform: 'uppercase' }}>TIMELINE</span>
               </Link>
             </nav>

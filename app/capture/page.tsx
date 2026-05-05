@@ -12,6 +12,7 @@ type AnalysisResult = {
   calories: number;
   category?: string;
   amount?: string;
+  confidence?: 'high' | 'medium' | 'low';
   nutrients: {
     carbohydrates: number;
     protein: number;
@@ -28,6 +29,31 @@ type AnalysisResult = {
   };
 };
 
+// 클라이언트에서 이미지 리사이즈 (전송 용량 절감)
+function resizeImage(dataUrl: string, maxWidth = 800): Promise<string> {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxWidth / img.width);
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', 0.82));
+    };
+    img.src = dataUrl;
+  });
+}
+
+const SOURCE_LABEL: Record<string, string> = {
+  'korean_db+gemini':    '한식DB+AI',
+  'openfoodfacts+gemini':'글로벌DB+AI',
+  'gemini_only':         'AI추론',
+  'korean_db_only':      '한식DB',
+  'openfoodfacts_only':  '글로벌DB',
+};
+const CONFIDENCE_COLOR: Record<string, string> = { high: '#16a34a', medium: '#d97706', low: '#9ca3af' };
+
 export default function CameraCapturePage() {
   const webcamRef = useRef<Webcam>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -35,6 +61,8 @@ export default function CameraCapturePage() {
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
   const [loadingSave, setLoadingSave] = useState(false);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
+  const [analysisSource, setAnalysisSource] = useState<string | null>(null);
+  const [analysisModel, setAnalysisModel] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   // 카메라 권한을 한 번 얻으면 컴포넌트 생애 동안 유지
   const [cameraReady, setCameraReady] = useState(false);
@@ -66,14 +94,20 @@ export default function CameraCapturePage() {
     if (!imageSrc) return;
     setLoadingAnalysis(true);
     try {
+      // 전송 전 리사이즈 (용량 절감)
+      const resized = await resizeImage(imageSrc, 800);
       const res = await fetch('/api/analyze-food', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: imageSrc }),
+        body: JSON.stringify({ image: resized }),
       });
       const result = await res.json();
       if (!res.ok) throw new Error(result.details || result.error || '분석 오류');
-      if (result.success) setAnalysis(result.food);
+      if (result.success) {
+        setAnalysis(result.food);
+        setAnalysisSource(result.source || null);
+        setAnalysisModel(result.modelUsed || null);
+      }
     } catch (err: any) {
       alert(`분석 실패: ${err.message}`);
     } finally {
@@ -86,23 +120,31 @@ export default function CameraCapturePage() {
     setLoadingSave(true);
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
+
+    // 로컬 저장 (항상 먼저)
     const localMeal = {
       id: Date.now().toString(),
       food_name: analysis.name,
       calories: analysis.calories,
       nutrient: analysis.nutrients,
+      category: analysis.category,
       photo_url: imageSrc,
       created_at: new Date().toISOString(),
     };
-    try {
-      const existing = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
-      localStorage.setItem('mybob_meals', JSON.stringify([localMeal, ...existing]));
-      await fetch('/api/meals', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ mealData: analysis, imageBase64: imageSrc }),
-      });
-    } catch { /* local save already done */ }
+    const existing = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
+    localStorage.setItem('mybob_meals', JSON.stringify([localMeal, ...existing]));
+
+    // 로그인된 경우에만 서버 동기화
+    if (token) {
+      try {
+        await fetch('/api/meals', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ mealData: analysis, imageBase64: imageSrc }),
+        });
+      } catch { /* 로컬 저장은 완료됨 */ }
+    }
+
     setSaved(true);
     setLoadingSave(false);
   };
@@ -111,6 +153,8 @@ export default function CameraCapturePage() {
   const retake = () => {
     setImageSrc(null);
     setAnalysis(null);
+    setAnalysisSource(null);
+    setAnalysisModel(null);
     setSaved(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -236,11 +280,25 @@ export default function CameraCapturePage() {
                   >
                     {/* 음식명 + 칼로리 */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div>
-                        <h3 style={{ fontSize: '18px', fontWeight: 400, color: 'black', marginBottom: '2px' }}>{analysis.name}</h3>
-                        {analysis.category && (
-                          <span style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1px' }}>{analysis.category} · {analysis.amount || '1인분'}</span>
-                        )}
+                      <div style={{ flex: 1, marginRight: '12px' }}>
+                        <h3 style={{ fontSize: '18px', fontWeight: 400, color: 'black', marginBottom: '4px' }}>{analysis.name}</h3>
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                          {analysis.category && (
+                            <span style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1px' }}>{analysis.category} · {analysis.amount || '1인분'}</span>
+                          )}
+                          {/* 출처 배지 */}
+                          {analysisSource && (
+                            <span style={{ fontSize: '9px', padding: '2px 6px', backgroundColor: '#f3f4f6', color: '#6b7280', letterSpacing: '0.5px' }}>
+                              {SOURCE_LABEL[analysisSource] || analysisSource}
+                            </span>
+                          )}
+                          {/* 신뢰도 배지 */}
+                          {analysis.confidence && (
+                            <span style={{ fontSize: '9px', padding: '2px 6px', backgroundColor: '#f3f4f6', color: CONFIDENCE_COLOR[analysis.confidence], letterSpacing: '0.5px', fontWeight: 500 }}>
+                              신뢰도 {analysis.confidence === 'high' ? '높음' : analysis.confidence === 'medium' ? '보통' : '낮음'}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <div style={{ textAlign: 'right' }}>
                         <p style={{ fontSize: '20px', color: '#6B21A8', lineHeight: 1 }}>{analysis.calories}</p>
