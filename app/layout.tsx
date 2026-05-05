@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
@@ -16,9 +16,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const [showSplash, setShowSplash] = useState(true);
   const [session, setSession] = useState<Session | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+  // ref to avoid stale closure when sidebar button calls handleInstall
+  const installPromptRef = useRef<any>(null);
 
   const isAuthRoute = pathname?.startsWith('/auth') || false;
   const isCaptureRoute = pathname === '/capture';
@@ -26,6 +28,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     const splashTimer = setTimeout(() => setShowSplash(false), 2000);
+
+    // iOS detection (no beforeinstallprompt support)
+    const ua = navigator.userAgent;
+    const ios = /iphone|ipad|ipod/i.test(ua) && !(window as any).MSStream;
+    setIsIOS(ios);
 
     const checkSession = async () => {
       const { data: { session: s } } = await supabase.auth.getSession();
@@ -42,10 +49,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       else if (s && isAuthRoute) router.push('/');
     });
 
-    // PWA 설치 프롬프트 캐치
+    // PWA 설치 프롬프트 캐치 — store in ref so it's always current
     const onBeforeInstall = (e: Event) => {
       e.preventDefault();
-      setInstallPrompt(e);
+      installPromptRef.current = e;
       setShowInstallBanner(true);
     };
     window.addEventListener('beforeinstallprompt', onBeforeInstall);
@@ -66,12 +73,24 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   }, [pathname, isProtectedRoute, isAuthRoute, router]);
 
   const handleInstall = async () => {
-    if (!installPrompt) return;
-    installPrompt.prompt();
-    const { outcome } = await installPrompt.userChoice;
+    const prompt = installPromptRef.current;
+    if (!prompt) return;
+    prompt.prompt();
+    const { outcome } = await prompt.userChoice;
     if (outcome === 'accepted') setIsInstalled(true);
-    setInstallPrompt(null);
+    installPromptRef.current = null;
     setShowInstallBanner(false);
+  };
+
+  // Called from sidebar "앱 설치" button
+  const handleInstallFromSidebar = () => {
+    setIsMenuOpen(false);
+    if (installPromptRef.current) {
+      handleInstall();
+    } else {
+      // No native prompt: show banner (iOS will see the guide there)
+      setShowInstallBanner(true);
+    }
   };
 
   if (showSplash || loading) {
@@ -145,24 +164,33 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AnimatePresence>
           {showInstallBanner && !isInstalled && (
             <motion.div
-              initial={{ y: -80 }} animate={{ y: 0 }} exit={{ y: -80 }}
+              initial={{ y: -100 }} animate={{ y: 0 }} exit={{ y: -100 }}
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
               style={{
                 position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9998,
                 backgroundColor: 'white', borderBottom: '1px solid #e5e7eb',
-                padding: '12px 20px', display: 'flex', alignItems: 'center', gap: '12px',
+                padding: '14px 20px', display: 'flex', alignItems: 'flex-start', gap: '12px',
               }}
             >
               <div style={{ flex: 1 }}>
-                <p style={{ fontSize: '13px', color: 'black', marginBottom: '2px' }}>MyBob 앱으로 설치</p>
-                <p style={{ fontSize: '11px', color: '#9ca3af' }}>홈 화면에 추가하면 앱처럼 사용할 수 있어요</p>
+                <p style={{ fontSize: '13px', color: 'black', marginBottom: '4px' }}>MyBob 앱으로 설치</p>
+                {isIOS ? (
+                  <p style={{ fontSize: '11px', color: '#6b7280', lineHeight: 1.5 }}>
+                    Safari 하단의 <strong>공유</strong> 버튼(□↑)을 탭한 후<br />
+                    <strong>홈 화면에 추가</strong>를 선택하세요.
+                  </p>
+                ) : (
+                  <p style={{ fontSize: '11px', color: '#9ca3af' }}>홈 화면에 추가하면 앱처럼 사용할 수 있어요</p>
+                )}
               </div>
-              <button
-                onClick={handleInstall}
-                style={{ padding: '8px 14px', backgroundColor: 'black', color: 'white', border: 'none', fontSize: '12px', cursor: 'pointer', letterSpacing: '0.5px', flexShrink: 0 }}
-              >
-                설치
-              </button>
+              {!isIOS && (
+                <button
+                  onClick={handleInstall}
+                  style={{ padding: '8px 14px', backgroundColor: 'black', color: 'white', border: 'none', fontSize: '12px', cursor: 'pointer', letterSpacing: '0.5px', flexShrink: 0 }}
+                >
+                  설치
+                </button>
+              )}
               <button
                 onClick={() => setShowInstallBanner(false)}
                 style={{ background: 'none', border: 'none', fontSize: '18px', color: '#9ca3af', cursor: 'pointer', padding: '4px', flexShrink: 0 }}
@@ -183,7 +211,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               style={{ position: 'fixed', inset: 0, zIndex: 1000, backgroundColor: 'white', display: 'flex', flexDirection: 'column' }}
             >
               {/* 헤더 */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid #e5e7eb' }}>
+              <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid #e5e7eb' }}>
                 <span style={{ fontSize: '18px', letterSpacing: '-0.5px' }}>MYBOB</span>
                 <button
                   onClick={() => setIsMenuOpen(false)}
@@ -195,8 +223,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </button>
               </div>
 
-              {/* 메뉴 */}
-              <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 24px' }}>
+              {/* 메뉴 — 스크롤 가능, 하단 nav 높이(65px) + 여유(20px) 만큼 패딩 */}
+              <nav style={{ flex: 1, overflowY: 'auto', padding: '0 24px 85px 24px' }}>
                 {menuItems.map((item) => (
                   <Link
                     key={item.label} href={item.href} onClick={() => setIsMenuOpen(false)}
@@ -210,13 +238,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 {/* 앱 설치 메뉴 */}
                 {!isInstalled && (
                   <button
-                    onClick={() => { setIsMenuOpen(false); if (installPrompt) handleInstall(); else setShowInstallBanner(true); }}
+                    onClick={handleInstallFromSidebar}
                     style={{ display: 'flex', alignItems: 'center', gap: '20px', padding: '20px 16px', background: 'none', border: 'none', borderBottom: '1px solid #f3f4f6', cursor: 'pointer', textAlign: 'left', width: '100%' }}
                   >
                     <FaDownload size={20} style={{ flexShrink: 0, color: '#6B21A8' }} />
                     <div>
                       <span style={{ fontSize: '18px', letterSpacing: '-0.3px', color: 'black', display: 'block' }}>앱 설치</span>
-                      <span style={{ fontSize: '11px', color: '#9ca3af' }}>홈 화면에 추가</span>
+                      <span style={{ fontSize: '11px', color: '#9ca3af' }}>
+                        {isIOS ? 'Safari 공유 → 홈 화면에 추가' : '홈 화면에 추가'}
+                      </span>
                     </div>
                   </button>
                 )}
@@ -226,27 +256,27 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     <span style={{ fontSize: '18px', letterSpacing: '-0.3px', color: '#9ca3af' }}>설치됨</span>
                   </div>
                 )}
-              </nav>
 
-              {/* 하단 로그인/로그아웃 */}
-              <div style={{ padding: '24px 40px', borderTop: '1px solid #e5e7eb' }}>
-                {!session ? (
-                  <Link href="/auth/login" onClick={() => setIsMenuOpen(false)}
-                    style={{ display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none', color: '#6B21A8' }}
-                  >
-                    <FaSignInAlt size={18} />
-                    <span style={{ fontSize: '16px' }}>로그인</span>
-                  </Link>
-                ) : (
-                  <button
-                    onClick={async () => { await supabase.auth.signOut(); setIsMenuOpen(false); router.push('/auth/login'); }}
-                    style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 0 }}
-                  >
-                    <FaSignOutAlt size={18} />
-                    <span style={{ fontSize: '16px' }}>로그아웃</span>
-                  </button>
-                )}
-              </div>
+                {/* 로그인/로그아웃 — 스크롤 영역 안에 포함 */}
+                <div style={{ padding: '24px 16px', borderTop: '1px solid #e5e7eb', marginTop: '8px' }}>
+                  {!session ? (
+                    <Link href="/auth/login" onClick={() => setIsMenuOpen(false)}
+                      style={{ display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none', color: '#6B21A8' }}
+                    >
+                      <FaSignInAlt size={18} />
+                      <span style={{ fontSize: '16px' }}>로그인</span>
+                    </Link>
+                  ) : (
+                    <button
+                      onClick={async () => { await supabase.auth.signOut(); setIsMenuOpen(false); router.push('/auth/login'); }}
+                      style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 0 }}
+                    >
+                      <FaSignOutAlt size={18} />
+                      <span style={{ fontSize: '16px' }}>로그아웃</span>
+                    </button>
+                  )}
+                </div>
+              </nav>
             </motion.div>
           )}
         </AnimatePresence>

@@ -272,18 +272,18 @@ export default function MealDetailPage() {
                 key={m.id}
                 onClick={() => router.push(`/history/${m.id}`)}
                 style={{
-                  width: '100%', aspectRatio: '1/1',
+                  position: 'relative',
+                  paddingBottom: '100%', // 정사각형 유지
                   backgroundColor: m.id === id ? '#d1d5db' : 'white',
                   cursor: 'pointer',
-                  position: 'relative',
                   outline: m.id === id ? '2px solid black' : 'none',
                   outlineOffset: '-2px',
                 }}
               >
                 {m.photo_url ? (
-                  <img src={m.photo_url} alt={m.food_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img src={m.photo_url} alt={m.food_name} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
-                  <div style={{ width: '100%', height: '100%', backgroundColor: '#f3f4f6' }} />
+                  <div style={{ position: 'absolute', inset: 0, backgroundColor: '#f3f4f6' }} />
                 )}
               </div>
             ))}
