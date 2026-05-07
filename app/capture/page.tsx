@@ -54,6 +54,8 @@ const SOURCE_LABEL: Record<string, string> = {
 };
 const CONFIDENCE_COLOR: Record<string, string> = { high: '#16a34a', medium: '#d97706', low: '#9ca3af' };
 
+type PermState = 'checking' | 'granted' | 'denied' | 'prompt';
+
 export default function CameraCapturePage() {
   const webcamRef = useRef<Webcam>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -64,8 +66,53 @@ export default function CameraCapturePage() {
   const [analysisSource, setAnalysisSource] = useState<string | null>(null);
   const [analysisModel, setAnalysisModel] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
-  // 카메라 권한을 한 번 얻으면 컴포넌트 생애 동안 유지
   const [cameraReady, setCameraReady] = useState(false);
+  const [permState, setPermState] = useState<PermState>('checking');
+
+  useEffect(() => {
+    // 이미 허용된 것으로 캐시된 경우 바로 granted
+    if (localStorage.getItem('mybob_camera_granted') === '1') {
+      setPermState('granted');
+      return;
+    }
+    // Permissions API로 현재 상태 확인 (재요청 없이)
+    if (navigator.permissions) {
+      navigator.permissions.query({ name: 'camera' as PermissionName }).then(status => {
+        if (status.state === 'granted') {
+          localStorage.setItem('mybob_camera_granted', '1');
+          setPermState('granted');
+        } else if (status.state === 'denied') {
+          setPermState('denied');
+        } else {
+          setPermState('prompt');
+        }
+        status.onchange = () => {
+          if (status.state === 'granted') {
+            localStorage.setItem('mybob_camera_granted', '1');
+            setPermState('granted');
+          } else if (status.state === 'denied') {
+            setPermState('denied');
+          }
+        };
+      }).catch(() => {
+        // Permissions API 미지원 브라우저 — 바로 웹캠 시도
+        setPermState('prompt');
+      });
+    } else {
+      setPermState('prompt');
+    }
+  }, []);
+
+  const requestCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      stream.getTracks().forEach(t => t.stop()); // 스트림 즉시 해제 (Webcam 컴포넌트가 다시 열 것)
+      localStorage.setItem('mybob_camera_granted', '1');
+      setPermState('granted');
+    } catch {
+      setPermState('denied');
+    }
+  };
 
   const capture = useCallback(() => {
     if (webcamRef.current) {
@@ -159,6 +206,86 @@ export default function CameraCapturePage() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  // 확인 중
+  if (permState === 'checking') {
+    return (
+      <div style={{ position: 'fixed', inset: 0, backgroundColor: 'black', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: '28px', height: '28px', border: '2px solid white', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  // 공통 hidden input (권한 화면에서도 갤러리 선택 가능)
+  const galleryInput = (
+    <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" style={{ display: 'none' }} />
+  );
+
+  // 권한 거부됨
+  if (permState === 'denied') {
+    return (
+      <div style={{ position: 'fixed', inset: 0, backgroundColor: 'black', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px', gap: '20px' }}>
+        {galleryInput}
+        <Link href="/" style={{ position: 'absolute', top: '20px', left: '20px', textDecoration: 'none' }}>
+          <div style={{ width: '40px', height: '40px', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <FaArrowLeft size={15} color="white" />
+          </div>
+        </Link>
+        <FaCamera size={36} color="rgba(255,255,255,0.4)" />
+        <p style={{ color: 'white', fontSize: '16px', fontWeight: 400, textAlign: 'center', lineHeight: 1.5 }}>카메라 권한이 차단되어 있습니다</p>
+        <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', textAlign: 'center', lineHeight: 1.8 }}>
+          브라우저 주소창 왼쪽의 자물쇠 아이콘을 탭한 후<br />
+          카메라 권한을 <strong style={{ color: 'white' }}>허용</strong>으로 변경하세요.
+        </p>
+        <button
+          onClick={() => { localStorage.removeItem('mybob_camera_granted'); setPermState('prompt'); }}
+          style={{ padding: '12px 28px', backgroundColor: 'white', color: 'black', border: 'none', fontSize: '13px', cursor: 'pointer', letterSpacing: '1px' }}
+        >
+          다시 시도
+        </button>
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          style={{ padding: '12px 28px', backgroundColor: 'transparent', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.2)', fontSize: '13px', cursor: 'pointer', letterSpacing: '1px' }}
+        >
+          갤러리에서 선택
+        </button>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  // 권한 요청 필요
+  if (permState === 'prompt') {
+    return (
+      <div style={{ position: 'fixed', inset: 0, backgroundColor: 'black', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px', gap: '20px' }}>
+        {galleryInput}
+        <Link href="/" style={{ position: 'absolute', top: '20px', left: '20px', textDecoration: 'none' }}>
+          <div style={{ width: '40px', height: '40px', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <FaArrowLeft size={15} color="white" />
+          </div>
+        </Link>
+        <FaCamera size={36} color="white" />
+        <p style={{ color: 'white', fontSize: '16px', fontWeight: 400, textAlign: 'center', lineHeight: 1.5 }}>카메라 접근 권한이 필요합니다</p>
+        <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', textAlign: 'center', lineHeight: 1.8 }}>
+          허용을 누르면 이후 다시 묻지 않습니다.
+        </p>
+        <button
+          onClick={requestCamera}
+          style={{ padding: '14px 36px', backgroundColor: 'white', color: 'black', border: 'none', fontSize: '14px', cursor: 'pointer', letterSpacing: '1px' }}
+        >
+          카메라 허용
+        </button>
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          style={{ padding: '12px 28px', backgroundColor: 'transparent', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.2)', fontSize: '13px', cursor: 'pointer', letterSpacing: '1px' }}
+        >
+          갤러리에서 선택
+        </button>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
   return (
     <div style={{ position: 'fixed', inset: 0, backgroundColor: 'black', display: 'flex', flexDirection: 'column' }}>
       <AnimatePresence mode="wait">
@@ -170,14 +297,16 @@ export default function CameraCapturePage() {
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             style={{ position: 'absolute', inset: 0 }}
           >
-            {/* 웹캠: audio=false로 고정, 한 번 마운트 후 유지 */}
             <Webcam
               audio={false}
               ref={webcamRef}
               screenshotFormat="image/jpeg"
               videoConstraints={{ facingMode: 'environment' }}
               onUserMedia={() => setCameraReady(true)}
-              onUserMediaError={() => alert('카메라 접근 권한이 필요합니다.')}
+              onUserMediaError={() => {
+                localStorage.removeItem('mybob_camera_granted');
+                setPermState('denied');
+              }}
               style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
             />
 
