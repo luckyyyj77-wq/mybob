@@ -1,7 +1,12 @@
+"use client";
+
 import Link from 'next/link';
 import { FaArrowLeft } from 'react-icons/fa';
+import { usePathname } from 'next/navigation';
 
 export default function ReportLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+
   return (
     <div style={{
       height: 'calc(100svh - 65px)',
@@ -29,29 +34,33 @@ export default function ReportLayout({ children }: { children: React.ReactNode }
           {[
             { label: '일간', href: '/report/daily' },
             { label: '주간', href: '/report/weekly' },
-            { label: '월간', href: '/report/monthly' },
-          ].map((tab) => (
-            <Link
-              key={tab.href}
-              href={tab.href}
-              style={{
-                padding: '10px 20px',
-                fontSize: '12px',
-                color: 'black',
-                textDecoration: 'none',
-                borderRight: '1px solid #e5e7eb',
-                letterSpacing: '1px',
-                textTransform: 'uppercase',
-              }}
-            >
-              {tab.label}
-            </Link>
-          ))}
+          ].map((tab) => {
+            const active = pathname === tab.href;
+            return (
+              <Link
+                key={tab.href}
+                href={tab.href}
+                style={{
+                  padding: '10px 24px',
+                  fontSize: '12px',
+                  letterSpacing: '1px',
+                  textTransform: 'uppercase',
+                  textDecoration: 'none',
+                  color: active ? 'white' : 'black',
+                  backgroundColor: active ? 'black' : 'white',
+                  borderRight: '1px solid #e5e7eb',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {tab.label}
+              </Link>
+            );
+          })}
         </nav>
       </div>
 
       {/* Scrollable content */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '1px 0 0' }}>
         {children}
       </div>
     </div>
