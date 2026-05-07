@@ -27,12 +27,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) { router.replace('/auth/login'); return; }
-      // 관리자 여부는 API 호출로 검증 (서버에서 ADMIN_EMAIL 비교)
-      const res = await fetch('/api/admin/stats', {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-      if (res.status === 403) { router.replace('/'); return; }
-      setChecking(false);
+      try {
+        const res = await fetch('/api/admin/stats', {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        if (res.status === 403) { router.replace('/'); return; }
+        setChecking(false);
+      } catch {
+        // 네트워크 오류 시에도 접근 허용 (대시보드에서 에러 표시)
+        setChecking(false);
+      }
     });
   }, [router]);
 

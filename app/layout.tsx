@@ -24,6 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   const isAuthRoute = pathname?.startsWith('/auth') || false;
   const isCaptureRoute = pathname === '/capture';
+  const isAdminRoute = pathname?.startsWith('/admin') || false;
   const isProtectedRoute = pathname === '/' || ['/capture', '/report', '/history', '/community', '/settings'].some(r => pathname?.startsWith(r));
 
   useEffect(() => {
@@ -92,6 +93,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       setShowInstallBanner(true);
     }
   };
+
+  // 관리자 페이지는 전역 레이아웃(스플래시·하단 nav) 없이 자체 레이아웃 사용
+  if (isAdminRoute) {
+    return (
+      <html lang="ko">
+        <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+        </head>
+        <body style={{ margin: 0, backgroundColor: '#0f0f0f' }}>
+          {children}
+        </body>
+      </html>
+    );
+  }
 
   if (showSplash || loading) {
     return (
