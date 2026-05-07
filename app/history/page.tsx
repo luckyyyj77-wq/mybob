@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaThList, FaThLarge, FaTh, FaPlus, FaMinus } from 'react-icons/fa';
+import { FaThList, FaThLarge, FaTh, FaPlus, FaMinus, FaSearch, FaTimes } from 'react-icons/fa';
 
 type Meal = {
   id: string;
@@ -17,22 +17,29 @@ type Meal = {
 };
 
 type ViewMode = 'full' | 'grid' | 'gallery';
+type SortKey = 'date_desc' | 'date_asc' | 'cal_desc' | 'cal_asc';
+
+const CATEGORIES = ['전체', '한식', '중식', '일식', '양식', '간식', '음료', '기타'];
+
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: 'date_desc', label: '최신순' },
+  { value: 'date_asc',  label: '오래된순' },
+  { value: 'cal_desc',  label: '칼로리 높은순' },
+  { value: 'cal_asc',   label: '칼로리 낮은순' },
+];
 
 function formatDateLabel(dateStr: string): string {
   const d = new Date(dateStr);
   const today = new Date();
   const yesterday = new Date();
   yesterday.setDate(today.getDate() - 1);
-
   const isSameDay = (a: Date, b: Date) =>
     a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-
   if (isSameDay(d, today)) return '오늘';
   if (isSameDay(d, yesterday)) return '어제';
   return d.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
 }
 
-// 날짜별로 그룹화
 function groupByDate(meals: Meal[]): { dateKey: string; label: string; meals: Meal[] }[] {
   const map = new Map<string, Meal[]>();
   meals.forEach(m => {
@@ -47,6 +54,32 @@ function groupByDate(meals: Meal[]): { dateKey: string; label: string; meals: Me
   }));
 }
 
+function applyFilters(meals: Meal[], query: string, category: string, sort: SortKey): Meal[] {
+  let result = [...meals];
+
+  // 검색어
+  if (query.trim()) {
+    const q = query.trim().toLowerCase();
+    result = result.filter(m => m.food_name.toLowerCase().includes(q));
+  }
+
+  // 카테고리
+  if (category !== '전체') {
+    result = result.filter(m => (m.category || '기타') === category);
+  }
+
+  // 정렬
+  result.sort((a, b) => {
+    if (sort === 'date_desc') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    if (sort === 'date_asc')  return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    if (sort === 'cal_desc')  return b.calories - a.calories;
+    if (sort === 'cal_asc')   return a.calories - b.calories;
+    return 0;
+  });
+
+  return result;
+}
+
 export default function HistoryPage() {
   const router = useRouter();
   const [meals, setMeals] = useState<Meal[]>([]);
@@ -55,14 +88,19 @@ export default function HistoryPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('full');
   const [galleryScale, setGalleryScale] = useState(4);
 
+  // 검색 / 필터 / 정렬
+  const [showSearch, setShowSearch] = useState(false);
+  const [query, setQuery] = useState('');
+  const [category, setCategory] = useState('전체');
+  const [sort, setSort] = useState<SortKey>('date_desc');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
-    // 1단계: 로컬 즉시 렌더링
     const local: Meal[] = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
     const sorted = (arr: Meal[]) => arr.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     setMeals(sorted(local));
     setLoading(false);
 
-    // 2단계: 서버 백그라운드 동기화
     fetch('/api/meals').then(r => r.json()).then(result => {
       if (result.success && Array.isArray(result.data)) {
         const keys = new Set(result.data.map((m: Meal) => `${m.food_name}_${m.calories}`));
@@ -72,22 +110,48 @@ export default function HistoryPage() {
     }).catch(() => {});
   }, []);
 
+  // 검색창 열릴 때 포커스
+  useEffect(() => {
+    if (showSearch) setTimeout(() => searchInputRef.current?.focus(), 80);
+  }, [showSearch]);
+
   const handleZoom = (delta: number) => {
     setGalleryScale(prev => Math.max(3, Math.min(6, prev + delta)));
   };
 
-  const groups = groupByDate(meals);
+  const filtered = applyFilters(meals, query, category, sort);
+  const groups = groupByDate(filtered);
+
+  // 검색/필터 활성화 여부
+  const isFiltered = query.trim() !== '' || category !== '전체' || sort !== 'date_desc';
+
+  const clearAll = () => {
+    setQuery('');
+    setCategory('전체');
+    setSort('date_desc');
+  };
 
   return (
     <div style={{ minHeight: '100svh', backgroundColor: 'white', display: 'flex', flexDirection: 'column' }}>
 
-      {/* Header — 상단 여백 축소 */}
+      {/* Header */}
       <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
         <div>
           <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '4px' }}>TIMELINE</p>
           <h1 style={{ fontSize: '26px', fontWeight: 400, color: 'black', letterSpacing: '-1px', lineHeight: 1 }}>기록</h1>
         </div>
         <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+          {/* 검색 버튼 */}
+          <button
+            onClick={() => setShowSearch(v => !v)}
+            style={{ background: showSearch ? 'black' : 'none', border: '1px solid #e5e7eb', width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', position: 'relative' }}
+          >
+            <FaSearch size={12} color={showSearch ? 'white' : 'black'} />
+            {/* 필터 활성 표시 dot */}
+            {isFiltered && !showSearch && (
+              <span style={{ position: 'absolute', top: '5px', right: '5px', width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#6B21A8' }} />
+            )}
+          </button>
           <button
             onClick={() => setViewMode('full')}
             style={{ background: viewMode === 'full' ? 'black' : 'none', border: '1px solid #e5e7eb', width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
@@ -108,6 +172,95 @@ export default function HistoryPage() {
           </button>
         </div>
       </div>
+
+      {/* 검색 / 필터 패널 */}
+      <AnimatePresence>
+        {showSearch && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            style={{ overflow: 'hidden', borderBottom: '1px solid #e5e7eb', backgroundColor: 'white' }}
+          >
+            <div style={{ padding: '12px 24px 14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+
+              {/* 검색 인풋 */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid #e5e7eb', padding: '8px 12px' }}>
+                <FaSearch size={11} color="#9ca3af" style={{ flexShrink: 0 }} />
+                <input
+                  ref={searchInputRef}
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
+                  placeholder="음식 이름 검색"
+                  style={{ flex: 1, border: 'none', outline: 'none', fontSize: '13px', color: 'black', backgroundColor: 'transparent' }}
+                />
+                {query && (
+                  <button onClick={() => setQuery('')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}>
+                    <FaTimes size={10} color="#9ca3af" />
+                  </button>
+                )}
+              </div>
+
+              {/* 카테고리 필터 */}
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {CATEGORIES.map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => setCategory(cat)}
+                    style={{
+                      padding: '5px 10px', fontSize: '11px', cursor: 'pointer', border: '1px solid',
+                      borderColor: category === cat ? 'black' : '#e5e7eb',
+                      backgroundColor: category === cat ? 'black' : 'white',
+                      color: category === cat ? 'white' : '#6b7280',
+                      letterSpacing: '0.3px',
+                    }}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+
+              {/* 정렬 + 초기화 */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  {SORT_OPTIONS.map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setSort(opt.value)}
+                      style={{
+                        padding: '5px 10px', fontSize: '11px', cursor: 'pointer', border: '1px solid',
+                        borderColor: sort === opt.value ? '#6B21A8' : '#e5e7eb',
+                        backgroundColor: sort === opt.value ? '#6B21A8' : 'white',
+                        color: sort === opt.value ? 'white' : '#6b7280',
+                      }}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                {isFiltered && (
+                  <button onClick={clearAll} style={{ fontSize: '11px', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
+                    초기화
+                  </button>
+                )}
+              </div>
+
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 결과 수 표시 (검색/필터 활성 시) */}
+      {isFiltered && (
+        <div style={{ padding: '8px 24px', borderBottom: '1px solid #f3f4f6', backgroundColor: '#fafafa' }}>
+          <p style={{ fontSize: '11px', color: '#9ca3af' }}>
+            {filtered.length}개 결과
+            {query && <span> · "<span style={{ color: 'black' }}>{query}</span>"</span>}
+            {category !== '전체' && <span> · <span style={{ color: '#6B21A8' }}>{category}</span></span>}
+          </p>
+        </div>
+      )}
 
       {/* Gallery 줌 컨트롤 */}
       {viewMode === 'gallery' && (
@@ -132,30 +285,34 @@ export default function HistoryPage() {
             <p style={{ color: '#ef4444', marginBottom: '16px' }}>{error}</p>
             <button onClick={() => window.location.reload()} style={{ padding: '10px 20px', backgroundColor: 'black', color: 'white', border: 'none', cursor: 'pointer', fontSize: '12px', letterSpacing: '2px' }}>재시도</button>
           </div>
-        ) : meals.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div style={{ textAlign: 'center', paddingTop: '80px' }}>
-            <p style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '16px' }}>기록된 식단이 없습니다.</p>
-            <Link href="/capture" style={{ fontSize: '13px', color: '#6B21A8', textDecoration: 'none', letterSpacing: '1px' }}>지금 기록 시작하기 →</Link>
+            {isFiltered ? (
+              <>
+                <p style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '12px' }}>검색 결과가 없습니다.</p>
+                <button onClick={clearAll} style={{ fontSize: '12px', color: '#6B21A8', background: 'none', border: 'none', cursor: 'pointer', letterSpacing: '0.5px' }}>필터 초기화</button>
+              </>
+            ) : (
+              <>
+                <p style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '16px' }}>기록된 식단이 없습니다.</p>
+                <Link href="/capture" style={{ fontSize: '13px', color: '#6B21A8', textDecoration: 'none', letterSpacing: '1px' }}>지금 기록 시작하기 →</Link>
+              </>
+            )}
           </div>
         ) : (
           <AnimatePresence mode="wait">
 
-            {/* ── 타임라인 (날짜 구분선 포함) ── */}
+            {/* ── 타임라인 ── */}
             {viewMode === 'full' && (
               <motion.div key="full" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 {groups.map((group, gi) => (
                   <div key={group.dateKey}>
-                    {/* 날짜 구분선 */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', marginTop: gi > 0 ? '28px' : '0' }}>
                       <span style={{ fontSize: '11px', color: '#9ca3af', letterSpacing: '1px', whiteSpace: 'nowrap' }}>{group.label}</span>
                       <div style={{ flex: 1, height: '1px', backgroundColor: '#e5e7eb' }} />
                     </div>
-
-                    {/* 해당 날짜 카드들 */}
                     <div style={{ display: 'flex', flexDirection: 'column', position: 'relative' }}>
-                      {/* Timeline line */}
                       <div style={{ position: 'absolute', left: '4px', top: '12px', bottom: '12px', width: '1px', backgroundColor: '#e9d5ff' }} />
-
                       {group.meals.map((meal, index) => (
                         <motion.div
                           key={meal.id}
@@ -164,19 +321,14 @@ export default function HistoryPage() {
                           transition={{ delay: index * 0.03 }}
                           style={{ display: 'flex', gap: '20px', marginBottom: '16px', position: 'relative' }}
                         >
-                          {/* Timeline dot — 속 빈 보라색 */}
                           <div style={{ width: '9px', height: '9px', borderRadius: '50%', border: '2px solid #6B21A8', backgroundColor: 'white', flexShrink: 0, marginTop: '16px', zIndex: 1 }} />
-
-                          {/* Card */}
                           <div
                             onClick={() => router.push(`/history/${meal.id}`)}
                             style={{ flex: 1, border: '1px solid #e5e7eb', backgroundColor: 'white', cursor: 'pointer', overflow: 'hidden' }}
                           >
-                            {/* 사진 + 날짜 오버레이 */}
                             {meal.photo_url && (
                               <div style={{ width: '100%', aspectRatio: '4/3', overflow: 'hidden', position: 'relative' }}>
                                 <img src={meal.photo_url} alt={meal.food_name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                                {/* 날짜 — 사진 상단 오버레이 */}
                                 <div style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: '8px 10px', background: 'linear-gradient(to bottom, rgba(0,0,0,0.45), transparent)' }}>
                                   <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.9)', letterSpacing: '0.5px' }}>
                                     {new Date(meal.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
@@ -186,7 +338,6 @@ export default function HistoryPage() {
                               </div>
                             )}
                             <div style={{ padding: '10px 14px' }}>
-                              {/* 사진 없을 때만 날짜 텍스트 표시 */}
                               {!meal.photo_url && (
                                 <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1px', marginBottom: '6px' }}>
                                   {new Date(meal.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
@@ -210,17 +361,16 @@ export default function HistoryPage() {
               </motion.div>
             )}
 
-            {/* ── 4분할 보기 ── */}
+            {/* ── 4분할 ── */}
             {viewMode === 'grid' && (
               <motion.div key="grid" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '2px', backgroundColor: '#e5e7eb' }}
               >
-                {meals.map(meal => (
+                {filtered.map(meal => (
                   <div key={meal.id} onClick={() => router.push(`/history/${meal.id}`)}
                     style={{ position: 'relative', width: '100%', aspectRatio: '1/1', backgroundColor: '#f3f4f6', cursor: 'pointer', overflow: 'hidden' }}
                   >
                     {meal.photo_url && <img src={meal.photo_url} alt={meal.food_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
-                    {/* 칼로리 — 하단 중앙, 그라데이션 배경으로 시인성 확보 */}
                     <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '16px 8px 8px', background: 'linear-gradient(to top, rgba(0,0,0,0.55), transparent)', pointerEvents: 'none', display: 'flex', justifyContent: 'center' }}>
                       <span style={{ fontSize: '17px', color: 'white', textShadow: '0 1px 4px rgba(0,0,0,0.5)', fontWeight: 400, letterSpacing: '0.5px' }}>
                         {meal.calories}
@@ -236,7 +386,7 @@ export default function HistoryPage() {
               <motion.div key="gallery" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 style={{ display: 'grid', gridTemplateColumns: `repeat(${galleryScale}, 1fr)`, gap: '1px', backgroundColor: '#e5e7eb' }}
               >
-                {meals.map(meal => (
+                {filtered.map(meal => (
                   <div key={meal.id} onClick={() => router.push(`/history/${meal.id}`)}
                     style={{ width: '100%', aspectRatio: '1/1', backgroundColor: '#f3f4f6', cursor: 'pointer', overflow: 'hidden' }}
                   >
