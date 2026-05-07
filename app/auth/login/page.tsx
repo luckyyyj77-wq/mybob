@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
+import { isOnboardingDone } from '@/lib/storage-mode';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -22,7 +23,7 @@ export default function LoginPage() {
     if (error) {
       setError(error.message);
     } else {
-      router.push('/');
+      router.push(isOnboardingDone() ? '/' : '/onboarding');
     }
     setLoading(false);
   };

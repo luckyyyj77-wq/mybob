@@ -22,8 +22,7 @@ export default function SignUpPage() {
     if (error) {
       setError(error.message);
     } else {
-      alert('회원가입 성공! 이메일을 확인하여 계정을 활성화해주세요.');
-      router.push('/auth/login');
+      router.push('/onboarding');
     }
     setLoading(false);
   };

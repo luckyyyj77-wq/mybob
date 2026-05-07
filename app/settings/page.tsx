@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { FaArrowLeft } from 'react-icons/fa';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/client';
+import { getStorageMode, setStorageMode, type StorageMode } from '@/lib/storage-mode';
 
 type Meal = {
   id: string;
@@ -169,6 +170,8 @@ export default function SettingsPage() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [userEmail, setUserEmail] = useState<string>('');
+  const [storageMode, setStorageModeState] = useState<StorageMode>('local');
+  const [showModeModal, setShowModeModal] = useState(false);
 
   useEffect(() => {
     const raw = localStorage.getItem('mybob_meals');
@@ -179,6 +182,7 @@ export default function SettingsPage() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user?.email) setUserEmail(session.user.email);
     });
+    setStorageModeState(getStorageMode());
   }, []);
 
   const handleDeleteAll = () => {
@@ -284,6 +288,101 @@ export default function SettingsPage() {
             </button>
           </div>
         </div>
+
+        {/* 저장 방식 */}
+        <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>저장 방식</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: '#e5e7eb', marginBottom: '28px' }}>
+          <div style={{ padding: '14px 16px', backgroundColor: 'white' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '18px' }}>{storageMode === 'local' ? '📱' : '☁️'}</span>
+                <div>
+                  <p style={{ fontSize: '14px', color: 'black' }}>{storageMode === 'local' ? '로컬 저장' : '클라우드 동기화'}</p>
+                  <p style={{ fontSize: '10px', color: storageMode === 'local' ? '#6B21A8' : '#0ea5e9', letterSpacing: '1px', textTransform: 'uppercase' }}>
+                    {storageMode === 'local' ? 'LOCAL · 이 기기에만 보관' : 'CLOUD · 서버 동기화 중'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowModeModal(true)}
+                style={{ padding: '6px 12px', border: '1px solid #e5e7eb', backgroundColor: 'white', fontSize: '12px', cursor: 'pointer', color: '#6b7280', letterSpacing: '0.5px' }}
+              >
+                변경
+              </button>
+            </div>
+            <p style={{ fontSize: '11px', color: '#9ca3af', lineHeight: 1.5 }}>
+              {storageMode === 'local'
+                ? '모든 식단 기록과 사진은 이 기기에만 저장됩니다. 서버로 전송되지 않습니다.'
+                : '식단 기록이 서버에 동기화됩니다. 여러 기기에서 같은 데이터를 볼 수 있습니다.'}
+            </p>
+          </div>
+        </div>
+
+        {/* 저장 방식 변경 모달 */}
+        {showModeModal && (
+          <div
+            onClick={() => setShowModeModal(false)}
+            style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9000, display: 'flex', alignItems: 'flex-end' }}
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{ backgroundColor: 'white', width: '100%', borderRadius: '12px 12px 0 0', padding: '24px' }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: 400 }}>저장 방식 변경</h3>
+                <button onClick={() => setShowModeModal(false)} style={{ background: 'none', border: 'none', fontSize: '20px', color: '#9ca3af', cursor: 'pointer', padding: '4px' }}>×</button>
+              </div>
+
+              {/* 로컬 선택 */}
+              <div
+                onClick={() => {
+                  if (storageMode === 'local') { setShowModeModal(false); return; }
+                  if (confirm('클라우드 → 로컬로 전환하면 서버 데이터가 15일 후 삭제됩니다.\n먼저 데이터를 다운로드해 드립니다. 진행할까요?')) {
+                    setStorageMode('local');
+                    setStorageModeState('local');
+                    setShowModeModal(false);
+                  }
+                }}
+                style={{ border: `2px solid ${storageMode === 'local' ? 'black' : '#e5e7eb'}`, padding: '16px', marginBottom: '10px', cursor: 'pointer', backgroundColor: storageMode === 'local' ? '#fafafa' : 'white' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '20px' }}>📱</span>
+                  <div>
+                    <p style={{ fontSize: '14px', color: 'black' }}>이 기기에만 저장 <span style={{ fontSize: '11px', color: '#6B21A8', marginLeft: '6px' }}>무료</span></p>
+                    <p style={{ fontSize: '10px', color: '#9ca3af' }}>개인정보 보호 최우선</p>
+                  </div>
+                  {storageMode === 'local' && <span style={{ marginLeft: 'auto', fontSize: '11px', color: '#6B21A8', letterSpacing: '0.5px' }}>현재</span>}
+                </div>
+                <p style={{ fontSize: '11px', color: '#f97316' }}>⚠ 기기 분실 시 데이터 복구 불가</p>
+              </div>
+
+              {/* 클라우드 선택 */}
+              <div
+                onClick={() => {
+                  if (storageMode === 'cloud') { setShowModeModal(false); return; }
+                  if (confirm('로컬 → 클라우드로 전환하면 저장된 데이터가 서버로 업로드됩니다.\nWi-Fi 환경에서 진행을 권장합니다. 진행할까요?')) {
+                    setStorageMode('cloud');
+                    setStorageModeState('cloud');
+                    setShowModeModal(false);
+                  }
+                }}
+                style={{ border: `2px solid ${storageMode === 'cloud' ? 'black' : '#e5e7eb'}`, padding: '16px', cursor: 'pointer', backgroundColor: storageMode === 'cloud' ? '#fafafa' : 'white' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '20px' }}>☁️</span>
+                  <div>
+                    <p style={{ fontSize: '14px', color: 'black' }}>클라우드 동기화 <span style={{ fontSize: '11px', color: '#9ca3af', marginLeft: '6px' }}>추후 구독</span></p>
+                    <p style={{ fontSize: '10px', color: '#9ca3af' }}>여러 기기 · 커뮤니티 · 챌린지</p>
+                  </div>
+                  {storageMode === 'cloud' && <span style={{ marginLeft: 'auto', fontSize: '11px', color: '#0ea5e9', letterSpacing: '0.5px' }}>현재</span>}
+                </div>
+                <p style={{ fontSize: '11px', color: '#9ca3af' }}>베타 기간 중 무료 제공</p>
+              </div>
+
+              <div style={{ height: '16px' }} />
+            </div>
+          </div>
+        )}
 
         {/* 보안 및 개인정보 */}
         <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>보안 및 개인정보</p>
