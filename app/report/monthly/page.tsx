@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { FaFireAlt, FaCalendarAlt, FaChartBar } from 'react-icons/fa';
+import { supabase } from '@/lib/supabase/client';
 
 interface Meal {
   id: string;
@@ -25,7 +26,9 @@ export default function MonthlyReportPage() {
   useEffect(() => {
     const fetchMeals = async () => {
       try {
-        const response = await fetch('/api/meals');
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+        const response = await fetch('/api/meals', { headers: token ? { Authorization: `Bearer ${token}` } : {} });
         const result = await response.json();
         if (result.success) {
           const thirtyDaysAgo = new Date();

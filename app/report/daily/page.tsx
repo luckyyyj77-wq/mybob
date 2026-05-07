@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase/client';
 
 interface Meal {
   id: string;
@@ -53,13 +54,17 @@ export default function DailyReportPage() {
     setTargetCalories(calcTargetCalories(Number(goal.height) || 0, Number(goal.weight) || 0, goal.goal || '유지'));
 
     // 서버 동기화 (백그라운드)
-    fetch('/api/meals').then(r => r.json()).then(result => {
-      if (result.success && Array.isArray(result.data)) {
-        const keys = new Set(result.data.map((m: Meal) => `${m.food_name}_${m.calories}`));
-        const merged = [...result.data, ...local.filter(m => !keys.has(`${m.food_name}_${m.calories}`))];
-        setAllMeals(merged);
-      }
-    }).catch(() => {});
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const token = session?.access_token;
+      fetch('/api/meals', { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+        .then(r => r.json()).then(result => {
+          if (result.success && Array.isArray(result.data)) {
+            const keys = new Set(result.data.map((m: Meal) => `${m.food_name}_${m.calories}`));
+            const merged = [...result.data, ...local.filter(m => !keys.has(`${m.food_name}_${m.calories}`))];
+            setAllMeals(merged);
+          }
+        }).catch(() => {});
+    });
   }, []);
 
   const dateStr = targetDate.toLocaleDateString();

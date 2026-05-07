@@ -5,6 +5,7 @@ import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { FaArrowLeft, FaChevronLeft, FaChevronRight, FaTh, FaThLarge } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
+import { supabase } from '@/lib/supabase/client';
 
 type Meal = {
   id: string;
@@ -51,7 +52,9 @@ function MealDetailContent() {
       if (localStr) all = JSON.parse(localStr);
 
       try {
-        const res = await fetch('/api/meals');
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+        const res = await fetch('/api/meals', { headers: token ? { Authorization: `Bearer ${token}` } : {} });
         if (res.ok) {
           const r = await res.json();
           if (r.success && Array.isArray(r.data)) {

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceLine, PieChart, Pie, Cell } from 'recharts';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { supabase } from '@/lib/supabase/client';
 
 interface Meal {
   id: string;
@@ -52,13 +53,17 @@ export default function WeeklyReportPage() {
     const goal = JSON.parse(localStorage.getItem('mybob_goal') || '{}');
     setTargetCalories(calcTargetCalories(Number(goal.height) || 0, Number(goal.weight) || 0, goal.goal || '유지'));
 
-    fetch('/api/meals').then(r => r.json()).then(result => {
-      if (result.success && Array.isArray(result.data)) {
-        const keys = new Set(result.data.map((m: Meal) => `${m.food_name}_${m.calories}`));
-        const merged = [...result.data, ...local.filter(m => !keys.has(`${m.food_name}_${m.calories}`))];
-        setAllMeals(merged);
-      }
-    }).catch(() => {});
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const token = session?.access_token;
+      fetch('/api/meals', { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+        .then(r => r.json()).then(result => {
+          if (result.success && Array.isArray(result.data)) {
+            const keys = new Set(result.data.map((m: Meal) => `${m.food_name}_${m.calories}`));
+            const merged = [...result.data, ...local.filter(m => !keys.has(`${m.food_name}_${m.calories}`))];
+            setAllMeals(merged);
+          }
+        }).catch(() => {});
+    });
   }, []);
 
   // 주간 범위 계산

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaThList, FaThLarge, FaTh, FaPlus, FaMinus, FaSearch, FaTimes } from 'react-icons/fa';
+import { supabase } from '@/lib/supabase/client';
 
 type Meal = {
   id: string;
@@ -101,13 +102,17 @@ export default function HistoryPage() {
     setMeals(sorted(local));
     setLoading(false);
 
-    fetch('/api/meals').then(r => r.json()).then(result => {
-      if (result.success && Array.isArray(result.data)) {
-        const keys = new Set(result.data.map((m: Meal) => `${m.food_name}_${m.calories}`));
-        const merged = [...result.data, ...local.filter(m => !keys.has(`${m.food_name}_${m.calories}`))];
-        setMeals(sorted(merged));
-      }
-    }).catch(() => {});
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const token = session?.access_token;
+      fetch('/api/meals', { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+        .then(r => r.json()).then(result => {
+          if (result.success && Array.isArray(result.data)) {
+            const keys = new Set(result.data.map((m: Meal) => `${m.food_name}_${m.calories}`));
+            const merged = [...result.data, ...local.filter(m => !keys.has(`${m.food_name}_${m.calories}`))];
+            setMeals(sorted(merged));
+          }
+        }).catch(() => {});
+    });
   }, []);
 
   // 검색창 열릴 때 포커스
