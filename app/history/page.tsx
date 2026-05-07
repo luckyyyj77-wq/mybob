@@ -154,7 +154,7 @@ export default function HistoryPage() {
                     {/* 해당 날짜 카드들 */}
                     <div style={{ display: 'flex', flexDirection: 'column', position: 'relative' }}>
                       {/* Timeline line */}
-                      <div style={{ position: 'absolute', left: '4px', top: '12px', bottom: '12px', width: '1px', backgroundColor: '#e5e7eb' }} />
+                      <div style={{ position: 'absolute', left: '4px', top: '12px', bottom: '12px', width: '1px', backgroundColor: '#e9d5ff' }} />
 
                       {group.meals.map((meal, index) => (
                         <motion.div
@@ -164,25 +164,35 @@ export default function HistoryPage() {
                           transition={{ delay: index * 0.03 }}
                           style={{ display: 'flex', gap: '20px', marginBottom: '16px', position: 'relative' }}
                         >
-                          {/* Timeline dot */}
-                          <div style={{ width: '9px', height: '9px', borderRadius: '50%', border: '1px solid #d1d5db', backgroundColor: 'white', flexShrink: 0, marginTop: '16px', zIndex: 1 }} />
+                          {/* Timeline dot — 속 빈 보라색 */}
+                          <div style={{ width: '9px', height: '9px', borderRadius: '50%', border: '2px solid #6B21A8', backgroundColor: 'white', flexShrink: 0, marginTop: '16px', zIndex: 1 }} />
 
                           {/* Card */}
                           <div
                             onClick={() => router.push(`/history/${meal.id}`)}
                             style={{ flex: 1, border: '1px solid #e5e7eb', backgroundColor: 'white', cursor: 'pointer', overflow: 'hidden' }}
                           >
-                            {/* 사진: 4/3 비율 고정, 최대한 크게 */}
+                            {/* 사진 + 날짜 오버레이 */}
                             {meal.photo_url && (
-                              <div style={{ width: '100%', aspectRatio: '4/3', overflow: 'hidden' }}>
+                              <div style={{ width: '100%', aspectRatio: '4/3', overflow: 'hidden', position: 'relative' }}>
                                 <img src={meal.photo_url} alt={meal.food_name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                                {/* 날짜 — 사진 상단 오버레이 */}
+                                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: '8px 10px', background: 'linear-gradient(to bottom, rgba(0,0,0,0.45), transparent)' }}>
+                                  <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.9)', letterSpacing: '0.5px' }}>
+                                    {new Date(meal.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                                    {meal.category ? ` · ${meal.category}` : ''}
+                                  </p>
+                                </div>
                               </div>
                             )}
-                            <div style={{ padding: '12px 14px' }}>
-                              <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1px', marginBottom: '6px' }}>
-                                {new Date(meal.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
-                                {meal.category ? ` · ${meal.category}` : ''}
-                              </p>
+                            <div style={{ padding: '10px 14px' }}>
+                              {/* 사진 없을 때만 날짜 텍스트 표시 */}
+                              {!meal.photo_url && (
+                                <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1px', marginBottom: '6px' }}>
+                                  {new Date(meal.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                                  {meal.category ? ` · ${meal.category}` : ''}
+                                </p>
+                              )}
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                                 <h3 style={{ fontSize: '17px', fontWeight: 400, color: 'black', letterSpacing: '-0.3px' }}>{meal.food_name}</h3>
                                 <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '8px' }}>
