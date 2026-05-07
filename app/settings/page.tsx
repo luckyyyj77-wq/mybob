@@ -4,7 +4,9 @@ import Link from 'next/link';
 import { FaArrowLeft } from 'react-icons/fa';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/client';
-import { getStorageMode, setStorageMode, type StorageMode } from '@/lib/storage-mode';
+import { getStorageMode, type StorageMode } from '@/lib/storage-mode';
+import { getCloudDeleteSchedule, cancelCloudDeleteSchedule, requestServerDataDeletion } from '@/lib/storage-migration';
+import { StorageModeModal } from '@/components/StorageModeModal';
 
 type Meal = {
   id: string;
@@ -172,6 +174,7 @@ export default function SettingsPage() {
   const [userEmail, setUserEmail] = useState<string>('');
   const [storageMode, setStorageModeState] = useState<StorageMode>('local');
   const [showModeModal, setShowModeModal] = useState(false);
+  const [deleteSchedule, setDeleteSchedule] = useState<{ scheduledAt: Date; daysLeft: number } | null>(null);
 
   useEffect(() => {
     const raw = localStorage.getItem('mybob_meals');
@@ -183,6 +186,7 @@ export default function SettingsPage() {
       if (session?.user?.email) setUserEmail(session.user.email);
     });
     setStorageModeState(getStorageMode());
+    setDeleteSchedule(getCloudDeleteSchedule());
   }, []);
 
   const handleDeleteAll = () => {
@@ -291,7 +295,7 @@ export default function SettingsPage() {
 
         {/* 저장 방식 */}
         <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>저장 방식</p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: '#e5e7eb', marginBottom: '28px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: '#e5e7eb', marginBottom: deleteSchedule ? '12px' : '28px' }}>
           <div style={{ padding: '14px 16px', backgroundColor: 'white' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -318,70 +322,52 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* 저장 방식 변경 모달 */}
-        {showModeModal && (
-          <div
-            onClick={() => setShowModeModal(false)}
-            style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9000, display: 'flex', alignItems: 'flex-end' }}
-          >
-            <div
-              onClick={e => e.stopPropagation()}
-              style={{ backgroundColor: 'white', width: '100%', borderRadius: '12px 12px 0 0', padding: '24px' }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <h3 style={{ fontSize: '16px', fontWeight: 400 }}>저장 방식 변경</h3>
-                <button onClick={() => setShowModeModal(false)} style={{ background: 'none', border: 'none', fontSize: '20px', color: '#9ca3af', cursor: 'pointer', padding: '4px' }}>×</button>
-              </div>
-
-              {/* 로컬 선택 */}
-              <div
-                onClick={() => {
-                  if (storageMode === 'local') { setShowModeModal(false); return; }
-                  if (confirm('클라우드 → 로컬로 전환하면 서버 데이터가 15일 후 삭제됩니다.\n먼저 데이터를 다운로드해 드립니다. 진행할까요?')) {
-                    setStorageMode('local');
-                    setStorageModeState('local');
-                    setShowModeModal(false);
+        {/* 15일 삭제 예약 배너 */}
+        {deleteSchedule && (
+          <div style={{ backgroundColor: '#fff7ed', border: '1px solid #fed7aa', padding: '14px 16px', marginBottom: '28px' }}>
+            <p style={{ fontSize: '12px', color: '#9a3412', marginBottom: '8px', lineHeight: 1.5 }}>
+              ⏳ 서버 데이터가 <strong>{deleteSchedule.daysLeft}일 후</strong> 삭제될 예정입니다.<br />
+              ({deleteSchedule.scheduledAt.toLocaleDateString('ko-KR')} 예정)
+            </p>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={async () => {
+                  const { data: { session } } = await supabase.auth.getSession();
+                  if (!session) return;
+                  if (confirm('지금 즉시 서버 데이터를 삭제하시겠습니까?')) {
+                    await requestServerDataDeletion(session.access_token);
+                    setDeleteSchedule(null);
                   }
                 }}
-                style={{ border: `2px solid ${storageMode === 'local' ? 'black' : '#e5e7eb'}`, padding: '16px', marginBottom: '10px', cursor: 'pointer', backgroundColor: storageMode === 'local' ? '#fafafa' : 'white' }}
+                style={{ padding: '6px 12px', backgroundColor: '#ef4444', color: 'white', border: 'none', fontSize: '11px', cursor: 'pointer' }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '20px' }}>📱</span>
-                  <div>
-                    <p style={{ fontSize: '14px', color: 'black' }}>이 기기에만 저장 <span style={{ fontSize: '11px', color: '#6B21A8', marginLeft: '6px' }}>무료</span></p>
-                    <p style={{ fontSize: '10px', color: '#9ca3af' }}>개인정보 보호 최우선</p>
-                  </div>
-                  {storageMode === 'local' && <span style={{ marginLeft: 'auto', fontSize: '11px', color: '#6B21A8', letterSpacing: '0.5px' }}>현재</span>}
-                </div>
-                <p style={{ fontSize: '11px', color: '#f97316' }}>⚠ 기기 분실 시 데이터 복구 불가</p>
-              </div>
-
-              {/* 클라우드 선택 */}
-              <div
+                지금 삭제
+              </button>
+              <button
                 onClick={() => {
-                  if (storageMode === 'cloud') { setShowModeModal(false); return; }
-                  if (confirm('로컬 → 클라우드로 전환하면 저장된 데이터가 서버로 업로드됩니다.\nWi-Fi 환경에서 진행을 권장합니다. 진행할까요?')) {
-                    setStorageMode('cloud');
-                    setStorageModeState('cloud');
-                    setShowModeModal(false);
-                  }
+                  cancelCloudDeleteSchedule();
+                  setDeleteSchedule(null);
+                  setStorageModeState('cloud');
                 }}
-                style={{ border: `2px solid ${storageMode === 'cloud' ? 'black' : '#e5e7eb'}`, padding: '16px', cursor: 'pointer', backgroundColor: storageMode === 'cloud' ? '#fafafa' : 'white' }}
+                style={{ padding: '6px 12px', backgroundColor: 'white', color: '#6b7280', border: '1px solid #e5e7eb', fontSize: '11px', cursor: 'pointer' }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '20px' }}>☁️</span>
-                  <div>
-                    <p style={{ fontSize: '14px', color: 'black' }}>클라우드 동기화 <span style={{ fontSize: '11px', color: '#9ca3af', marginLeft: '6px' }}>추후 구독</span></p>
-                    <p style={{ fontSize: '10px', color: '#9ca3af' }}>여러 기기 · 커뮤니티 · 챌린지</p>
-                  </div>
-                  {storageMode === 'cloud' && <span style={{ marginLeft: 'auto', fontSize: '11px', color: '#0ea5e9', letterSpacing: '0.5px' }}>현재</span>}
-                </div>
-                <p style={{ fontSize: '11px', color: '#9ca3af' }}>베타 기간 중 무료 제공</p>
-              </div>
-
-              <div style={{ height: '16px' }} />
+                취소 (클라우드 유지)
+              </button>
             </div>
           </div>
+        )}
+
+        {/* 저장 방식 변경 모달 */}
+        {showModeModal && (
+          <StorageModeModal
+            currentMode={storageMode}
+            onClose={() => setShowModeModal(false)}
+            onModeChanged={(mode) => {
+              setStorageModeState(mode);
+              setDeleteSchedule(getCloudDeleteSchedule());
+              setShowModeModal(false);
+            }}
+          />
         )}
 
         {/* 보안 및 개인정보 */}
