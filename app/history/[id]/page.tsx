@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { FaArrowLeft, FaChevronLeft, FaChevronRight, FaTh, FaThLarge } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/lib/supabase/client';
+import { MealPhoto } from '@/components/MealPhoto';
 
 type Meal = {
   id: string;
@@ -150,7 +151,7 @@ function MealDetailContent() {
           {/* 사진 */}
           <div style={{ position: 'relative', width: '100%', aspectRatio: '4/3', backgroundColor: '#f3f4f6', flexShrink: 0 }}>
             {meal.photo_url ? (
-              <img src={meal.photo_url} alt={meal.food_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <MealPhoto photoUrl={meal.photo_url} alt={meal.food_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             ) : (
               <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af' }}>이미지 없음</div>
             )}
@@ -288,7 +289,7 @@ function MealDetailContent() {
                 }}
               >
                 {m.photo_url ? (
-                  <img src={m.photo_url} alt={m.food_name} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <MealPhoto photoUrl={m.photo_url} alt={m.food_name} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
                   <div style={{ position: 'absolute', inset: 0, backgroundColor: '#f3f4f6' }} />
                 )}

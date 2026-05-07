@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { FaSpinner, FaUpload, FaArrowLeft, FaCamera, FaHome } from 'react-icons/fa';
 import { supabase } from '@/lib/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getStorageMode } from '@/lib/storage-mode';
+import { savePhoto } from '@/lib/indexed-db';
 
 type AnalysisResult = {
   name: string;
@@ -164,37 +166,70 @@ export default function CameraCapturePage() {
   };
 
   const handleSave = async () => {
-    if (!analysis) return;
+    if (!analysis || !imageSrc) return;
     setLoadingSave(true);
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token;
 
-    // 로컬 저장 (항상 먼저)
-    const localMeal = {
-      id: Date.now().toString(),
-      food_name: analysis.name,
-      calories: analysis.calories,
-      nutrient: analysis.nutrients,
-      category: analysis.category,
-      photo_url: imageSrc,
-      created_at: new Date().toISOString(),
-    };
-    const existing = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
-    localStorage.setItem('mybob_meals', JSON.stringify([localMeal, ...existing]));
+    const mode = getStorageMode();
+    const mealId = Date.now().toString();
 
-    // 로그인된 경우에만 서버 동기화
-    if (token) {
-      try {
-        await fetch('/api/meals', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ mealData: analysis, imageBase64: imageSrc }),
-        });
-      } catch { /* 로컬 저장은 완료됨 */ }
+    try {
+      if (mode === 'local') {
+        // ── 로컬 모드: IndexedDB에 사진, localStorage에 메타 ──
+        await savePhoto(mealId, imageSrc);
+
+        const localMeal = {
+          id: mealId,
+          food_name: analysis.name,
+          calories: analysis.calories,
+          nutrient: analysis.nutrients,
+          category: analysis.category,
+          photo_url: `local:${mealId}`, // IndexedDB 참조 마커
+          created_at: new Date().toISOString(),
+        };
+        const existing = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
+        localStorage.setItem('mybob_meals', JSON.stringify([localMeal, ...existing]));
+
+      } else {
+        // ── 클라우드 모드: 서버 업로드 후 localStorage에도 캐시 ──
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+
+        let serverPhotoUrl: string | null = null;
+
+        if (token) {
+          try {
+            const res = await fetch('/api/meals', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ mealData: analysis, imageBase64: imageSrc }),
+            });
+            const result = await res.json();
+            if (result.success && result.data?.[0]?.photo_url) {
+              serverPhotoUrl = result.data[0].photo_url;
+            }
+          } catch { /* 서버 저장 실패해도 로컬 캐시는 유지 */ }
+        }
+
+        // 로컬 캐시 (클라우드 모드에서도 빠른 조회를 위해)
+        const localMeal = {
+          id: mealId,
+          food_name: analysis.name,
+          calories: analysis.calories,
+          nutrient: analysis.nutrients,
+          category: analysis.category,
+          photo_url: serverPhotoUrl ?? imageSrc, // 서버 URL 없으면 base64 임시 저장
+          created_at: new Date().toISOString(),
+        };
+        const existing = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
+        localStorage.setItem('mybob_meals', JSON.stringify([localMeal, ...existing]));
+      }
+
+      setSaved(true);
+    } catch (err: any) {
+      alert(`저장 실패: ${err.message}`);
+    } finally {
+      setLoadingSave(false);
     }
-
-    setSaved(true);
-    setLoadingSave(false);
   };
 
   // 추가 촬영 — 웹캠은 유지, 이미지/결과만 초기화
