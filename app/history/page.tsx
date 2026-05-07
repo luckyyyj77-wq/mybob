@@ -216,12 +216,13 @@ export default function HistoryPage() {
                 style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '2px', backgroundColor: '#e5e7eb' }}
               >
                 {meals.map(meal => (
-                  <div key={meal.id} onClick={() => router.push(`/history/${meal.id}?mode=grid4`)}
+                  <div key={meal.id} onClick={() => router.push(`/history/${meal.id}`)}
                     style={{ position: 'relative', width: '100%', aspectRatio: '1/1', backgroundColor: '#f3f4f6', cursor: 'pointer', overflow: 'hidden' }}
                   >
                     {meal.photo_url && <img src={meal.photo_url} alt={meal.food_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
-                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-                      <span style={{ fontSize: '14px', color: 'rgba(255,255,255,0.9)', textShadow: '0 1px 6px rgba(0,0,0,0.7)', fontWeight: 400 }}>
+                    {/* 칼로리 — 하단 중앙, 그라데이션 배경으로 시인성 확보 */}
+                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '16px 8px 8px', background: 'linear-gradient(to top, rgba(0,0,0,0.55), transparent)', pointerEvents: 'none', display: 'flex', justifyContent: 'center' }}>
+                      <span style={{ fontSize: '17px', color: 'white', textShadow: '0 1px 4px rgba(0,0,0,0.5)', fontWeight: 400, letterSpacing: '0.5px' }}>
                         {meal.calories}
                       </span>
                     </div>
@@ -236,7 +237,7 @@ export default function HistoryPage() {
                 style={{ display: 'grid', gridTemplateColumns: `repeat(${galleryScale}, 1fr)`, gap: '1px', backgroundColor: '#e5e7eb' }}
               >
                 {meals.map(meal => (
-                  <div key={meal.id} onClick={() => router.push(`/history/${meal.id}?mode=grid16`)}
+                  <div key={meal.id} onClick={() => router.push(`/history/${meal.id}`)}
                     style={{ width: '100%', aspectRatio: '1/1', backgroundColor: '#f3f4f6', cursor: 'pointer', overflow: 'hidden' }}
                   >
                     {meal.photo_url && <img src={meal.photo_url} alt={meal.food_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
