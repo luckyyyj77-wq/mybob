@@ -20,6 +20,7 @@ type AnalysisResult = {
     fiber?: number;
     sugar?: number;
     sodium?: number;
+    caffeine?: number | null;
     vitaminA?: number;
     vitaminC?: number;
     vitaminD?: number;
@@ -444,6 +445,7 @@ export default function CameraCapturePage() {
                         { label: '식이섬유', value: analysis.nutrients.fiber, unit: 'g' },
                         { label: '당류', value: analysis.nutrients.sugar, unit: 'g' },
                         { label: '나트륨', value: analysis.nutrients.sodium, unit: 'mg' },
+                        { label: '카페인', value: analysis.nutrients.caffeine, unit: 'mg' },
                       ].filter(n => n.value != null && n.value !== 0).map(n => (
                         <div key={n.label} style={{ padding: '8px 6px', border: '1px solid #e5e7eb', textAlign: 'center' }}>
                           <p style={{ fontSize: '9px', color: '#9ca3af', letterSpacing: '0.5px', marginBottom: '2px' }}>{n.label}</p>

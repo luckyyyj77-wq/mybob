@@ -124,6 +124,7 @@ ${nutritionContext}
     "fiber": 숫자(g),
     "sugar": 숫자(g),
     "sodium": 숫자(mg),
+    "caffeine": 숫자(mg) 또는 null,
     "vitaminA": 숫자(μg),
     "vitaminC": 숫자(mg),
     "vitaminD": 숫자(μg),
@@ -133,7 +134,10 @@ ${nutritionContext}
   }
 }
 
-주의: 사진에 보이지 않는 나트륨·당류 등은 해당 음식 레시피 기반으로 추정하세요. JSON 외 텍스트 금지.`;
+주의:
+- 사진에 보이지 않는 나트륨·당류 등은 해당 음식 레시피 기반으로 추정하세요.
+- caffeine은 커피·차·에너지음료·콜라 등 카페인 함유 음료·식품에만 숫자(mg)로 응답하고, 일반 음식은 null로 응답하세요.
+- JSON 외 텍스트 금지.`;
 
   for (const model of modelsToTry) {
     try {

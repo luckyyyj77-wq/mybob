@@ -20,6 +20,7 @@ type Meal = {
     fiber?: number;
     sugar?: number;
     sodium?: number;
+    caffeine?: number | null;
     vitaminA?: number;
     vitaminC?: number;
     vitaminD?: number;
@@ -192,6 +193,7 @@ function MealDetailContent() {
                   { label: '식이섬유', value: meal.nutrient?.fiber, unit: 'g' },
                   { label: '당류', value: meal.nutrient?.sugar, unit: 'g' },
                   { label: '나트륨', value: meal.nutrient?.sodium, unit: 'mg' },
+                  ...(meal.nutrient?.caffeine != null ? [{ label: '카페인', value: meal.nutrient.caffeine, unit: 'mg' }] : []),
                 ].map(n => (
                   <div key={n.label} style={{ padding: '16px 8px', backgroundColor: 'white', textAlign: 'center' }}>
                     <p style={{ fontSize: '10px', color: '#9ca3af', marginBottom: '4px' }}>{n.label}</p>
