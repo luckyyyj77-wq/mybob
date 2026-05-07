@@ -144,7 +144,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     { icon: FaChartPie, label: '리포트', href: '/report/daily' },
     { icon: FaUsers,    label: '커뮤니티', href: '/community/recommendation' },
     { icon: FaCog,      label: '설정',   href: '/settings' },
-    { icon: FaHandshake,label: '제휴문의', href: '#' },
+    { icon: FaHandshake,label: '제휴문의', href: 'mailto:luckyyyj77@gmail.com?subject=MyBob 제휴문의' },
   ];
 
   return (

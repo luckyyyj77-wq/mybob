@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { FaArrowLeft, FaChevronLeft, FaChevronRight, FaTh, FaThLarge } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -31,15 +31,17 @@ type Meal = {
 
 type GalleryMode = 'detail' | 'grid4' | 'grid16';
 
-export default function MealDetailPage() {
+function MealDetailContent() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const id = params?.id as string;
   const [meal, setMeal] = useState<Meal | null>(null);
   const [allMeals, setAllMeals] = useState<Meal[]>([]);
   const [currentIndex, setCurrentIndex] = useState(-1);
   const [loading, setLoading] = useState(true);
-  const [galleryMode, setGalleryMode] = useState<GalleryMode>('detail');
+  const initialMode = (searchParams?.get('mode') as GalleryMode) || 'detail';
+  const [galleryMode, setGalleryMode] = useState<GalleryMode>(initialMode);
 
   useEffect(() => {
     const loadData = async () => {
@@ -273,7 +275,7 @@ export default function MealDetailPage() {
                 onClick={() => router.push(`/history/${m.id}`)}
                 style={{
                   position: 'relative',
-                  paddingBottom: '100%', // 정사각형 유지
+                  paddingBottom: '100%',
                   backgroundColor: m.id === id ? '#d1d5db' : 'white',
                   cursor: 'pointer',
                   outline: m.id === id ? '2px solid black' : 'none',
@@ -285,11 +287,37 @@ export default function MealDetailPage() {
                 ) : (
                   <div style={{ position: 'absolute', inset: 0, backgroundColor: '#f3f4f6' }} />
                 )}
+                {/* 4분할에서만 칼로리 반투명 표시 */}
+                {galleryMode === 'grid4' && (
+                  <div style={{
+                    position: 'absolute', inset: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    pointerEvents: 'none',
+                  }}>
+                    <span style={{
+                      fontSize: '15px',
+                      color: 'rgba(255,255,255,0.85)',
+                      textShadow: '0 1px 4px rgba(0,0,0,0.6)',
+                      fontWeight: 400,
+                      letterSpacing: '0.5px',
+                    }}>
+                      {m.calories}
+                    </span>
+                  </div>
+                )}
               </div>
             ))}
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+export default function MealDetailPage() {
+  return (
+    <Suspense fallback={null}>
+      <MealDetailContent />
+    </Suspense>
   );
 }

@@ -169,34 +169,33 @@ export default function HistoryPage() {
               </motion.div>
             )}
 
-            {/* ── 두개씩 보기 ── */}
+            {/* ── 4분할 보기: 상세페이지 grid4 모드로 이동 ── */}
             {viewMode === 'grid' && (
               <motion.div key="grid" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1px', backgroundColor: '#e5e7eb' }}
+                style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '2px', backgroundColor: '#e5e7eb' }}
               >
                 {meals.map(meal => (
-                  <div key={meal.id} onClick={() => router.push(`/history/${meal.id}`)}
-                    style={{ backgroundColor: 'white', display: 'flex', flexDirection: 'column', cursor: 'pointer' }}
+                  <div key={meal.id} onClick={() => router.push(`/history/${meal.id}?mode=grid4`)}
+                    style={{ position: 'relative', width: '100%', aspectRatio: '1/1', backgroundColor: '#f3f4f6', cursor: 'pointer', overflow: 'hidden' }}
                   >
-                    <div style={{ width: '100%', aspectRatio: '1/1', overflow: 'hidden', backgroundColor: '#f3f4f6' }}>
-                      {meal.photo_url && <img src={meal.photo_url} alt={meal.food_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
-                    </div>
-                    <div style={{ padding: '10px 12px', borderTop: '1px solid #e5e7eb' }}>
-                      <h3 style={{ fontSize: '13px', fontWeight: 400, color: 'black', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{meal.food_name}</h3>
-                      <p style={{ fontSize: '12px', fontWeight: 400, color: '#6B21A8' }}>{meal.calories} kcal</p>
+                    {meal.photo_url && <img src={meal.photo_url} alt={meal.food_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+                      <span style={{ fontSize: '14px', color: 'rgba(255,255,255,0.85)', textShadow: '0 1px 4px rgba(0,0,0,0.6)', fontWeight: 400 }}>
+                        {meal.calories}
+                      </span>
                     </div>
                   </div>
                 ))}
               </motion.div>
             )}
 
-            {/* ── 여러개 보기 (갤러리) ── */}
+            {/* ── 여러개 보기 (갤러리): 상세페이지 grid16 모드로 이동 ── */}
             {viewMode === 'gallery' && (
               <motion.div key="gallery" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 style={{ display: 'grid', gridTemplateColumns: `repeat(${galleryScale}, 1fr)`, gap: '1px', backgroundColor: '#e5e7eb' }}
               >
                 {meals.map(meal => (
-                  <div key={meal.id} onClick={() => router.push(`/history/${meal.id}`)}
+                  <div key={meal.id} onClick={() => router.push(`/history/${meal.id}?mode=grid16`)}
                     style={{ width: '100%', aspectRatio: '1/1', backgroundColor: '#f3f4f6', cursor: 'pointer', overflow: 'hidden' }}
                   >
                     {meal.photo_url && <img src={meal.photo_url} alt={meal.food_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}

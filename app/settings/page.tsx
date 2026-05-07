@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { FaArrowLeft } from 'react-icons/fa';
 import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase/client';
 
 type Meal = {
   id: string;
@@ -166,12 +167,18 @@ export default function SettingsPage() {
   const [meals, setMeals] = useState<Meal[]>([]);
   const [stats, setStats] = useState<Stats>({ total: 0, totalCalories: 0, avgCalories: 0, firstDate: null, lastDate: null, topCategory: null });
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [userEmail, setUserEmail] = useState<string>('');
 
   useEffect(() => {
     const raw = localStorage.getItem('mybob_meals');
     const parsed: Meal[] = raw ? JSON.parse(raw) : [];
     setMeals(parsed);
     setStats(computeStats(parsed));
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user?.email) setUserEmail(session.user.email);
+    });
   }, []);
 
   const handleDeleteAll = () => {
@@ -237,27 +244,19 @@ export default function SettingsPage() {
 
         {/* 데이터 내보내기 */}
         <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>데이터 내보내기</p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: '#e5e7eb', marginBottom: '28px' }}>
-          <div style={{ padding: '14px 16px', backgroundColor: 'white' }}>
-            <p style={{ fontSize: '13px', color: 'black', marginBottom: '4px' }}>JSON</p>
-            <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '10px' }}>전체 영양 정보 포함 · 온디바이스 AI 분석용</p>
-            <button
-              onClick={() => { if (meals.length === 0) return alert('내보낼 데이터가 없습니다.'); exportJSON(meals); }}
-              style={{ width: '100%', padding: '12px', border: '1px solid black', backgroundColor: 'white', fontSize: '12px', cursor: 'pointer', letterSpacing: '1px' }}
-            >
-              JSON으로 저장
-            </button>
-          </div>
-          <div style={{ padding: '14px 16px', backgroundColor: 'white' }}>
-            <p style={{ fontSize: '13px', color: 'black', marginBottom: '4px' }}>CSV</p>
-            <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '10px' }}>엑셀 · 스프레드시트 호환</p>
-            <button
-              onClick={() => { if (meals.length === 0) return alert('내보낼 데이터가 없습니다.'); exportCSV(meals); }}
-              style={{ width: '100%', padding: '12px', border: '1px solid #e5e7eb', backgroundColor: 'white', fontSize: '12px', cursor: 'pointer', letterSpacing: '1px' }}
-            >
-              CSV로 저장
-            </button>
-          </div>
+        <div style={{ display: 'flex', gap: '1px', backgroundColor: '#e5e7eb', marginBottom: '28px' }}>
+          <button
+            onClick={() => { if (meals.length === 0) return alert('내보낼 데이터가 없습니다.'); exportJSON(meals); }}
+            style={{ flex: 1, padding: '14px 8px', border: 'none', backgroundColor: 'white', fontSize: '13px', cursor: 'pointer', letterSpacing: '0.5px' }}
+          >
+            JSON
+          </button>
+          <button
+            onClick={() => { if (meals.length === 0) return alert('내보낼 데이터가 없습니다.'); exportCSV(meals); }}
+            style={{ flex: 1, padding: '14px 8px', border: 'none', backgroundColor: 'white', fontSize: '13px', cursor: 'pointer', letterSpacing: '0.5px' }}
+          >
+            CSV
+          </button>
         </div>
 
         {/* 알림 설정 */}
@@ -289,24 +288,48 @@ export default function SettingsPage() {
         {/* 보안 및 개인정보 */}
         <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>보안 및 개인정보</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: '#e5e7eb', marginBottom: '28px' }}>
-          {[
-            { icon: '📁', title: '사진 저장 위치', desc: 'Supabase Storage — meal_photos/{사용자ID}/{연월}/{파일명}.jpg\n로그인 사용자만 저장되며, 각 사용자 폴더는 완전히 격리됩니다.' },
-            { icon: '🔐', title: '인증 방식', desc: 'Supabase JWT 토큰 기반 인증. 로그인하지 않은 상태에서는 클라우드 저장이 이루어지지 않으며, 식단 기록은 이 기기의 로컬 스토리지에만 보관됩니다.' },
-            { icon: '🗄️', title: '영양 데이터 저장', desc: '로컬 스토리지(mybob_meals)와 Supabase DB에 이중 저장됩니다. 서버 데이터는 로그인 계정에 귀속되며, 타인이 접근할 수 없습니다.' },
-            { icon: '🤖', title: 'AI 분석 데이터', desc: '음식 사진은 Google Gemini API로 전송되어 분석됩니다. 분석 후 원본 이미지는 Gemini 서버에 저장되지 않습니다(Google 정책 기준).' },
-            { icon: '🚫', title: '제3자 제공', desc: '수집된 식단 및 영양 데이터는 AI 분석·코칭 목적으로만 사용되며, 제3자에게 판매·제공되지 않습니다.' },
-          ].map(item => (
-            <div key={item.title} style={{ padding: '14px 16px', backgroundColor: 'white' }}>
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                <span style={{ fontSize: '16px', flexShrink: 0 }}>{item.icon}</span>
-                <div>
-                  <p style={{ fontSize: '12px', color: 'black', fontWeight: 500, marginBottom: '4px' }}>{item.title}</p>
-                  <p style={{ fontSize: '11px', color: '#6b7280', lineHeight: 1.6, whiteSpace: 'pre-line' }}>{item.desc}</p>
-                </div>
-              </div>
-            </div>
-          ))}
+          <button
+            onClick={() => setShowPrivacyModal(true)}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', backgroundColor: 'white', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left' }}
+          >
+            <span style={{ fontSize: '14px', color: 'black' }}>개인정보 처리방침</span>
+            <span style={{ fontSize: '16px', color: '#9ca3af' }}>›</span>
+          </button>
         </div>
+
+        {/* 개인정보 팝업 모달 */}
+        {showPrivacyModal && (
+          <div
+            onClick={() => setShowPrivacyModal(false)}
+            style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9000, display: 'flex', alignItems: 'flex-end' }}
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{ backgroundColor: 'white', width: '100%', maxHeight: '70vh', overflowY: 'auto', borderRadius: '12px 12px 0 0', padding: '24px' }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: 400 }}>보안 및 개인정보 처리방침</h3>
+                <button onClick={() => setShowPrivacyModal(false)} style={{ background: 'none', border: 'none', fontSize: '20px', color: '#9ca3af', cursor: 'pointer', padding: '4px' }}>×</button>
+              </div>
+              {[
+                { icon: '📁', title: '사진 저장 위치', desc: 'Supabase Storage — meal_photos/{사용자ID}/{연월}/{파일명}.jpg\n로그인 사용자만 저장되며, 각 사용자 폴더는 완전히 격리됩니다.' },
+                { icon: '🔐', title: '인증 방식', desc: 'Supabase JWT 토큰 기반 인증. 로그인하지 않은 상태에서는 클라우드 저장이 이루어지지 않으며, 식단 기록은 이 기기의 로컬 스토리지에만 보관됩니다.' },
+                { icon: '🗄️', title: '영양 데이터 저장', desc: '로컬 스토리지(mybob_meals)와 Supabase DB에 이중 저장됩니다. 서버 데이터는 로그인 계정에 귀속되며, 타인이 접근할 수 없습니다.' },
+                { icon: '🤖', title: 'AI 분석 데이터', desc: '음식 사진은 Google Gemini API로 전송되어 분석됩니다. 분석 후 원본 이미지는 Gemini 서버에 저장되지 않습니다(Google 정책 기준).' },
+                { icon: '🚫', title: '제3자 제공', desc: '수집된 식단 및 영양 데이터는 AI 분석·코칭 목적으로만 사용되며, 제3자에게 판매·제공되지 않습니다.' },
+              ].map(item => (
+                <div key={item.title} style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+                  <span style={{ fontSize: '16px', flexShrink: 0 }}>{item.icon}</span>
+                  <div>
+                    <p style={{ fontSize: '12px', color: 'black', fontWeight: 500, marginBottom: '4px' }}>{item.title}</p>
+                    <p style={{ fontSize: '11px', color: '#6b7280', lineHeight: 1.6, whiteSpace: 'pre-line' }}>{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+              <div style={{ height: '20px' }} />
+            </div>
+          </div>
+        )}
 
         {/* 목표 설정 */}
         <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>목표 설정</p>
@@ -318,8 +341,7 @@ export default function SettingsPage() {
           <div style={{ padding: '14px 16px', backgroundColor: 'white' }}>
             <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '6px' }}>이메일 주소</p>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <p style={{ fontSize: '14px', color: 'black' }}>user@example.com</p>
-              <button style={{ padding: '6px 12px', border: '1px solid #e5e7eb', backgroundColor: 'white', fontSize: '12px', cursor: 'pointer' }}>변경</button>
+              <p style={{ fontSize: '14px', color: 'black' }}>{userEmail || '로그인 필요'}</p>
             </div>
           </div>
           <div style={{ padding: '14px 16px', backgroundColor: 'white' }}>
