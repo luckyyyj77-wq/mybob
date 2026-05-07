@@ -289,17 +289,19 @@ function MealDetailContent() {
                 ) : (
                   <div style={{ position: 'absolute', inset: 0, backgroundColor: '#f3f4f6' }} />
                 )}
-                {/* 4분할에서만 칼로리 반투명 표시 */}
+                {/* 4분할에서만 칼로리 표시 — 하단 중앙, 그라데이션 배경 */}
                 {galleryMode === 'grid4' && (
                   <div style={{
-                    position: 'absolute', inset: 0,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    position: 'absolute', bottom: 0, left: 0, right: 0,
+                    padding: '16px 8px 8px',
+                    background: 'linear-gradient(to top, rgba(0,0,0,0.55), transparent)',
                     pointerEvents: 'none',
+                    display: 'flex', justifyContent: 'center',
                   }}>
                     <span style={{
-                      fontSize: '15px',
-                      color: 'rgba(255,255,255,0.85)',
-                      textShadow: '0 1px 4px rgba(0,0,0,0.6)',
+                      fontSize: '17px',
+                      color: 'white',
+                      textShadow: '0 1px 4px rgba(0,0,0,0.5)',
                       fontWeight: 400,
                       letterSpacing: '0.5px',
                     }}>
