@@ -71,11 +71,12 @@ export default function CameraCapturePage() {
   const [saved, setSaved] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
   const [permState, setPermState] = useState<PermState>('checking');
-  const [uploadStatus, setUploadStatus] = useState<{ used: number; limit: number; plan: string } | null>(null);
+  const [uploadStatus, setUploadStatus] = useState<{ upload: { used: number; limit: number }; analysis: { used: number; limit: number }; plan: string } | null>(null);
   const [showLimitModal, setShowLimitModal] = useState(false);
+  const [limitType, setLimitType] = useState<'analysis' | 'upload'>('analysis');
 
   useEffect(() => {
-    // 업로드 현황 조회
+    // 업로드/분석 현황 조회
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session?.access_token) return;
       try {
@@ -84,7 +85,7 @@ export default function CameraCapturePage() {
         });
         if (res.ok) {
           const data = await res.json();
-          setUploadStatus({ used: data.used, limit: data.limit, plan: data.plan });
+          setUploadStatus({ upload: data.upload, analysis: data.analysis, plan: data.plan });
         }
       } catch { /* 무시 */ }
     });
@@ -162,19 +163,43 @@ export default function CameraCapturePage() {
     if (!imageSrc) return;
     setLoadingAnalysis(true);
     try {
-      // 전송 전 리사이즈 (용량 절감)
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
       const resized = await resizeImage(imageSrc, 800);
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const res = await fetch('/api/analyze-food', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ image: resized }),
       });
       const result = await res.json();
+
+      // AI 분석 횟수 초과
+      if (res.status === 429 && result.error === 'ANALYSIS_LIMIT_EXCEEDED') {
+        setUploadStatus(prev => prev ? {
+          ...prev,
+          analysis: { used: result.used, limit: result.limit },
+        } : null);
+        setLimitType('analysis');
+        setShowLimitModal(true);
+        return;
+      }
+
       if (!res.ok) throw new Error(result.details || result.error || '분석 오류');
       if (result.success) {
         setAnalysis(result.food);
         setAnalysisSource(result.source || null);
         setAnalysisModel(result.modelUsed || null);
+        // 분석 카운트 반영
+        if (result.analysisStatus) {
+          setUploadStatus(prev => prev ? {
+            ...prev,
+            analysis: { used: result.analysisStatus.used, limit: result.analysisStatus.limit },
+          } : null);
+        }
       }
     } catch (err: any) {
       alert(`분석 실패: ${err.message}`);
@@ -225,7 +250,11 @@ export default function CameraCapturePage() {
 
             // 업로드 제한 초과
             if (res.status === 429 && result.error === 'UPLOAD_LIMIT_EXCEEDED') {
-              setUploadStatus({ used: result.used, limit: result.limit, plan: result.plan });
+              setUploadStatus(prev => prev ? {
+                ...prev,
+                upload: { used: result.used, limit: result.limit },
+              } : null);
+              setLimitType('upload');
               setShowLimitModal(true);
               setLoadingSave(false);
               return;
@@ -234,7 +263,10 @@ export default function CameraCapturePage() {
             if (result.success && result.data?.[0]?.photo_url) {
               serverPhotoUrl = result.data[0].photo_url;
               if (result.uploadStatus) {
-                setUploadStatus(result.uploadStatus);
+                setUploadStatus(prev => prev ? {
+                  ...prev,
+                  upload: { used: result.uploadStatus.used, limit: result.uploadStatus.limit },
+                } : null);
               }
             }
           } catch { /* 서버 저장 실패해도 로컬 캐시는 유지 */ }
@@ -352,62 +384,69 @@ export default function CameraCapturePage() {
     );
   }
 
-  // 업로드 제한 초과 모달
-  const LimitModal = () => (
-    <div style={{
-      position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)',
-      zIndex: 9999, display: 'flex', alignItems: 'flex-end',
-    }}>
+  // 제한 초과 모달 (분석/저장 공통)
+  const LimitModal = () => {
+    const isAnalysis = limitType === 'analysis';
+    const current = isAnalysis ? uploadStatus?.analysis : uploadStatus?.upload;
+    const isFree = uploadStatus?.plan === 'free';
+    return (
       <div style={{
-        backgroundColor: 'white', width: '100%',
-        borderRadius: '16px 16px 0 0', padding: '28px 24px 40px',
+        position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)',
+        zIndex: 9999, display: 'flex', alignItems: 'flex-end',
       }}>
-        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-          <p style={{ fontSize: '28px', marginBottom: '8px' }}>📸</p>
-          <p style={{ fontSize: '16px', color: 'black', marginBottom: '6px' }}>오늘 업로드 한도에 도달했습니다</p>
-          <p style={{ fontSize: '13px', color: '#9ca3af', lineHeight: 1.6 }}>
-            {uploadStatus?.plan === 'free'
-              ? `무료 플랜은 하루 ${uploadStatus?.limit}장까지 업로드할 수 있습니다.`
-              : `오늘 ${uploadStatus?.limit}장을 모두 사용했습니다.`}
-            {'\n'}내일 자정에 초기화됩니다.
-          </p>
-        </div>
-
-        {uploadStatus?.plan === 'free' && (
-          <div style={{ backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', padding: '16px', marginBottom: '16px', textAlign: 'center' }}>
-            <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '8px' }}>PRO 플랜으로 업그레이드</p>
-            <p style={{ fontSize: '22px', color: '#6B21A8', marginBottom: '4px' }}>하루 25장</p>
-            <p style={{ fontSize: '11px', color: '#9ca3af' }}>월 900원 · 광고 없음 · 프리미엄 기능</p>
+        <div style={{
+          backgroundColor: 'white', width: '100%',
+          borderRadius: '16px 16px 0 0', padding: '28px 24px 40px',
+        }}>
+          <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+            <p style={{ fontSize: '28px', marginBottom: '8px' }}>{isAnalysis ? '🤖' : '📸'}</p>
+            <p style={{ fontSize: '16px', color: 'black', marginBottom: '6px' }}>
+              오늘 {isAnalysis ? 'AI 분석' : '저장'} 한도에 도달했습니다
+            </p>
+            <p style={{ fontSize: '13px', color: '#9ca3af', lineHeight: 1.6 }}>
+              {isFree
+                ? `무료 플랜은 하루 ${current?.limit}회까지 ${isAnalysis ? '분석' : '저장'}할 수 있습니다.`
+                : `오늘 ${current?.limit}회를 모두 사용했습니다.`}
+              {'\n'}내일 자정에 초기화됩니다.
+            </p>
           </div>
-        )}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {uploadStatus?.plan === 'free' && (
+          {isFree && (
+            <div style={{ backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', padding: '16px', marginBottom: '16px', textAlign: 'center' }}>
+              <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '8px' }}>PRO 플랜으로 업그레이드</p>
+              <p style={{ fontSize: '22px', color: '#6B21A8', marginBottom: '4px' }}>하루 25회</p>
+              <p style={{ fontSize: '11px', color: '#9ca3af' }}>월 900원 · 광고 없음 · 프리미엄 기능</p>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {isFree && (
+              <button
+                style={{
+                  width: '100%', padding: '14px',
+                  backgroundColor: '#6B21A8', color: 'white', border: 'none',
+                  fontSize: '13px', cursor: 'pointer', letterSpacing: '1px',
+                }}
+                onClick={() => setShowLimitModal(false)}
+              >
+                업그레이드 (준비 중)
+              </button>
+            )}
             <button
+              onClick={() => setShowLimitModal(false)}
               style={{
                 width: '100%', padding: '14px',
-                backgroundColor: '#6B21A8', color: 'white', border: 'none',
+                backgroundColor: 'white', color: 'black', border: '1px solid #e5e7eb',
                 fontSize: '13px', cursor: 'pointer', letterSpacing: '1px',
               }}
-              onClick={() => { setShowLimitModal(false); }}
             >
-              업그레이드 (준비 중)
+              닫기
             </button>
-          )}
-          <button
-            onClick={() => setShowLimitModal(false)}
-            style={{
-              width: '100%', padding: '14px',
-              backgroundColor: 'white', color: 'black', border: '1px solid #e5e7eb',
-              fontSize: '13px', cursor: 'pointer', letterSpacing: '1px',
-            }}
-          >
-            닫기
-          </button>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div style={{ position: 'fixed', inset: 0, backgroundColor: 'black', display: 'flex', flexDirection: 'column' }}>
@@ -462,7 +501,7 @@ export default function CameraCapturePage() {
             </button>
             <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" style={{ display: 'none' }} />
 
-            {/* 오늘 업로드 현황 배지 */}
+            {/* 오늘 AI 분석 현황 배지 */}
             {uploadStatus && (
               <div style={{
                 position: 'absolute', top: '20px', left: '50%', transform: 'translateX(-50%)',
@@ -470,11 +509,12 @@ export default function CameraCapturePage() {
                 padding: '4px 12px', borderRadius: '20px',
                 display: 'flex', alignItems: 'center', gap: '6px',
               }}>
-                <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.7)', letterSpacing: '0.5px' }}>
-                  오늘
-                </span>
-                <span style={{ fontSize: '12px', color: uploadStatus.used >= uploadStatus.limit ? '#f87171' : 'white', fontWeight: 500 }}>
-                  {uploadStatus.used}/{uploadStatus.limit}
+                <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.7)', letterSpacing: '0.5px' }}>분석</span>
+                <span style={{
+                  fontSize: '12px', fontWeight: 500,
+                  color: uploadStatus.analysis.used >= uploadStatus.analysis.limit ? '#f87171' : 'white',
+                }}>
+                  {uploadStatus.analysis.used}/{uploadStatus.analysis.limit}
                 </span>
                 {uploadStatus.plan !== 'free' && (
                   <span style={{ fontSize: '9px', color: '#a78bfa', letterSpacing: '1px', textTransform: 'uppercase' }}>PRO</span>

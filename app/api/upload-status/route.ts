@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { UPLOAD_LIMITS, ANALYSIS_LIMITS } from '@/lib/plan';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -23,14 +24,21 @@ export async function GET(request: Request) {
 
   const { data: profile } = await adminSupabase
     .from('profiles')
-    .select('plan, uploads_today, last_upload_date')
+    .select('plan, uploads_today, last_upload_date, analyses_today, last_analysis_date')
     .eq('id', user.id)
     .single();
 
   const plan = (profile?.plan as 'free' | 'pro' | 'lifetime') || 'free';
-  const limits = { free: 10, pro: 25, lifetime: 25 };
-  const limit = limits[plan];
-  const used = profile?.last_upload_date === today ? (profile?.uploads_today || 0) : 0;
 
-  return NextResponse.json({ plan, used, limit, remaining: limit - used });
+  const uploadLimit = UPLOAD_LIMITS[plan];
+  const uploadUsed = profile?.last_upload_date === today ? (profile?.uploads_today || 0) : 0;
+
+  const analysisLimit = ANALYSIS_LIMITS[plan];
+  const analysisUsed = profile?.last_analysis_date === today ? (profile?.analyses_today || 0) : 0;
+
+  return NextResponse.json({
+    plan,
+    upload: { used: uploadUsed, limit: uploadLimit, remaining: uploadLimit - uploadUsed },
+    analysis: { used: analysisUsed, limit: analysisLimit, remaining: analysisLimit - analysisUsed },
+  });
 }

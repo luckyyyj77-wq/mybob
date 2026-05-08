@@ -1,4 +1,10 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+import { checkAnalysisLimit, incrementAnalysisCount } from '@/lib/plan';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 // ── 한식 영양DB: 식약처 기반 하드코딩 상위 30종 ──────────────────────────
 // OpenFoodFacts의 한식 커버리지 보완용 (100g 기준)
@@ -175,6 +181,32 @@ export async function POST(request: Request) {
     const apiKey = process.env.GEMINI_API_KEY?.trim();
     if (!apiKey) return NextResponse.json({ error: 'API 키가 없습니다.' }, { status: 500 });
 
+    // AI 분석 횟수 제한 체크 (로컬/클라우드 무관 — Gemini 호출 비용 제한)
+    const authHeader = request.headers.get('Authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      const supabase = createClient(supabaseUrl, supabaseAnonKey);
+      const { data: { user } } = await supabase.auth.getUser(token);
+      if (user) {
+        const adminSupabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+        const limitCheck = await checkAnalysisLimit(adminSupabase, user.id);
+        if (!limitCheck.allowed) {
+          return NextResponse.json({
+            error: 'ANALYSIS_LIMIT_EXCEEDED',
+            plan: limitCheck.plan,
+            used: limitCheck.used,
+            limit: limitCheck.limit,
+          }, { status: 429 });
+        }
+        // 분석 완료 후 카운트 증가는 성공 응답 직전에 처리
+        (request as any)._userId = user.id;
+        (request as any)._adminSupabase = adminSupabase;
+        (request as any)._analysisUsed = limitCheck.used;
+        (request as any)._analysisLimit = limitCheck.limit;
+        (request as any)._plan = limitCheck.plan;
+      }
+    }
+
     const base64Data = image.includes(',') ? image.split(',')[1] : image;
 
     // Step 1: 음식명 인식 (빠른 텍스트 전용 호출)
@@ -261,7 +293,23 @@ export async function POST(request: Request) {
       ? (dbResult.source === 'korean_db' ? 'korean_db+gemini' : 'openfoodfacts+gemini')
       : 'gemini_only';
 
-    return NextResponse.json({ success: true, food: finalFood, modelUsed: geminiResult.modelUsed, source });
+    // 분석 성공 시 카운트 증가
+    const userId = (request as any)._userId;
+    const adminSupabase = (request as any)._adminSupabase;
+    const analysisUsed = (request as any)._analysisUsed ?? 0;
+    const analysisLimit = (request as any)._analysisLimit ?? 10;
+    const plan = (request as any)._plan ?? 'free';
+    if (userId && adminSupabase) {
+      await incrementAnalysisCount(adminSupabase, userId);
+    }
+
+    return NextResponse.json({
+      success: true,
+      food: finalFood,
+      modelUsed: geminiResult.modelUsed,
+      source,
+      analysisStatus: { used: analysisUsed + 1, limit: analysisLimit, plan },
+    });
 
   } catch (error: any) {
     return NextResponse.json({ error: '서버 오류', details: error.message }, { status: 500 });

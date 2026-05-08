@@ -164,7 +164,11 @@ function GoalSettings() {
   );
 }
 
-type PlanStatus = { plan: 'free' | 'pro' | 'lifetime'; used: number; limit: number; remaining: number };
+type PlanStatus = {
+  plan: 'free' | 'pro' | 'lifetime';
+  upload: { used: number; limit: number; remaining: number };
+  analysis: { used: number; limit: number; remaining: number };
+};
 
 const PLAN_LABEL: Record<string, string> = { free: '무료', pro: '구독 PRO', lifetime: '평생 이용권' };
 const PLAN_COLOR: Record<string, string> = { free: '#9ca3af', pro: '#6B21A8', lifetime: '#d97706' };
@@ -237,7 +241,7 @@ export default function SettingsPage() {
           <div style={{ padding: '16px', backgroundColor: 'white' }}>
             {planStatus ? (
               <>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ fontSize: '11px', letterSpacing: '1.5px', textTransform: 'uppercase', color: 'white', backgroundColor: PLAN_COLOR[planStatus.plan], padding: '3px 8px' }}>
                       {PLAN_LABEL[planStatus.plan]}
@@ -253,26 +257,46 @@ export default function SettingsPage() {
                     </button>
                   )}
                 </div>
-                <div style={{ marginBottom: '8px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                    <span style={{ fontSize: '11px', color: '#9ca3af' }}>오늘 업로드</span>
-                    <span style={{ fontSize: '11px', color: planStatus.used >= planStatus.limit ? '#ef4444' : 'black' }}>
-                      {planStatus.used} / {planStatus.limit}장
+
+                {/* AI 분석 사용량 */}
+                <div style={{ marginBottom: '10px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                    <span style={{ fontSize: '11px', color: '#9ca3af' }}>오늘 AI 분석</span>
+                    <span style={{ fontSize: '11px', color: planStatus.analysis.used >= planStatus.analysis.limit ? '#ef4444' : 'black' }}>
+                      {planStatus.analysis.used} / {planStatus.analysis.limit}회
                     </span>
                   </div>
-                  {/* 진행 바 */}
-                  <div style={{ height: '4px', backgroundColor: '#f3f4f6', borderRadius: '2px', overflow: 'hidden' }}>
+                  <div style={{ height: '3px', backgroundColor: '#f3f4f6', borderRadius: '2px', overflow: 'hidden' }}>
                     <div style={{
                       height: '100%',
-                      width: `${Math.min(100, (planStatus.used / planStatus.limit) * 100)}%`,
-                      backgroundColor: planStatus.used >= planStatus.limit ? '#ef4444' : '#6B21A8',
+                      width: `${Math.min(100, (planStatus.analysis.used / planStatus.analysis.limit) * 100)}%`,
+                      backgroundColor: planStatus.analysis.used >= planStatus.analysis.limit ? '#ef4444' : '#6B21A8',
                       transition: 'width 0.3s',
                     }} />
                   </div>
                 </div>
+
+                {/* 클라우드 저장 사용량 */}
+                <div style={{ marginBottom: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                    <span style={{ fontSize: '11px', color: '#9ca3af' }}>오늘 클라우드 저장</span>
+                    <span style={{ fontSize: '11px', color: planStatus.upload.used >= planStatus.upload.limit ? '#ef4444' : 'black' }}>
+                      {planStatus.upload.used} / {planStatus.upload.limit}장
+                    </span>
+                  </div>
+                  <div style={{ height: '3px', backgroundColor: '#f3f4f6', borderRadius: '2px', overflow: 'hidden' }}>
+                    <div style={{
+                      height: '100%',
+                      width: `${Math.min(100, (planStatus.upload.used / planStatus.upload.limit) * 100)}%`,
+                      backgroundColor: planStatus.upload.used >= planStatus.upload.limit ? '#ef4444' : '#9ca3af',
+                      transition: 'width 0.3s',
+                    }} />
+                  </div>
+                </div>
+
                 {planStatus.plan === 'free' && (
                   <p style={{ fontSize: '10px', color: '#9ca3af', lineHeight: 1.5 }}>
-                    PRO로 업그레이드하면 하루 25장 + 광고 없음 + 프리미엄 기능을 이용할 수 있습니다.
+                    PRO로 업그레이드하면 하루 25회 + 광고 없음 + 프리미엄 기능을 이용할 수 있습니다.
                   </p>
                 )}
               </>
