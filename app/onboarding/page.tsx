@@ -34,7 +34,7 @@ export default function OnboardingPage() {
       <div style={{ padding: '48px 32px 0' }}>
         <p style={{ fontSize: '9px', color: '#9ca3af', letterSpacing: '3px', textTransform: 'uppercase', marginBottom: '12px' }}>MYBOB</p>
         <h1 style={{ fontSize: '28px', fontWeight: 400, color: 'black', letterSpacing: '-0.5px', lineHeight: 1.3, marginBottom: '32px' }}>
-          시작하기 전에<br />한 가지만 알려드립니다
+          환영합니다
         </h1>
       </div>
 
