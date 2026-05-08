@@ -180,6 +180,8 @@ export default function SettingsPage() {
   const [stats, setStats] = useState<Stats>({ total: 0, totalCalories: 0, avgCalories: 0, firstDate: null, lastDate: null, topCategory: null });
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [dangerUnlocked, setDangerUnlocked] = useState(false);
+  const [confirmWithdraw, setConfirmWithdraw] = useState(false);
   const [userEmail, setUserEmail] = useState<string>('');
   const [storageMode, setStorageModeState] = useState<StorageMode>('local');
   const [showModeModal, setShowModeModal] = useState(false);
@@ -213,6 +215,15 @@ export default function SettingsPage() {
     setMeals([]);
     setStats(computeStats([]));
     setConfirmDelete(false);
+    setDangerUnlocked(false);
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    localStorage.removeItem('mybob_meals');
+    localStorage.removeItem('mybob_storage_mode');
+    localStorage.removeItem('mybob_onboarding_done');
+    window.location.href = '/auth/login';
   };
 
   const fmt = (iso: string) => new Date(iso).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' });
@@ -509,21 +520,76 @@ export default function SettingsPage() {
         <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>목표 설정</p>
         <GoalSettings />
 
-        {/* 개인 정보 + 위험 구역 */}
+        {/* 개인 정보 */}
         <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>개인 정보</p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: '#e5e7eb', marginBottom: '40px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: '#e5e7eb', marginBottom: '28px' }}>
           <div style={{ padding: '14px 16px', backgroundColor: 'white' }}>
             <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '6px' }}>이메일 주소</p>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <p style={{ fontSize: '14px', color: 'black' }}>{userEmail || '로그인 필요'}</p>
-            </div>
+            <p style={{ fontSize: '14px', color: 'black' }}>{userEmail || '로그인 필요'}</p>
           </div>
+          {/* 로그아웃 */}
+          <button
+            onClick={handleLogout}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '14px 16px', backgroundColor: 'white', border: 'none',
+              cursor: 'pointer', width: '100%', textAlign: 'left',
+            }}
+          >
+            <span style={{ fontSize: '14px', color: 'black' }}>로그아웃</span>
+            <span style={{ fontSize: '12px', color: '#9ca3af' }}>›</span>
+          </button>
+        </div>
+
+        {/* 위험 구역 */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+          <p style={{ fontSize: '10px', color: '#ef4444', letterSpacing: '2px', textTransform: 'uppercase' }}>위험 구역</p>
+          {/* 자물쇠 토글 */}
+          <button
+            onClick={() => { setDangerUnlocked(v => !v); setConfirmDelete(false); setConfirmWithdraw(false); }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '6px',
+              padding: '5px 10px', border: `1px solid ${dangerUnlocked ? '#ef4444' : '#e5e7eb'}`,
+              backgroundColor: dangerUnlocked ? '#fef2f2' : 'white',
+              cursor: 'pointer', fontSize: '11px',
+              color: dangerUnlocked ? '#ef4444' : '#9ca3af',
+              transition: 'all 0.2s',
+            }}
+          >
+            <span style={{ fontSize: '13px' }}>{dangerUnlocked ? '🔓' : '🔒'}</span>
+            {dangerUnlocked ? '잠금 해제됨' : '잠금'}
+          </button>
+        </div>
+
+        <div style={{
+          display: 'flex', flexDirection: 'column', gap: '1px',
+          backgroundColor: '#e5e7eb', marginBottom: '40px',
+          opacity: dangerUnlocked ? 1 : 0.4,
+          transition: 'opacity 0.2s',
+          position: 'relative',
+        }}>
+          {/* 잠긴 상태 오버레이 — 클릭 차단 */}
+          {!dangerUnlocked && (
+            <div style={{ position: 'absolute', inset: 0, zIndex: 10, cursor: 'not-allowed' }} />
+          )}
+
+          {/* 로컬 기록 전체 삭제 */}
           <div style={{ padding: '14px 16px', backgroundColor: 'white' }}>
-            <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '10px' }}>위험 구역</p>
+            <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '10px', lineHeight: 1.5 }}>
+              이 기기에 저장된 모든 식단 기록을 삭제합니다. 되돌릴 수 없습니다.
+            </p>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button
                 onClick={handleDeleteAll}
-                style={{ padding: '8px 14px', backgroundColor: confirmDelete ? '#ef4444' : 'white', color: confirmDelete ? 'white' : '#ef4444', border: '1px solid #fca5a5', fontSize: '13px', cursor: 'pointer', transition: 'all 0.2s' }}
+                disabled={!dangerUnlocked}
+                style={{
+                  padding: '8px 14px',
+                  backgroundColor: confirmDelete ? '#ef4444' : 'white',
+                  color: confirmDelete ? 'white' : '#ef4444',
+                  border: '1px solid #fca5a5', fontSize: '13px',
+                  cursor: dangerUnlocked ? 'pointer' : 'not-allowed',
+                  transition: 'all 0.2s',
+                }}
               >
                 {confirmDelete ? '한 번 더 누르면 삭제됩니다' : '로컬 기록 전체 삭제'}
               </button>
@@ -536,9 +602,51 @@ export default function SettingsPage() {
                 </button>
               )}
             </div>
-            <button style={{ marginTop: '8px', padding: '8px 14px', backgroundColor: 'white', color: '#ef4444', border: '1px solid #fca5a5', fontSize: '13px', cursor: 'pointer' }}>
-              회원 탈퇴
-            </button>
+          </div>
+
+          {/* 회원 탈퇴 */}
+          <div style={{ padding: '14px 16px', backgroundColor: 'white' }}>
+            <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '10px', lineHeight: 1.5 }}>
+              계정과 서버에 저장된 모든 데이터가 영구 삭제됩니다.
+            </p>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={() => setConfirmWithdraw(v => !v)}
+                disabled={!dangerUnlocked}
+                style={{
+                  padding: '8px 14px',
+                  backgroundColor: confirmWithdraw ? '#ef4444' : 'white',
+                  color: confirmWithdraw ? 'white' : '#ef4444',
+                  border: '1px solid #fca5a5', fontSize: '13px',
+                  cursor: dangerUnlocked ? 'pointer' : 'not-allowed',
+                  transition: 'all 0.2s',
+                }}
+              >
+                {confirmWithdraw ? '정말 탈퇴하시겠습니까?' : '회원 탈퇴'}
+              </button>
+              {confirmWithdraw && (
+                <button
+                  onClick={async () => {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (session) await requestServerDataDeletion(session.access_token);
+                    await supabase.auth.signOut();
+                    localStorage.clear();
+                    window.location.href = '/auth/login';
+                  }}
+                  style={{ padding: '8px 14px', backgroundColor: '#ef4444', color: 'white', border: 'none', fontSize: '13px', cursor: 'pointer' }}
+                >
+                  최종 확인 · 탈퇴
+                </button>
+              )}
+              {confirmWithdraw && (
+                <button
+                  onClick={() => setConfirmWithdraw(false)}
+                  style={{ padding: '8px 14px', backgroundColor: 'white', color: '#9ca3af', border: '1px solid #e5e7eb', fontSize: '13px', cursor: 'pointer' }}
+                >
+                  취소
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
