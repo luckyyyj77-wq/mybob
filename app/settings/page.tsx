@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { FaArrowLeft } from 'react-icons/fa';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { getStorageMode, type StorageMode } from '@/lib/storage-mode';
 import { getCloudDeleteSchedule, cancelCloudDeleteSchedule, requestServerDataDeletion } from '@/lib/storage-migration';
@@ -187,6 +187,12 @@ export default function SettingsPage() {
   const [showModeModal, setShowModeModal] = useState(false);
   const [deleteSchedule, setDeleteSchedule] = useState<{ scheduledAt: Date; daysLeft: number } | null>(null);
   const [planStatus, setPlanStatus] = useState<PlanStatus | null>(null);
+  const [profile, setProfile] = useState<{ nickname: string | null; avatar_url: string | null }>({ nickname: null, avatar_url: null });
+  const [nicknameInput, setNicknameInput] = useState('');
+  const [nicknameSaving, setNicknameSaving] = useState(false);
+  const [nicknameSaved, setNicknameSaved] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const raw = localStorage.getItem('mybob_meals');
@@ -198,10 +204,16 @@ export default function SettingsPage() {
       if (session?.user?.email) setUserEmail(session.user.email);
       if (session?.access_token) {
         try {
-          const res = await fetch('/api/upload-status', {
-            headers: { Authorization: `Bearer ${session.access_token}` },
-          });
-          if (res.ok) setPlanStatus(await res.json());
+          const [statusRes, profileRes] = await Promise.all([
+            fetch('/api/upload-status', { headers: { Authorization: `Bearer ${session.access_token}` } }),
+            fetch('/api/profile', { headers: { Authorization: `Bearer ${session.access_token}` } }),
+          ]);
+          if (statusRes.ok) setPlanStatus(await statusRes.json());
+          if (profileRes.ok) {
+            const p = await profileRes.json();
+            setProfile({ nickname: p.nickname, avatar_url: p.avatar_url });
+            setNicknameInput(p.nickname ?? '');
+          }
         } catch { /* 무시 */ }
       }
     });
@@ -216,6 +228,52 @@ export default function SettingsPage() {
     setStats(computeStats([]));
     setConfirmDelete(false);
     setDangerUnlocked(false);
+  };
+
+  const handleNicknameSave = async () => {
+    const nick = nicknameInput.trim();
+    if (nick.length < 2 || nick.length > 16) return alert('닉네임은 2~16자여야 합니다.');
+    setNicknameSaving(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    const res = await fetch('/api/profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify({ nickname: nick }),
+    });
+    const result = await res.json();
+    if (result.success) {
+      setProfile(prev => ({ ...prev, nickname: nick }));
+      setNicknameSaved(true);
+      setTimeout(() => setNicknameSaved(false), 1500);
+    } else {
+      alert(result.error || '저장 실패');
+    }
+    setNicknameSaving(false);
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarUploading(true);
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const res = await fetch('/api/profile/avatar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ imageBase64: reader.result }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        setProfile(prev => ({ ...prev, avatar_url: result.avatar_url }));
+      } else {
+        alert(result.error || '업로드 실패');
+      }
+      setAvatarUploading(false);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleLogout = async () => {
@@ -245,6 +303,97 @@ export default function SettingsPage() {
 
       {/* Content */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+
+        {/* 프로필 */}
+        <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>프로필</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: '#e5e7eb', border: '1px solid #e5e7eb', marginBottom: '28px' }}>
+          <div style={{ padding: '16px', backgroundColor: 'white' }}>
+
+            {planStatus?.plan === 'free' ? (
+              /* 무료 — 잠금 상태 안내 */
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <p style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '4px' }}>닉네임 · 프로필 사진</p>
+                  <p style={{ fontSize: '11px', color: '#d1d5db' }}>PRO 플랜에서 사용 가능합니다</p>
+                </div>
+                <span style={{ fontSize: '18px' }}>🔒</span>
+              </div>
+            ) : (
+              /* PRO — 편집 가능 */
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+                {/* 아바타 */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div
+                    onClick={() => avatarInputRef.current?.click()}
+                    style={{
+                      width: '64px', height: '64px', borderRadius: '50%',
+                      backgroundColor: '#f3f4f6', border: '1px solid #e5e7eb',
+                      overflow: 'hidden', cursor: 'pointer', flexShrink: 0,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      position: 'relative',
+                    }}
+                  >
+                    {profile.avatar_url ? (
+                      <img src={profile.avatar_url} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <span style={{ fontSize: '24px' }}>👤</span>
+                    )}
+                    {avatarUploading && (
+                      <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ width: '18px', height: '18px', border: '2px solid white', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <p style={{ fontSize: '13px', color: 'black', marginBottom: '4px' }}>
+                      {profile.nickname || '닉네임 없음'}
+                    </p>
+                    <button
+                      onClick={() => avatarInputRef.current?.click()}
+                      style={{ fontSize: '11px', color: '#6B21A8', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                    >
+                      사진 변경
+                    </button>
+                  </div>
+                  <input ref={avatarInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarUpload} />
+                </div>
+
+                {/* 닉네임 입력 */}
+                <div>
+                  <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '6px' }}>닉네임 (2~16자)</p>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      type="text"
+                      value={nicknameInput}
+                      onChange={e => setNicknameInput(e.target.value)}
+                      maxLength={16}
+                      placeholder="닉네임을 입력하세요"
+                      style={{
+                        flex: 1, padding: '10px 12px', border: '1px solid #e5e7eb',
+                        fontSize: '14px', outline: 'none', backgroundColor: 'white',
+                      }}
+                    />
+                    <button
+                      onClick={handleNicknameSave}
+                      disabled={nicknameSaving || nicknameInput.trim() === (profile.nickname ?? '')}
+                      style={{
+                        padding: '10px 16px', fontSize: '12px', border: 'none',
+                        backgroundColor: nicknameSaved ? '#6B21A8' : nicknameSaving || nicknameInput.trim() === (profile.nickname ?? '') ? '#e5e7eb' : 'black',
+                        color: nicknameSaved || (!nicknameSaving && nicknameInput.trim() !== (profile.nickname ?? '')) ? 'white' : '#9ca3af',
+                        cursor: nicknameSaving || nicknameInput.trim() === (profile.nickname ?? '') ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.2s', letterSpacing: '0.5px',
+                      }}
+                    >
+                      {nicknameSaved ? '저장됨' : '저장'}
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* 플랜 현황 */}
         <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>이용 플랜</p>
