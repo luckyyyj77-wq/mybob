@@ -11,9 +11,9 @@ import {
 
 const NAV_ITEMS = [
   { href: '/admin',          icon: FaChartBar,  label: '대시보드',     implemented: true },
-  { href: '/admin/users',    icon: FaUsers,     label: '회원 관리',    implemented: false },
-  { href: '/admin/meals',    icon: FaUtensils,  label: '식단 데이터',  implemented: false },
-  { href: '/admin/reports',  icon: FaFileAlt,   label: '통계 리포트',  implemented: false },
+  { href: '/admin/users',    icon: FaUsers,     label: '회원 관리',    implemented: true },
+  { href: '/admin/meals',    icon: FaUtensils,  label: '식단 데이터',  implemented: true },
+  { href: '/admin/reports',  icon: FaFileAlt,   label: '통계 리포트',  implemented: true },
   { href: '/admin/feedback', icon: FaHandshake, label: '제휴/문의',    implemented: false },
   { href: '/admin/settings', icon: FaCog,       label: '앱 설정',      implemented: false },
 ];
