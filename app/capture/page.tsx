@@ -71,6 +71,24 @@ export default function CameraCapturePage() {
   const [saved, setSaved] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
   const [permState, setPermState] = useState<PermState>('checking');
+  const [uploadStatus, setUploadStatus] = useState<{ used: number; limit: number; plan: string } | null>(null);
+  const [showLimitModal, setShowLimitModal] = useState(false);
+
+  useEffect(() => {
+    // 업로드 현황 조회
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session?.access_token) return;
+      try {
+        const res = await fetch('/api/upload-status', {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setUploadStatus({ used: data.used, limit: data.limit, plan: data.plan });
+        }
+      } catch { /* 무시 */ }
+    });
+  }, []);
 
   useEffect(() => {
     // 이미 허용된 것으로 캐시된 경우 바로 granted
@@ -204,8 +222,20 @@ export default function CameraCapturePage() {
               body: JSON.stringify({ mealData: analysis, imageBase64: imageSrc }),
             });
             const result = await res.json();
+
+            // 업로드 제한 초과
+            if (res.status === 429 && result.error === 'UPLOAD_LIMIT_EXCEEDED') {
+              setUploadStatus({ used: result.used, limit: result.limit, plan: result.plan });
+              setShowLimitModal(true);
+              setLoadingSave(false);
+              return;
+            }
+
             if (result.success && result.data?.[0]?.photo_url) {
               serverPhotoUrl = result.data[0].photo_url;
+              if (result.uploadStatus) {
+                setUploadStatus(result.uploadStatus);
+              }
             }
           } catch { /* 서버 저장 실패해도 로컬 캐시는 유지 */ }
         }
@@ -322,8 +352,66 @@ export default function CameraCapturePage() {
     );
   }
 
+  // 업로드 제한 초과 모달
+  const LimitModal = () => (
+    <div style={{
+      position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)',
+      zIndex: 9999, display: 'flex', alignItems: 'flex-end',
+    }}>
+      <div style={{
+        backgroundColor: 'white', width: '100%',
+        borderRadius: '16px 16px 0 0', padding: '28px 24px 40px',
+      }}>
+        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+          <p style={{ fontSize: '28px', marginBottom: '8px' }}>📸</p>
+          <p style={{ fontSize: '16px', color: 'black', marginBottom: '6px' }}>오늘 업로드 한도에 도달했습니다</p>
+          <p style={{ fontSize: '13px', color: '#9ca3af', lineHeight: 1.6 }}>
+            {uploadStatus?.plan === 'free'
+              ? `무료 플랜은 하루 ${uploadStatus?.limit}장까지 업로드할 수 있습니다.`
+              : `오늘 ${uploadStatus?.limit}장을 모두 사용했습니다.`}
+            {'\n'}내일 자정에 초기화됩니다.
+          </p>
+        </div>
+
+        {uploadStatus?.plan === 'free' && (
+          <div style={{ backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', padding: '16px', marginBottom: '16px', textAlign: 'center' }}>
+            <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '8px' }}>PRO 플랜으로 업그레이드</p>
+            <p style={{ fontSize: '22px', color: '#6B21A8', marginBottom: '4px' }}>하루 25장</p>
+            <p style={{ fontSize: '11px', color: '#9ca3af' }}>월 900원 · 광고 없음 · 프리미엄 기능</p>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {uploadStatus?.plan === 'free' && (
+            <button
+              style={{
+                width: '100%', padding: '14px',
+                backgroundColor: '#6B21A8', color: 'white', border: 'none',
+                fontSize: '13px', cursor: 'pointer', letterSpacing: '1px',
+              }}
+              onClick={() => { setShowLimitModal(false); }}
+            >
+              업그레이드 (준비 중)
+            </button>
+          )}
+          <button
+            onClick={() => setShowLimitModal(false)}
+            style={{
+              width: '100%', padding: '14px',
+              backgroundColor: 'white', color: 'black', border: '1px solid #e5e7eb',
+              fontSize: '13px', cursor: 'pointer', letterSpacing: '1px',
+            }}
+          >
+            닫기
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div style={{ position: 'fixed', inset: 0, backgroundColor: 'black', display: 'flex', flexDirection: 'column' }}>
+      {showLimitModal && <LimitModal />}
       <AnimatePresence mode="wait">
 
         {/* ── 카메라 뷰 ── */}
@@ -373,6 +461,26 @@ export default function CameraCapturePage() {
               <FaUpload size={14} color="white" />
             </button>
             <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" style={{ display: 'none' }} />
+
+            {/* 오늘 업로드 현황 배지 */}
+            {uploadStatus && (
+              <div style={{
+                position: 'absolute', top: '20px', left: '50%', transform: 'translateX(-50%)',
+                zIndex: 10, backgroundColor: 'rgba(0,0,0,0.55)',
+                padding: '4px 12px', borderRadius: '20px',
+                display: 'flex', alignItems: 'center', gap: '6px',
+              }}>
+                <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.7)', letterSpacing: '0.5px' }}>
+                  오늘
+                </span>
+                <span style={{ fontSize: '12px', color: uploadStatus.used >= uploadStatus.limit ? '#f87171' : 'white', fontWeight: 500 }}>
+                  {uploadStatus.used}/{uploadStatus.limit}
+                </span>
+                {uploadStatus.plan !== 'free' && (
+                  <span style={{ fontSize: '9px', color: '#a78bfa', letterSpacing: '1px', textTransform: 'uppercase' }}>PRO</span>
+                )}
+              </div>
+            )}
 
             {/* 조준선 */}
             <div style={{

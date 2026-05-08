@@ -164,6 +164,11 @@ function GoalSettings() {
   );
 }
 
+type PlanStatus = { plan: 'free' | 'pro' | 'lifetime'; used: number; limit: number; remaining: number };
+
+const PLAN_LABEL: Record<string, string> = { free: '무료', pro: '구독 PRO', lifetime: '평생 이용권' };
+const PLAN_COLOR: Record<string, string> = { free: '#9ca3af', pro: '#6B21A8', lifetime: '#d97706' };
+
 export default function SettingsPage() {
   const [aiAlert, setAiAlert] = useState(true);
   const [notifFreq, setNotifFreq] = useState('1시간 후');
@@ -175,6 +180,7 @@ export default function SettingsPage() {
   const [storageMode, setStorageModeState] = useState<StorageMode>('local');
   const [showModeModal, setShowModeModal] = useState(false);
   const [deleteSchedule, setDeleteSchedule] = useState<{ scheduledAt: Date; daysLeft: number } | null>(null);
+  const [planStatus, setPlanStatus] = useState<PlanStatus | null>(null);
 
   useEffect(() => {
     const raw = localStorage.getItem('mybob_meals');
@@ -182,8 +188,16 @@ export default function SettingsPage() {
     setMeals(parsed);
     setStats(computeStats(parsed));
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user?.email) setUserEmail(session.user.email);
+      if (session?.access_token) {
+        try {
+          const res = await fetch('/api/upload-status', {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          });
+          if (res.ok) setPlanStatus(await res.json());
+        } catch { /* 무시 */ }
+      }
     });
     setStorageModeState(getStorageMode());
     setDeleteSchedule(getCloudDeleteSchedule());
@@ -216,6 +230,57 @@ export default function SettingsPage() {
 
       {/* Content */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+
+        {/* 플랜 현황 */}
+        <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>이용 플랜</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: '#e5e7eb', border: '1px solid #e5e7eb', marginBottom: '28px' }}>
+          <div style={{ padding: '16px', backgroundColor: 'white' }}>
+            {planStatus ? (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '11px', letterSpacing: '1.5px', textTransform: 'uppercase', color: 'white', backgroundColor: PLAN_COLOR[planStatus.plan], padding: '3px 8px' }}>
+                      {PLAN_LABEL[planStatus.plan]}
+                    </span>
+                    <span style={{ fontSize: '13px', color: 'black' }}>이용 중</span>
+                  </div>
+                  {planStatus.plan === 'free' && (
+                    <button
+                      style={{ padding: '6px 12px', backgroundColor: '#6B21A8', color: 'white', border: 'none', fontSize: '11px', cursor: 'pointer', letterSpacing: '0.5px' }}
+                      onClick={() => alert('결제 기능 준비 중입니다.')}
+                    >
+                      업그레이드
+                    </button>
+                  )}
+                </div>
+                <div style={{ marginBottom: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '11px', color: '#9ca3af' }}>오늘 업로드</span>
+                    <span style={{ fontSize: '11px', color: planStatus.used >= planStatus.limit ? '#ef4444' : 'black' }}>
+                      {planStatus.used} / {planStatus.limit}장
+                    </span>
+                  </div>
+                  {/* 진행 바 */}
+                  <div style={{ height: '4px', backgroundColor: '#f3f4f6', borderRadius: '2px', overflow: 'hidden' }}>
+                    <div style={{
+                      height: '100%',
+                      width: `${Math.min(100, (planStatus.used / planStatus.limit) * 100)}%`,
+                      backgroundColor: planStatus.used >= planStatus.limit ? '#ef4444' : '#6B21A8',
+                      transition: 'width 0.3s',
+                    }} />
+                  </div>
+                </div>
+                {planStatus.plan === 'free' && (
+                  <p style={{ fontSize: '10px', color: '#9ca3af', lineHeight: 1.5 }}>
+                    PRO로 업그레이드하면 하루 25장 + 광고 없음 + 프리미엄 기능을 이용할 수 있습니다.
+                  </p>
+                )}
+              </>
+            ) : (
+              <p style={{ fontSize: '13px', color: '#9ca3af' }}>로그인 후 확인 가능합니다.</p>
+            )}
+          </div>
+        </div>
 
         {/* 기록 통계 */}
         <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>기록 현황</p>

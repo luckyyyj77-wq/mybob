@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
+import { checkUploadLimit, incrementUploadCount } from '@/lib/plan';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -71,6 +72,17 @@ export async function POST(request: Request) {
     // 업로드·쓰기는 service role key (Storage RLS 우회 필요)
     const adminSupabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
+    // 일일 업로드 제한 체크
+    const limitCheck = await checkUploadLimit(adminSupabase, user.id);
+    if (!limitCheck.allowed) {
+      return NextResponse.json({
+        error: 'UPLOAD_LIMIT_EXCEEDED',
+        plan: limitCheck.plan,
+        used: limitCheck.used,
+        limit: limitCheck.limit,
+      }, { status: 429 });
+    }
+
     // 날짜별 폴더로 업로드
     const storagePath = buildStoragePath(user.id, fileExtension);
     const { error: uploadError } = await adminSupabase.storage
@@ -106,7 +118,15 @@ export async function POST(request: Request) {
       .select();
 
     if (error) throw new Error(error.message);
-    return NextResponse.json({ success: true, data });
+
+    // 저장 성공 후 카운트 증가
+    await incrementUploadCount(adminSupabase, user.id);
+
+    return NextResponse.json({
+      success: true,
+      data,
+      uploadStatus: { used: limitCheck.used + 1, limit: limitCheck.limit, plan: limitCheck.plan },
+    });
 
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
