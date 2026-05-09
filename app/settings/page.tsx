@@ -712,27 +712,78 @@ export default function SettingsPage() {
           >
             <div
               onClick={e => e.stopPropagation()}
-              style={{ backgroundColor: 'white', width: '100%', maxHeight: '70vh', overflowY: 'auto', borderRadius: '12px 12px 0 0', padding: '24px' }}
+              style={{ backgroundColor: 'white', width: '100%', maxHeight: '75vh', overflowY: 'auto', borderRadius: '12px 12px 0 0', padding: '24px' }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <h3 style={{ fontSize: '16px', fontWeight: 400 }}>보안 및 개인정보 처리방침</h3>
+                <h3 style={{ fontSize: '16px', fontWeight: 400 }}>개인정보 처리방침</h3>
                 <button onClick={() => setShowPrivacyModal(false)} style={{ background: 'none', border: 'none', fontSize: '20px', color: '#9ca3af', cursor: 'pointer', padding: '4px' }}>×</button>
               </div>
-              {[
-                { icon: '📁', title: '사진 저장 위치', desc: 'Supabase Storage — meal_photos/{사용자ID}/{연월}/{파일명}.jpg\n로그인 사용자만 저장되며, 각 사용자 폴더는 완전히 격리됩니다.' },
-                { icon: '🔐', title: '인증 방식', desc: 'Supabase JWT 토큰 기반 인증. 로그인하지 않은 상태에서는 클라우드 저장이 이루어지지 않으며, 식단 기록은 이 기기의 로컬 스토리지에만 보관됩니다.' },
-                { icon: '🗄️', title: '영양 데이터 저장', desc: '로컬 스토리지(mybob_meals)와 Supabase DB에 이중 저장됩니다. 서버 데이터는 로그인 계정에 귀속되며, 타인이 접근할 수 없습니다.' },
-                { icon: '🤖', title: 'AI 분석 데이터', desc: '음식 사진은 Google Gemini API로 전송되어 분석됩니다. 분석 후 원본 이미지는 Gemini 서버에 저장되지 않습니다(Google 정책 기준).' },
-                { icon: '🚫', title: '제3자 제공', desc: '수집된 식단 및 영양 데이터는 AI 분석·코칭 목적으로만 사용되며, 제3자에게 판매·제공되지 않습니다.' },
-              ].map(item => (
-                <div key={item.title} style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
-                  <span style={{ fontSize: '16px', flexShrink: 0 }}>{item.icon}</span>
-                  <div>
-                    <p style={{ fontSize: '12px', color: 'black', fontWeight: 500, marginBottom: '4px' }}>{item.title}</p>
-                    <p style={{ fontSize: '11px', color: '#6b7280', lineHeight: 1.6, whiteSpace: 'pre-line' }}>{item.desc}</p>
-                  </div>
+
+              {/* 사진 저장 위치 */}
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+                <span style={{ fontSize: '16px', flexShrink: 0 }}>📁</span>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: '12px', color: 'black', fontWeight: 500, marginBottom: '4px' }}>사진 저장 위치</p>
+                  {storageMode === 'cloud' ? (
+                    <p style={{ fontSize: '11px', color: '#6b7280', lineHeight: 1.6 }}>사진은 암호화된 서버에 안전하게 저장됩니다. 본인 계정 외 접근이 불가합니다.</p>
+                  ) : (
+                    <div>
+                      <p style={{ fontSize: '11px', color: '#6b7280', lineHeight: 1.6, marginBottom: '6px' }}>사진은 이 기기의 브라우저 저장소(IndexedDB)에만 보관됩니다. 서버로 전송되지 않습니다.</p>
+                      <p style={{ fontSize: '10px', color: '#9ca3af', marginBottom: '4px', fontFamily: 'monospace' }}>경로: IndexedDB › mybob-photos</p>
+                      <button
+                        onClick={() => alert('브라우저 개발자 도구 → Application → IndexedDB → mybob-photos 에서 확인할 수 있습니다.')}
+                        style={{ fontSize: '10px', color: '#6B21A8', background: 'none', border: '1px solid #e5e7eb', padding: '3px 8px', cursor: 'pointer' }}
+                      >
+                        경로 안내
+                      </button>
+                    </div>
+                  )}
                 </div>
-              ))}
+              </div>
+
+              {/* 인증 방식 */}
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+                <span style={{ fontSize: '16px', flexShrink: 0 }}>🔐</span>
+                <div>
+                  <p style={{ fontSize: '12px', color: 'black', fontWeight: 500, marginBottom: '4px' }}>인증 방식</p>
+                  <p style={{ fontSize: '11px', color: '#6b7280', lineHeight: 1.6 }}>JWT 토큰 기반 인증을 사용합니다. 로그인하지 않은 상태에서는 클라우드 저장이 이루어지지 않으며, 모든 기록은 이 기기에만 보관됩니다.</p>
+                </div>
+              </div>
+
+              {/* 영양 데이터 저장 */}
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+                <span style={{ fontSize: '16px', flexShrink: 0 }}>🗄️</span>
+                <div>
+                  <p style={{ fontSize: '12px', color: 'black', fontWeight: 500, marginBottom: '4px' }}>영양 데이터 저장</p>
+                  {storageMode === 'cloud' ? (
+                    <p style={{ fontSize: '11px', color: '#6b7280', lineHeight: 1.6 }}>영양 기록은 암호화된 서버에 안전하게 저장됩니다. 본인 계정에 귀속되며 타인이 접근할 수 없습니다.</p>
+                  ) : (
+                    <p style={{ fontSize: '11px', color: '#6b7280', lineHeight: 1.6 }}>영양 기록은 이 기기의 로컬 스토리지(mybob_meals)에만 저장됩니다. 서버로 전송되지 않습니다.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* AI 분석 */}
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+                <span style={{ fontSize: '16px', flexShrink: 0 }}>🤖</span>
+                <div>
+                  <p style={{ fontSize: '12px', color: 'black', fontWeight: 500, marginBottom: '4px' }}>AI 분석 데이터</p>
+                  <p style={{ fontSize: '11px', color: '#6b7280', lineHeight: 1.6 }}>음식 사진은 Google Gemini API로 전송되어 분석됩니다. 분석 후 원본 이미지는 Gemini 서버에 저장되지 않습니다(Google 정책 기준).</p>
+                </div>
+              </div>
+
+              {/* 제3자 제공 */}
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+                <span style={{ fontSize: '16px', flexShrink: 0 }}>🚫</span>
+                <div>
+                  <p style={{ fontSize: '12px', color: 'black', fontWeight: 500, marginBottom: '4px' }}>제3자 제공</p>
+                  <p style={{ fontSize: '11px', color: '#6b7280', lineHeight: 1.6 }}>
+                    이름·이메일·식단 기록 등 개인 식별 정보는 제3자에게 제공되지 않습니다.{'\n'}
+                    단, AI 분석 정확도·카테고리 분포 등 개인을 특정할 수 없는 통계 데이터는 서비스 품질 개선 목적으로 내부에서 활용될 수 있습니다.
+                  </p>
+                </div>
+              </div>
+
               <div style={{ height: '20px' }} />
             </div>
           </div>
