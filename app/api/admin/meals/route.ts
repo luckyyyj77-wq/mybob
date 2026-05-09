@@ -41,14 +41,10 @@ export async function GET(request: Request) {
     if (search) query = query.ilike('food_name', `%${search}%`);
 
     const { data, count, error } = await query;
-    if (error) {
-      console.error('[admin/meals] Supabase query error:', error);
-      throw error;
-    }
+    if (error) throw error;
 
     return NextResponse.json({ success: true, data: data ?? [], total: count ?? 0 });
   } catch (error: any) {
-    console.error('[admin/meals] handler error:', error);
-    return NextResponse.json({ error: error.message, detail: String(error) }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

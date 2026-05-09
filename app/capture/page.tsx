@@ -215,8 +215,6 @@ export default function CameraCapturePage() {
     const mode = getStorageMode();
     const mealId = Date.now().toString();
 
-    console.log('[handleSave] storageMode =', mode);
-
     try {
       if (mode === 'local') {
         // ── 로컬 모드: IndexedDB에 사진, localStorage에 메타 ──
@@ -239,8 +237,6 @@ export default function CameraCapturePage() {
         const { data: { session } } = await supabase.auth.getSession();
         const token = session?.access_token;
 
-        console.log('[handleSave] session user =', session?.user?.email, '| token exists =', !!token);
-
         if (!token) {
           throw new Error('로그인 세션이 만료되었습니다. 다시 로그인해주세요.');
         }
@@ -254,8 +250,6 @@ export default function CameraCapturePage() {
           body: JSON.stringify({ mealData: analysis, imageBase64: resizedForUpload }),
         });
         const result = await res.json();
-
-        console.log('[handleSave] /api/meals response status =', res.status, '| body =', result);
 
         // 업로드 제한 초과
         if (res.status === 429 && result.error === 'UPLOAD_LIMIT_EXCEEDED') {
