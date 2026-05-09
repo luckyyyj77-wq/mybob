@@ -438,14 +438,14 @@ export default function CameraCapturePage() {
               </button>
             )}
             <button
-              onClick={() => setShowLimitModal(false)}
+              onClick={() => { setShowLimitModal(false); window.location.href = '/'; }}
               style={{
                 width: '100%', padding: '14px',
                 backgroundColor: 'white', color: 'black', border: '1px solid #e5e7eb',
                 fontSize: '13px', cursor: 'pointer', letterSpacing: '1px',
               }}
             >
-              닫기
+              홈으로 돌아가기
             </button>
           </div>
         </div>
