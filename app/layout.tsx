@@ -13,7 +13,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const router = useRouter();
   const pathname = usePathname();
   const [loading, setLoading] = useState(true);
-  const [showSplash, setShowSplash] = useState(true);
+  const [showSplash, setShowSplash] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
@@ -28,7 +28,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const isProtectedRoute = pathname === '/' || ['/capture', '/report', '/history', '/community', '/settings'].some(r => pathname?.startsWith(r));
 
   useEffect(() => {
-    const splashTimer = setTimeout(() => setShowSplash(false), 2000);
+    // 최초 1회만 스플래시 표시
+    const splashShown = localStorage.getItem('mybob_splash_shown');
+    let splashTimer: ReturnType<typeof setTimeout> | null = null;
+    if (!splashShown) {
+      setShowSplash(true);
+      splashTimer = setTimeout(() => {
+        setShowSplash(false);
+        localStorage.setItem('mybob_splash_shown', '1');
+      }, 2000);
+    }
 
     // iOS detection (no beforeinstallprompt support)
     const ua = navigator.userAgent;
@@ -67,7 +76,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
     return () => {
       authListener?.subscription.unsubscribe();
-      clearTimeout(splashTimer);
+      if (splashTimer) clearTimeout(splashTimer);
       window.removeEventListener('beforeinstallprompt', onBeforeInstall);
       window.removeEventListener('appinstalled', onInstalled);
     };

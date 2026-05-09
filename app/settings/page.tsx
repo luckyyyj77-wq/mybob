@@ -83,25 +83,18 @@ function computeStats(meals: Meal[]): Stats {
   };
 }
 
-function exportJSON(meals: Meal[]) {
+function buildJSONBlob(meals: Meal[]) {
   const payload = {
     version: '1.0',
     exportedAt: new Date().toISOString(),
     app: 'MyBob',
     description: '개인 식단 영양 기록 — 온디바이스 AI 분석용',
-    summary: computeStats(meals),
     meals,
   };
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `mybob_${new Date().toISOString().split('T')[0]}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
+  return new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
 }
 
-function exportCSV(meals: Meal[]) {
+function buildCSVBlob(meals: Meal[]) {
   const header = ['날짜', '음식명', '카테고리', '칼로리(kcal)', '탄수화물(g)', '단백질(g)', '지방(g)', '식이섬유(g)', '당류(g)', '나트륨(mg)'];
   const rows = meals.map(m => [
     new Date(m.created_at).toLocaleString('ko-KR'),
@@ -116,11 +109,47 @@ function exportCSV(meals: Meal[]) {
     m.nutrient?.sodium ?? '',
   ]);
   const csv = [header, ...rows].map(r => r.join(',')).join('\n');
-  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+  return new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+}
+
+async function shareOrDownload(meals: Meal[], type: 'json' | 'csv') {
+  if (meals.length === 0) { alert('내보낼 데이터가 없습니다.'); return; }
+  const date = new Date().toISOString().split('T')[0];
+  const filename = `mybob_${date}.${type}`;
+  const blob = type === 'json' ? buildJSONBlob(meals) : buildCSVBlob(meals);
+  const file = new File([blob], filename, { type: blob.type });
+
+  // Web Share API — 메신저/메일 공유 지원 기기
+  if (navigator.canShare?.({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: 'MyBob 식단 데이터' });
+      return;
+    } catch (e: any) {
+      if (e.name === 'AbortError') return; // 사용자가 취소
+    }
+  }
+
+  // 폴백 — 저장 위치 선택 (File System Access API 지원 시)
+  if ('showSaveFilePicker' in window) {
+    try {
+      const handle = await (window as any).showSaveFilePicker({
+        suggestedName: filename,
+        types: [{ description: type.toUpperCase(), accept: { [blob.type]: [`.${type}`] } }],
+      });
+      const writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      return;
+    } catch (e: any) {
+      if (e.name === 'AbortError') return;
+    }
+  }
+
+  // 최종 폴백 — 기본 다운로드
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `mybob_${new Date().toISOString().split('T')[0]}.csv`;
+  a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -547,13 +576,13 @@ export default function SettingsPage() {
         <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>데이터 내보내기</p>
         <div style={{ display: 'flex', gap: '1px', backgroundColor: '#e5e7eb', marginBottom: '28px' }}>
           <button
-            onClick={() => { if (meals.length === 0) return alert('내보낼 데이터가 없습니다.'); exportJSON(meals); }}
+            onClick={() => shareOrDownload(meals, 'json')}
             style={{ flex: 1, padding: '14px 8px', border: 'none', backgroundColor: 'white', fontSize: '13px', cursor: 'pointer', letterSpacing: '0.5px' }}
           >
             JSON
           </button>
           <button
-            onClick={() => { if (meals.length === 0) return alert('내보낼 데이터가 없습니다.'); exportCSV(meals); }}
+            onClick={() => shareOrDownload(meals, 'csv')}
             style={{ flex: 1, padding: '14px 8px', border: 'none', backgroundColor: 'white', fontSize: '13px', cursor: 'pointer', letterSpacing: '0.5px' }}
           >
             CSV
