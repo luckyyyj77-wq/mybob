@@ -107,14 +107,25 @@ export async function POST(request: Request) {
       console.error('[meals POST] storage exception:', storageErr?.message);
     }
 
+    const toNum = (v: any) => {
+      if (v == null) return null;
+      const n = parseFloat(String(v).replace(/[^\d.]/g, ''));
+      return isNaN(n) ? null : n;
+    };
+
+    const rawNutrient = mealData.nutrients ?? mealData.nutrient ?? null;
+    const cleanNutrient = rawNutrient ? Object.fromEntries(
+      Object.entries(rawNutrient).map(([k, v]) => [k, toNum(v)])
+    ) : null;
+
     const dataToInsert = {
       user_id: user.id,
       food_name: mealData.name || mealData.food_name || '알 수 없음',
       category: mealData.category || '기타',
-      calories: Number(mealData.calories) || 0,
-      nutrient: mealData.nutrients ?? mealData.nutrient ?? null,
-      amount: mealData.amount || null,
-      price: mealData.price || null,
+      calories: toNum(mealData.calories) ?? 0,
+      nutrient: cleanNutrient,
+      amount: toNum(mealData.amount),
+      price: toNum(mealData.price),
       location: mealData.location || null,
       photo_url: photoUrl,
     };
