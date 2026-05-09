@@ -27,26 +27,56 @@ type Meal = {
 
 type Stats = {
   total: number;
-  totalCalories: number;
-  avgCalories: number;
+  avgCaloriesPerDay: number;
+  topFood: { mealType: string; category: string; foodName: string } | null;
   firstDate: string | null;
   lastDate: string | null;
   topCategory: string | null;
 };
 
+const MEAL_TYPE: Record<string, string> = {
+  한식: '주식', 중식: '주식', 일식: '주식', 양식: '주식', 기타: '주식',
+  간식: '간식',
+  음료: '음료',
+};
+
 function computeStats(meals: Meal[]): Stats {
   if (meals.length === 0) {
-    return { total: 0, totalCalories: 0, avgCalories: 0, firstDate: null, lastDate: null, topCategory: null };
+    return { total: 0, avgCaloriesPerDay: 0, topFood: null, firstDate: null, lastDate: null, topCategory: null };
   }
   const sorted = [...meals].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-  const totalCalories = meals.reduce((s, m) => s + (m.calories || 0), 0);
+
+  // 1일 평균 칼로리: 날짜별로 합산 후 평균
+  const dayCalMap: Record<string, number> = {};
+  meals.forEach(m => {
+    const day = m.created_at.slice(0, 10);
+    dayCalMap[day] = (dayCalMap[day] || 0) + (m.calories || 0);
+  });
+  const dayVals = Object.values(dayCalMap);
+  const avgCaloriesPerDay = Math.round(dayVals.reduce((s, v) => s + v, 0) / dayVals.length);
+
+  // 가장 많이 먹은 카테고리
   const catCount: Record<string, number> = {};
   meals.forEach(m => { if (m.category) catCount[m.category] = (catCount[m.category] || 0) + 1; });
   const topCategory = Object.keys(catCount).sort((a, b) => catCount[b] - catCount[a])[0] || null;
+
+  // 가장 많이 먹은 음식 (카테고리+음식명 조합 기준)
+  const foodCount: Record<string, number> = {};
+  meals.forEach(m => {
+    const key = `${m.category || '기타'}::${m.food_name}`;
+    foodCount[key] = (foodCount[key] || 0) + 1;
+  });
+  const topFoodKey = Object.keys(foodCount).sort((a, b) => foodCount[b] - foodCount[a])[0] || null;
+  let topFood: Stats['topFood'] = null;
+  if (topFoodKey) {
+    const [cat, name] = topFoodKey.split('::');
+    topFood = { mealType: MEAL_TYPE[cat] ?? '주식', category: cat, foodName: name };
+  }
+
   return {
     total: meals.length,
-    totalCalories,
-    avgCalories: Math.round(totalCalories / meals.length),
+    avgCaloriesPerDay,
+    topFood,
     firstDate: sorted[0].created_at,
     lastDate: sorted[sorted.length - 1].created_at,
     topCategory,
@@ -177,7 +207,7 @@ export default function SettingsPage() {
   const [aiAlert, setAiAlert] = useState(true);
   const [notifFreq, setNotifFreq] = useState('1시간 후');
   const [meals, setMeals] = useState<Meal[]>([]);
-  const [stats, setStats] = useState<Stats>({ total: 0, totalCalories: 0, avgCalories: 0, firstDate: null, lastDate: null, topCategory: null });
+  const [stats, setStats] = useState<Stats>({ total: 0, avgCaloriesPerDay: 0, topFood: null, firstDate: null, lastDate: null, topCategory: null });
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [dangerUnlocked, setDangerUnlocked] = useState(false);
@@ -474,16 +504,25 @@ export default function SettingsPage() {
         {/* 기록 통계 */}
         <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>기록 현황</p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1px', backgroundColor: '#e5e7eb', border: '1px solid #e5e7eb', marginBottom: '28px' }}>
-          {[
-            { label: '총 기록', value: `${stats.total}건` },
-            { label: '총 칼로리', value: stats.totalCalories > 0 ? `${stats.totalCalories.toLocaleString()}kcal` : '-' },
-            { label: '평균 칼로리', value: stats.avgCalories > 0 ? `${stats.avgCalories}kcal` : '-' },
-          ].map(s => (
-            <div key={s.label} style={{ padding: '14px 8px', backgroundColor: 'white', textAlign: 'center' }}>
-              <p style={{ fontSize: '10px', color: '#9ca3af', marginBottom: '6px' }}>{s.label}</p>
-              <p style={{ fontSize: '14px', color: 'black' }}>{s.value}</p>
-            </div>
-          ))}
+          <div style={{ padding: '14px 8px', backgroundColor: 'white', textAlign: 'center' }}>
+            <p style={{ fontSize: '10px', color: '#9ca3af', marginBottom: '6px' }}>총 기록</p>
+            <p style={{ fontSize: '14px', color: 'black' }}>{stats.total}건</p>
+          </div>
+          <div style={{ padding: '14px 8px', backgroundColor: 'white', textAlign: 'center' }}>
+            <p style={{ fontSize: '10px', color: '#9ca3af', marginBottom: '6px' }}>1일 평균</p>
+            <p style={{ fontSize: '14px', color: 'black' }}>{stats.avgCaloriesPerDay > 0 ? `${stats.avgCaloriesPerDay.toLocaleString()}kcal` : '-'}</p>
+          </div>
+          <div style={{ padding: '14px 8px', backgroundColor: 'white', textAlign: 'center' }}>
+            <p style={{ fontSize: '10px', color: '#9ca3af', marginBottom: '6px' }}>자주 먹는 음식</p>
+            {stats.topFood ? (
+              <div>
+                <p style={{ fontSize: '9px', color: '#9ca3af', marginBottom: '2px' }}>{stats.topFood.mealType} · {stats.topFood.category}</p>
+                <p style={{ fontSize: '12px', color: '#6B21A8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{stats.topFood.foodName}</p>
+              </div>
+            ) : (
+              <p style={{ fontSize: '14px', color: 'black' }}>-</p>
+            )}
+          </div>
         </div>
         {stats.firstDate && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: '#e5e7eb', border: '1px solid #e5e7eb', marginBottom: '28px' }}>
