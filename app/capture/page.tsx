@@ -215,6 +215,8 @@ export default function CameraCapturePage() {
     const mode = getStorageMode();
     const mealId = Date.now().toString();
 
+    console.log('[handleSave] storageMode =', mode);
+
     try {
       if (mode === 'local') {
         // ── 로컬 모드: IndexedDB에 사진, localStorage에 메타 ──
@@ -237,39 +239,48 @@ export default function CameraCapturePage() {
         const { data: { session } } = await supabase.auth.getSession();
         const token = session?.access_token;
 
+        console.log('[handleSave] session user =', session?.user?.email, '| token exists =', !!token);
+
+        if (!token) {
+          throw new Error('로그인 세션이 만료되었습니다. 다시 로그인해주세요.');
+        }
+
         let serverPhotoUrl: string | null = null;
 
-        if (token) {
-          try {
-            const res = await fetch('/api/meals', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-              body: JSON.stringify({ mealData: analysis, imageBase64: imageSrc }),
-            });
-            const result = await res.json();
+        const resizedForUpload = await resizeImage(imageSrc, 800);
+        const res = await fetch('/api/meals', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ mealData: analysis, imageBase64: resizedForUpload }),
+        });
+        const result = await res.json();
 
-            // 업로드 제한 초과
-            if (res.status === 429 && result.error === 'UPLOAD_LIMIT_EXCEEDED') {
-              setUploadStatus(prev => prev ? {
-                ...prev,
-                upload: { used: result.used, limit: result.limit },
-              } : null);
-              setLimitType('upload');
-              setShowLimitModal(true);
-              setLoadingSave(false);
-              return;
-            }
+        console.log('[handleSave] /api/meals response status =', res.status, '| body =', result);
 
-            if (result.success && result.data?.[0]?.photo_url) {
-              serverPhotoUrl = result.data[0].photo_url;
-              if (result.uploadStatus) {
-                setUploadStatus(prev => prev ? {
-                  ...prev,
-                  upload: { used: result.uploadStatus.used, limit: result.uploadStatus.limit },
-                } : null);
-              }
-            }
-          } catch { /* 서버 저장 실패해도 로컬 캐시는 유지 */ }
+        // 업로드 제한 초과
+        if (res.status === 429 && result.error === 'UPLOAD_LIMIT_EXCEEDED') {
+          setUploadStatus(prev => prev ? {
+            ...prev,
+            upload: { used: result.used, limit: result.limit },
+          } : null);
+          setLimitType('upload');
+          setShowLimitModal(true);
+          setLoadingSave(false);
+          return;
+        }
+
+        if (!res.ok) {
+          throw new Error(result.error || result.stack || `서버 저장 실패 (${res.status})`);
+        }
+
+        if (result.success && result.data?.[0]?.photo_url) {
+          serverPhotoUrl = result.data[0].photo_url;
+          if (result.uploadStatus) {
+            setUploadStatus(prev => prev ? {
+              ...prev,
+              upload: { used: result.uploadStatus.used, limit: result.uploadStatus.limit },
+            } : null);
+          }
         }
 
         // 로컬 캐시 (클라우드 모드에서도 빠른 조회를 위해)

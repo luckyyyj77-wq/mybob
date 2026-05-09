@@ -187,6 +187,7 @@ export default function SettingsPage() {
   const [showModeModal, setShowModeModal] = useState(false);
   const [deleteSchedule, setDeleteSchedule] = useState<{ scheduledAt: Date; daysLeft: number } | null>(null);
   const [planStatus, setPlanStatus] = useState<PlanStatus | null>(null);
+  const [planLoaded, setPlanLoaded] = useState(false);
   const [profile, setProfile] = useState<{ nickname: string | null; avatar_url: string | null }>({ nickname: null, avatar_url: null });
   const [nicknameInput, setNicknameInput] = useState('');
   const [nicknameSaving, setNicknameSaving] = useState(false);
@@ -216,6 +217,7 @@ export default function SettingsPage() {
           }
         } catch { /* 무시 */ }
       }
+      setPlanLoaded(true);
     });
     setStorageModeState(getStorageMode());
     setDeleteSchedule(getCloudDeleteSchedule());
@@ -309,8 +311,11 @@ export default function SettingsPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: '#e5e7eb', border: '1px solid #e5e7eb', marginBottom: '28px' }}>
           <div style={{ padding: '16px', backgroundColor: 'white' }}>
 
-            {planStatus?.plan === 'free' ? (
-              /* 무료 — 잠금 상태 안내 */
+            {!planLoaded ? (
+              /* 플랜 로딩 중 — 깜빡임 방지 */
+              <div style={{ height: '48px' }} />
+            ) : planStatus?.plan === 'free' || !planStatus ? (
+              /* 무료 또는 비로그인 — 잠금 상태 안내 */
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
                   <p style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '4px' }}>닉네임 · 프로필 사진</p>

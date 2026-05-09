@@ -48,6 +48,8 @@ export default function AdminMealsPage() {
     if (result.success) {
       setMeals(result.data);
       setTotal(result.total);
+    } else {
+      console.error('[admin/meals] API error:', result.error, result);
     }
     setLoading(false);
   }, []);

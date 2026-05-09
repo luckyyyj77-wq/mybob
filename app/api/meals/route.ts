@@ -83,41 +83,52 @@ export async function POST(request: Request) {
       }, { status: 429 });
     }
 
-    // 날짜별 폴더로 업로드
-    const storagePath = buildStoragePath(user.id, fileExtension);
-    const { error: uploadError } = await adminSupabase.storage
-      .from('meal_photos')
-      .upload(storagePath, decodeBase64(imageBase64), {
-        contentType: `image/${fileExtension}`,
-        upsert: false,
-      });
+    // 날짜별 폴더로 업로드 (실패해도 식단 데이터는 저장)
+    let photoUrl: string | null = null;
+    try {
+      const storagePath = buildStoragePath(user.id, fileExtension);
+      const { error: uploadError } = await adminSupabase.storage
+        .from('meal_photos')
+        .upload(storagePath, decodeBase64(imageBase64), {
+          contentType: `image/${fileExtension}`,
+          upsert: false,
+        });
 
-    if (uploadError) {
-      return NextResponse.json({ error: '이미지 업로드 실패', details: uploadError.message }, { status: 500 });
+      if (uploadError) {
+        console.error('[meals POST] storage upload error:', uploadError.message);
+      } else {
+        const { data: publicUrlData } = adminSupabase.storage
+          .from('meal_photos')
+          .getPublicUrl(storagePath);
+        photoUrl = publicUrlData.publicUrl;
+      }
+    } catch (storageErr: any) {
+      console.error('[meals POST] storage exception:', storageErr?.message);
     }
-
-    const { data: publicUrlData } = adminSupabase.storage
-      .from('meal_photos')
-      .getPublicUrl(storagePath);
 
     const dataToInsert = {
       user_id: user.id,
-      food_name: mealData.name,
+      food_name: mealData.name || mealData.food_name || '알 수 없음',
       category: mealData.category || '기타',
-      calories: mealData.calories,
-      price: mealData.price || 0,
-      location: mealData.location || '알 수 없음',
-      nutrient: mealData.nutrients,
-      amount: mealData.amount || 1,
-      photo_url: publicUrlData.publicUrl,
+      calories: Number(mealData.calories) || 0,
+      nutrient: mealData.nutrients ?? mealData.nutrient ?? null,
+      amount: mealData.amount || null,
+      price: mealData.price || null,
+      location: mealData.location || null,
+      photo_url: photoUrl,
     };
+
+    console.log('[meals POST] dataToInsert =', JSON.stringify(dataToInsert));
 
     const { data, error } = await adminSupabase
       .from('meals')
       .insert([dataToInsert])
       .select();
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error('[meals POST] insert error:', error.message, error.details, error.hint);
+      throw new Error(`INSERT 실패: ${error.message} | ${error.details ?? ''}`);
+    }
 
     // 저장 성공 후 카운트 증가
     await incrementUploadCount(adminSupabase, user.id);
@@ -129,7 +140,11 @@ export async function POST(request: Request) {
     });
 
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('[meals POST] caught error:', error);
+    return NextResponse.json({
+      error: error.message ?? String(error),
+      stack: error.stack ?? null,
+    }, { status: 500 });
   }
 }
 
