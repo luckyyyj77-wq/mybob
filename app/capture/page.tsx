@@ -694,12 +694,10 @@ export default function CameraCapturePage() {
                             onClick={() => setRating(rating === r.value ? null : r.value)}
                             style={{
                               flex: 1, padding: '8px 0',
-                              backgroundColor: 'white',
-                              border: `1.5px solid ${rating === r.value ? '#6B21A8' : '#e5e7eb'}`,
-                              borderRadius: '6px',
-                              fontSize: '22px', cursor: 'pointer',
+                              backgroundColor: rating === r.value ? '#f3e8ff' : 'white',
+                              border: `1px solid ${rating === r.value ? '#6B21A8' : '#e5e7eb'}`,
+                              fontSize: '18px', cursor: 'pointer',
                               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px',
-                              transition: 'border-color 0.15s',
                             }}
                           >
                             <span>{r.emoji}</span>
