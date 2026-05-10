@@ -325,9 +325,9 @@ function MealDetailContent() {
               <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.7)', letterSpacing: '1px', textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>AI 평가</span>
               <div style={{ display: 'flex', gap: '4px' }}>
                 {[
-                  { value: 2, emoji: '😊', activeColor: 'rgba(34,197,94,0.85)' },
-                  { value: 1, emoji: '😐', activeColor: 'rgba(234,179,8,0.85)' },
-                  { value: 0, emoji: '😞', activeColor: 'rgba(239,68,68,0.85)' },
+                  { value: 2, emoji: '😊' },
+                  { value: 1, emoji: '😐' },
+                  { value: 0, emoji: '😞' },
                 ].map(r => {
                   const currentRating = isEditing ? editRating : meal.rating;
                   const isActive = currentRating === r.value;
@@ -340,16 +340,15 @@ function MealDetailContent() {
                       }}
                       style={{
                         width: '34px', height: '34px',
-                        backgroundColor: isActive ? r.activeColor : 'rgba(0,0,0,0.35)',
-                        border: 'none',
+                        backgroundColor: 'transparent',
+                        border: isActive ? '2px solid #6B21A8' : '2px solid transparent',
                         borderRadius: '50%',
                         cursor: isEditing ? 'pointer' : 'default',
-                        fontSize: '18px',
+                        fontSize: '22px',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         padding: 0,
-                        backdropFilter: 'blur(4px)',
-                        transition: 'background-color 0.15s',
-                        opacity: isEditing ? 1 : (isActive ? 1 : 0.5),
+                        opacity: isEditing ? 1 : (isActive ? 1 : 0.3),
+                        transition: 'border-color 0.15s, opacity 0.15s',
                       }}
                     >
                       {r.emoji}
