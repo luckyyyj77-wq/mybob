@@ -189,8 +189,8 @@ export async function PATCH(request: Request) {
 
     if (updates.food_name !== undefined) patchData.food_name = updates.food_name;
     if (updates.calories !== undefined) patchData.calories = toNum(updates.calories) ?? 0;
-    if (updates.rating !== undefined) patchData.rating = updates.rating;
-    if (updates.portion !== undefined) patchData.portion = updates.portion;
+    if (updates.rating !== undefined) patchData.rating = updates.rating ?? null;
+    if (updates.portion !== undefined) patchData.portion = updates.portion ?? 1.0;
     if (updates.nutrient !== undefined) {
       patchData.nutrient = Object.fromEntries(
         Object.entries(updates.nutrient).map(([k, v]) => [k, toNum(v)])

@@ -68,6 +68,8 @@ function MealDetailContent() {
   const [savingEdit, setSavingEdit] = useState(false);
   const [savingRating, setSavingRating] = useState(false);
   const [userPlan, setUserPlan] = useState<string>('free');
+  const [editPortion, setEditPortion] = useState<number>(1);
+  const [editRating, setEditRating] = useState<number | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -170,7 +172,7 @@ function MealDetailContent() {
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({
             mealId: meal.id,
-            updates: { food_name: editFoodName, calories: newCalories, nutrient: newNutrient },
+            updates: { food_name: editFoodName, calories: newCalories, nutrient: newNutrient, rating: editRating, portion: editPortion },
           }),
         });
         if (!res.ok) {
@@ -186,6 +188,8 @@ function MealDetailContent() {
         nutrient: newNutrient as Nutrient,
         edited_nutrition: newNutrient as Nutrient,
         is_edited: true,
+        rating: editRating,
+        portion: editPortion,
         original_nutrition: meal.original_nutrition ?? { calories: meal.calories, nutrients: meal.nutrient! },
       };
       setMeal(updatedMeal);
@@ -211,6 +215,8 @@ function MealDetailContent() {
         Object.entries(meal.nutrient || {}).map(([k, v]) => [k, v != null ? String(v) : ''])
       )
     );
+    setEditPortion(meal.portion ?? 1);
+    setEditRating(meal.rating ?? null);
     setIsEditing(true);
     setShowOriginal(false);
   };
@@ -301,7 +307,7 @@ function MealDetailContent() {
               <FaChevronRight color="black" />
             </button>
 
-            {/* AI 평가 — 사진 우측 하단 오버레이 */}
+            {/* AI 평가 — 사진 우측 하단 오버레이 (편집 중일 때만 변경 가능) */}
             <div style={{
               position: 'absolute', bottom: '10px', right: '10px',
               display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px',
@@ -312,26 +318,34 @@ function MealDetailContent() {
                   { value: 2, emoji: '😊', activeColor: 'rgba(34,197,94,0.85)' },
                   { value: 1, emoji: '😐', activeColor: 'rgba(234,179,8,0.85)' },
                   { value: 0, emoji: '😞', activeColor: 'rgba(239,68,68,0.85)' },
-                ].map(r => (
-                  <button
-                    key={r.value}
-                    onClick={() => handleRatingChange(meal.rating === r.value ? null : r.value)}
-                    disabled={savingRating}
-                    style={{
-                      width: '34px', height: '34px',
-                      backgroundColor: meal.rating === r.value ? r.activeColor : 'rgba(0,0,0,0.35)',
-                      border: 'none',
-                      borderRadius: '50%',
-                      cursor: 'pointer', fontSize: '18px',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      padding: 0,
-                      backdropFilter: 'blur(4px)',
-                      transition: 'background-color 0.15s',
-                    }}
-                  >
-                    {r.emoji}
-                  </button>
-                ))}
+                ].map(r => {
+                  const currentRating = isEditing ? editRating : meal.rating;
+                  const isActive = currentRating === r.value;
+                  return (
+                    <button
+                      key={r.value}
+                      onClick={() => {
+                        if (!isEditing) return;
+                        setEditRating(editRating === r.value ? null : r.value);
+                      }}
+                      style={{
+                        width: '34px', height: '34px',
+                        backgroundColor: isActive ? r.activeColor : 'rgba(0,0,0,0.35)',
+                        border: 'none',
+                        borderRadius: '50%',
+                        cursor: isEditing ? 'pointer' : 'default',
+                        fontSize: '18px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        padding: 0,
+                        backdropFilter: 'blur(4px)',
+                        transition: 'background-color 0.15s',
+                        opacity: isEditing ? 1 : (isActive ? 1 : 0.5),
+                      }}
+                    >
+                      {r.emoji}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -352,19 +366,23 @@ function MealDetailContent() {
                       <button
                         key={p}
                         onClick={() => {
-                          const label = p === 1 ? '1' : p === 0.5 ? '½' : '¼';
-                          setEditCalories(String(Math.round((meal.calories / (meal.portion ?? 1)) * p)));
-                          setEditNutrient(prev => {
-                            const orig = meal.original_nutrition?.nutrients ?? meal.nutrient ?? {};
-                            return Object.fromEntries(
-                              Object.entries(orig).map(([k, v]) => [k, v != null ? String(Math.round((v as number) * p * 10) / 10) : ''])
-                            );
-                          });
+                          // 원본 칼로리/영양 기준으로 재계산
+                          const baseCalories = meal.original_nutrition?.calories ?? meal.calories;
+                          const baseNutrients = meal.original_nutrition?.nutrients ?? meal.nutrient ?? {};
+                          setEditPortion(p);
+                          setEditCalories(String(Math.round(baseCalories * p)));
+                          setEditNutrient(
+                            Object.fromEntries(
+                              Object.entries(baseNutrients).map(([k, v]) =>
+                                [k, v != null ? String(Math.round((v as number) * p * 10) / 10) : '']
+                              )
+                            )
+                          );
                         }}
                         style={{
                           padding: '2px 7px', fontSize: '12px',
-                          backgroundColor: (meal.portion ?? 1) === p ? 'black' : 'white',
-                          color: (meal.portion ?? 1) === p ? 'white' : '#6b7280',
+                          backgroundColor: editPortion === p ? 'black' : 'white',
+                          color: editPortion === p ? 'white' : '#6b7280',
                           border: '1px solid #e5e7eb', cursor: 'pointer',
                         }}
                       >
