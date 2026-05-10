@@ -302,8 +302,10 @@ export default function CameraCapturePage() {
           throw new Error(result.error || result.stack || `서버 저장 실패 (${res.status})`);
         }
 
-        if (result.success && result.data?.[0]?.photo_url) {
-          serverPhotoUrl = result.data[0].photo_url;
+        let serverId = mealId;
+        if (result.success && result.data?.[0]) {
+          serverPhotoUrl = result.data[0].photo_url ?? null;
+          serverId = result.data[0].id ?? mealId;
           if (result.uploadStatus) {
             setUploadStatus(prev => prev ? {
               ...prev,
@@ -313,7 +315,7 @@ export default function CameraCapturePage() {
         }
 
         const localMeal = {
-          id: mealId,
+          id: serverId,
           food_name: analysis.name,
           calories: scaledCalories,
           nutrient: scaledNutrients,

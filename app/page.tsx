@@ -98,8 +98,8 @@ export default function Home() {
       const result = await res.json();
       if (!result.success || !Array.isArray(result.data)) return;
 
-      const serverKeys = new Set(result.data.map((m: Meal) => `${m.food_name}_${m.calories}`));
-      const uniqueLocal = localMeals.filter(m => !serverKeys.has(`${m.food_name}_${m.calories}`));
+      const serverIds = new Set(result.data.map((m: Meal) => m.id));
+      const uniqueLocal = localMeals.filter(m => !serverIds.has(m.id));
       const merged: Meal[] = [...result.data, ...uniqueLocal];
 
       const newStats = computeTodayStats(merged);

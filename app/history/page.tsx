@@ -108,8 +108,8 @@ export default function HistoryPage() {
       fetch('/api/meals', { headers: token ? { Authorization: `Bearer ${token}` } : {} })
         .then(r => r.json()).then(result => {
           if (result.success && Array.isArray(result.data)) {
-            const keys = new Set(result.data.map((m: Meal) => `${m.food_name}_${m.calories}`));
-            const merged = [...result.data, ...local.filter(m => !keys.has(`${m.food_name}_${m.calories}`))];
+            const serverIds = new Set(result.data.map((m: Meal) => m.id));
+            const merged = [...result.data, ...local.filter(m => !serverIds.has(m.id))];
             setMeals(sorted(merged));
           }
         }).catch(() => {});

@@ -82,8 +82,8 @@ function MealDetailContent() {
         if (res.ok) {
           const r = await res.json();
           if (r.success && Array.isArray(r.data)) {
-            const keys = new Set(r.data.map((m: Meal) => `${m.food_name}_${m.calories}`));
-            all = [...r.data, ...all.filter((m: Meal) => !keys.has(`${m.food_name}_${m.calories}`))];
+            const serverIds = new Set(r.data.map((m: Meal) => m.id));
+            all = [...r.data, ...all.filter((m: Meal) => !serverIds.has(m.id))];
           }
         }
         // 플랜 조회
