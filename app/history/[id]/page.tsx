@@ -8,6 +8,22 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/lib/supabase/client';
 import { MealPhoto } from '@/components/MealPhoto';
 
+type Nutrient = {
+  carbohydrates: number;
+  protein: number;
+  fat: number;
+  fiber?: number;
+  sugar?: number;
+  sodium?: number;
+  caffeine?: number | null;
+  vitaminA?: number;
+  vitaminC?: number;
+  vitaminD?: number;
+  calcium?: number;
+  iron?: number;
+  potassium?: number;
+};
+
 type Meal = {
   id: string;
   food_name: string;
@@ -15,24 +31,21 @@ type Meal = {
   created_at: string;
   photo_url?: string;
   category?: string;
-  nutrient?: {
-    carbohydrates: number;
-    protein: number;
-    fat: number;
-    fiber?: number;
-    sugar?: number;
-    sodium?: number;
-    caffeine?: number | null;
-    vitaminA?: number;
-    vitaminC?: number;
-    vitaminD?: number;
-    calcium?: number;
-    iron?: number;
-    potassium?: number;
-  };
+  nutrient?: Nutrient;
+  rating?: number | null;
+  portion?: number;
+  original_nutrition?: { calories: number; nutrients: Nutrient } | null;
+  edited_nutrition?: Nutrient | null;
+  is_edited?: boolean;
 };
 
 type GalleryMode = 'detail' | 'grid4' | 'grid16';
+
+const RATING_OPTIONS = [
+  { value: 2, emoji: '😊', label: '좋음' },
+  { value: 1, emoji: '😐', label: '보통' },
+  { value: 0, emoji: '😞', label: '나쁨' },
+];
 
 function MealDetailContent() {
   const router = useRouter();
@@ -45,6 +58,16 @@ function MealDetailContent() {
   const [loading, setLoading] = useState(true);
   const initialMode = (searchParams?.get('mode') as GalleryMode) || 'detail';
   const [galleryMode, setGalleryMode] = useState<GalleryMode>(initialMode);
+
+  // 편집 관련 상태
+  const [isEditing, setIsEditing] = useState(false);
+  const [editFoodName, setEditFoodName] = useState('');
+  const [editCalories, setEditCalories] = useState('');
+  const [editNutrient, setEditNutrient] = useState<Record<string, string>>({});
+  const [showOriginal, setShowOriginal] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [savingRating, setSavingRating] = useState(false);
+  const [userPlan, setUserPlan] = useState<string>('free');
 
   useEffect(() => {
     const loadData = async () => {
@@ -63,6 +86,14 @@ function MealDetailContent() {
             all = [...r.data, ...all.filter((m: Meal) => !keys.has(`${m.food_name}_${m.calories}`))];
           }
         }
+        // 플랜 조회
+        if (token) {
+          const profileRes = await fetch('/api/profile', { headers: { Authorization: `Bearer ${token}` } });
+          if (profileRes.ok) {
+            const profileData = await profileRes.json();
+            setUserPlan(profileData.plan || 'free');
+          }
+        }
       } catch { /* use local only */ }
 
       const sorted = all.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
@@ -70,8 +101,17 @@ function MealDetailContent() {
 
       const idx = sorted.findIndex(m => m.id === id);
       if (idx !== -1) {
-        setMeal(sorted[idx]);
+        const found = sorted[idx];
+        setMeal(found);
         setCurrentIndex(idx);
+        // 편집 초기값 세팅
+        setEditFoodName(found.food_name);
+        setEditCalories(String(found.calories));
+        setEditNutrient(
+          Object.fromEntries(
+            Object.entries(found.nutrient || {}).map(([k, v]) => [k, v != null ? String(v) : ''])
+          )
+        );
       }
       setLoading(false);
     };
@@ -82,6 +122,97 @@ function MealDetailContent() {
     if (idx >= 0 && idx < allMeals.length) {
       router.push(`/history/${allMeals[idx].id}`);
     }
+  };
+
+  const handleRatingChange = async (newRating: number | null) => {
+    if (!meal) return;
+    const updated = { ...meal, rating: newRating };
+    setMeal(updated);
+    setSavingRating(true);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (token) {
+        await fetch('/api/meals', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ mealId: meal.id, updates: { rating: newRating } }),
+        });
+      }
+      // 로컬 캐시 동기화
+      const existing: Meal[] = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
+      localStorage.setItem('mybob_meals', JSON.stringify(
+        existing.map(m => m.id === meal.id ? { ...m, rating: newRating } : m)
+      ));
+    } catch { /* 무시 */ } finally {
+      setSavingRating(false);
+    }
+  };
+
+  const handleEditSave = async () => {
+    if (!meal) return;
+    setSavingEdit(true);
+    const newNutrient = Object.fromEntries(
+      Object.entries(editNutrient).map(([k, v]) => {
+        const n = parseFloat(v);
+        return [k, isNaN(n) ? null : n];
+      })
+    );
+    const newCalories = parseInt(editCalories) || meal.calories;
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (token) {
+        const res = await fetch('/api/meals', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            mealId: meal.id,
+            updates: { food_name: editFoodName, calories: newCalories, nutrient: newNutrient },
+          }),
+        });
+        if (!res.ok) {
+          const r = await res.json();
+          if (r.error === 'PRO_REQUIRED') { alert('PRO 플랜에서만 편집 가능합니다.'); return; }
+          throw new Error(r.error);
+        }
+      }
+      const updatedMeal = {
+        ...meal,
+        food_name: editFoodName,
+        calories: newCalories,
+        nutrient: newNutrient as Nutrient,
+        edited_nutrition: newNutrient as Nutrient,
+        is_edited: true,
+        original_nutrition: meal.original_nutrition ?? { calories: meal.calories, nutrients: meal.nutrient! },
+      };
+      setMeal(updatedMeal);
+      // 로컬 캐시 동기화
+      const existing: Meal[] = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
+      localStorage.setItem('mybob_meals', JSON.stringify(
+        existing.map(m => m.id === meal.id ? updatedMeal : m)
+      ));
+      setIsEditing(false);
+    } catch (err: any) {
+      alert(`저장 실패: ${err.message}`);
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const startEdit = () => {
+    if (!meal) return;
+    setEditFoodName(meal.food_name);
+    setEditCalories(String(meal.calories));
+    setEditNutrient(
+      Object.fromEntries(
+        Object.entries(meal.nutrient || {}).map(([k, v]) => [k, v != null ? String(v) : ''])
+      )
+    );
+    setIsEditing(true);
+    setShowOriginal(false);
   };
 
   if (loading) return null;
@@ -171,56 +302,179 @@ function MealDetailContent() {
             </button>
           </div>
 
+          {/* 사진 하단 평가 버튼 */}
+          <div style={{ padding: '12px 24px', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginRight: '4px' }}>AI 평가</span>
+            {RATING_OPTIONS.map(r => (
+              <button
+                key={r.value}
+                onClick={() => handleRatingChange(meal.rating === r.value ? null : r.value)}
+                disabled={savingRating}
+                style={{
+                  padding: '6px 12px',
+                  backgroundColor: meal.rating === r.value ? '#f3e8ff' : 'white',
+                  border: `1px solid ${meal.rating === r.value ? '#6B21A8' : '#e5e7eb'}`,
+                  cursor: 'pointer', fontSize: '16px',
+                  display: 'flex', alignItems: 'center', gap: '4px',
+                }}
+              >
+                <span>{r.emoji}</span>
+                <span style={{ fontSize: '9px', color: meal.rating === r.value ? '#6B21A8' : '#9ca3af' }}>{r.label}</span>
+              </button>
+            ))}
+            {meal.rating == null && (
+              <span style={{ fontSize: '10px', color: '#d1d5db', marginLeft: '4px' }}>미평가</span>
+            )}
+          </div>
+
           {/* 정보 */}
           <div style={{ padding: '24px' }}>
+            {/* 식사명 + 편집 버튼 */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
-              <div>
+              <div style={{ flex: 1, marginRight: '12px' }}>
                 <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '4px' }}>
                   {new Date(meal.created_at).toLocaleString('ko-KR', { dateStyle: 'long', timeStyle: 'short' })}
+                  {meal.portion != null && meal.portion !== 1 && (
+                    <span style={{ marginLeft: '8px', color: '#6B21A8' }}>
+                      {meal.portion === 0.5 ? '½ 식사' : '¼ 식사'}
+                    </span>
+                  )}
                 </p>
-                <h2 style={{ fontSize: '24px', fontWeight: 400 }}>{meal.food_name}</h2>
+                {isEditing ? (
+                  <input
+                    value={editFoodName}
+                    onChange={e => setEditFoodName(e.target.value)}
+                    style={{ fontSize: '22px', fontWeight: 400, border: '1px solid #6B21A8', padding: '4px 8px', width: '100%', outline: 'none' }}
+                  />
+                ) : (
+                  <h2 style={{ fontSize: '24px', fontWeight: 400 }}>
+                    {meal.food_name}
+                    {meal.is_edited && <span style={{ fontSize: '10px', color: '#9ca3af', marginLeft: '6px' }}>수정됨</span>}
+                  </h2>
+                )}
                 <p style={{ fontSize: '14px', color: '#6B21A8' }}>{meal.category || '기타'}</p>
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <p style={{ fontSize: '28px', color: 'black', lineHeight: 1 }}>{meal.calories}</p>
-                <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1px' }}>KCAL</p>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+                <div style={{ textAlign: 'right' }}>
+                  {isEditing ? (
+                    <input
+                      value={editCalories}
+                      onChange={e => setEditCalories(e.target.value)}
+                      style={{ fontSize: '24px', color: '#6B21A8', border: '1px solid #6B21A8', padding: '2px 6px', width: '80px', textAlign: 'right', outline: 'none' }}
+                    />
+                  ) : (
+                    <p style={{ fontSize: '28px', color: 'black', lineHeight: 1 }}>{meal.calories}</p>
+                  )}
+                  <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1px' }}>KCAL</p>
+                </div>
+                {/* 편집 / 저장 버튼 */}
+                {userPlan !== 'free' ? (
+                  isEditing ? (
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      <button
+                        onClick={() => setIsEditing(false)}
+                        style={{ padding: '6px 10px', fontSize: '11px', backgroundColor: 'white', border: '1px solid #e5e7eb', cursor: 'pointer', color: '#6b7280' }}
+                      >
+                        취소
+                      </button>
+                      <button
+                        onClick={handleEditSave}
+                        disabled={savingEdit}
+                        style={{ padding: '6px 12px', fontSize: '11px', backgroundColor: '#6B21A8', color: 'white', border: 'none', cursor: 'pointer' }}
+                      >
+                        {savingEdit ? '저장 중' : '저장'}
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={startEdit}
+                      style={{ padding: '6px 12px', fontSize: '11px', backgroundColor: 'white', border: '1px solid #e5e7eb', cursor: 'pointer', color: '#374151' }}
+                    >
+                      ✏️ 편집
+                    </button>
+                  )
+                ) : (
+                  <button
+                    onClick={() => alert('PRO 플랜에서만 편집 가능합니다.')}
+                    style={{ padding: '6px 12px', fontSize: '11px', backgroundColor: 'white', border: '1px solid #e5e7eb', cursor: 'pointer', color: '#d1d5db' }}
+                  >
+                    🔒 편집
+                  </button>
+                )}
               </div>
             </div>
 
+            {/* 원본 ↔ 수정 스위칭 (수정된 경우만) */}
+            {meal.is_edited && meal.original_nutrition && (
+              <div style={{ marginBottom: '12px' }}>
+                <button
+                  onClick={() => setShowOriginal(p => !p)}
+                  style={{ fontSize: '10px', padding: '4px 10px', backgroundColor: showOriginal ? '#f3f4f6' : 'white', border: '1px solid #e5e7eb', cursor: 'pointer', color: '#6b7280', letterSpacing: '0.5px' }}
+                >
+                  {showOriginal ? 'AI 원본 보는 중 → 수정값 보기' : '수정값 보는 중 → AI 원본 보기'}
+                </button>
+              </div>
+            )}
+
+            {/* 영양정보 */}
             <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '20px' }}>
               <p style={{ fontSize: '11px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '16px' }}>Nutritional Info</p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1px', backgroundColor: '#e5e7eb', border: '1px solid #e5e7eb' }}>
-                {[
-                  { label: '탄수화물', value: meal.nutrient?.carbohydrates, unit: 'g' },
-                  { label: '단백질', value: meal.nutrient?.protein, unit: 'g' },
-                  { label: '지방', value: meal.nutrient?.fat, unit: 'g' },
-                  { label: '식이섬유', value: meal.nutrient?.fiber, unit: 'g' },
-                  { label: '당류', value: meal.nutrient?.sugar, unit: 'g' },
-                  { label: '나트륨', value: meal.nutrient?.sodium, unit: 'mg' },
-                  ...(meal.nutrient?.caffeine != null ? [{ label: '카페인', value: meal.nutrient.caffeine, unit: 'mg' }] : []),
-                ].map(n => (
-                  <div key={n.label} style={{ padding: '16px 8px', backgroundColor: 'white', textAlign: 'center' }}>
-                    <p style={{ fontSize: '10px', color: '#9ca3af', marginBottom: '4px' }}>{n.label}</p>
-                    <p style={{ fontSize: '15px' }}>{n.value ?? 0}{n.unit}</p>
+              {(() => {
+                const displayNutrient = showOriginal && meal.original_nutrition
+                  ? meal.original_nutrition.nutrients
+                  : meal.nutrient;
+                const nutrientFields = [
+                  { key: 'carbohydrates', label: '탄수화물', unit: 'g' },
+                  { key: 'protein', label: '단백질', unit: 'g' },
+                  { key: 'fat', label: '지방', unit: 'g' },
+                  { key: 'fiber', label: '식이섬유', unit: 'g' },
+                  { key: 'sugar', label: '당류', unit: 'g' },
+                  { key: 'sodium', label: '나트륨', unit: 'mg' },
+                  ...(meal.nutrient?.caffeine != null ? [{ key: 'caffeine', label: '카페인', unit: 'mg' }] : []),
+                ];
+                return (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1px', backgroundColor: '#e5e7eb', border: '1px solid #e5e7eb' }}>
+                    {nutrientFields.map(n => (
+                      <div key={n.key} style={{ padding: '16px 8px', backgroundColor: 'white', textAlign: 'center' }}>
+                        <p style={{ fontSize: '10px', color: '#9ca3af', marginBottom: '4px' }}>{n.label}</p>
+                        {isEditing && !showOriginal ? (
+                          <input
+                            value={editNutrient[n.key] ?? ''}
+                            onChange={e => setEditNutrient(prev => ({ ...prev, [n.key]: e.target.value }))}
+                            style={{ fontSize: '13px', border: '1px solid #6B21A8', width: '56px', textAlign: 'center', padding: '2px', outline: 'none' }}
+                          />
+                        ) : (
+                          <p style={{ fontSize: '15px' }}>{(displayNutrient as any)?.[n.key] ?? 0}{n.unit}</p>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                );
+              })()}
             </div>
 
             <div style={{ marginTop: '24px' }}>
               <p style={{ fontSize: '11px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>Vitamins & Minerals</p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                 {[
-                  { label: '비타민A', value: meal.nutrient?.vitaminA, unit: 'μg' },
-                  { label: '비타민C', value: meal.nutrient?.vitaminC, unit: 'mg' },
-                  { label: '비타민D', value: meal.nutrient?.vitaminD, unit: 'μg' },
-                  { label: '칼슘', value: meal.nutrient?.calcium, unit: 'mg' },
-                  { label: '철분', value: meal.nutrient?.iron, unit: 'mg' },
-                  { label: '칼륨', value: meal.nutrient?.potassium, unit: 'mg' },
-                ].filter(n => n.value).map(n => (
-                  <div key={n.label} style={{ padding: '6px 12px', border: '1px solid #e5e7eb', fontSize: '12px' }}>
+                  { key: 'vitaminA', label: '비타민A', unit: 'μg' },
+                  { key: 'vitaminC', label: '비타민C', unit: 'mg' },
+                  { key: 'vitaminD', label: '비타민D', unit: 'μg' },
+                  { key: 'calcium', label: '칼슘', unit: 'mg' },
+                  { key: 'iron', label: '철분', unit: 'mg' },
+                  { key: 'potassium', label: '칼륨', unit: 'mg' },
+                ].filter(n => (meal.nutrient as any)?.[n.key]).map(n => (
+                  <div key={n.key} style={{ padding: '6px 12px', border: '1px solid #e5e7eb', fontSize: '12px' }}>
                     <span style={{ color: '#9ca3af', marginRight: '4px' }}>{n.label}</span>
-                    <span>{n.value}{n.unit}</span>
+                    {isEditing ? (
+                      <input
+                        value={editNutrient[n.key] ?? ''}
+                        onChange={e => setEditNutrient(prev => ({ ...prev, [n.key]: e.target.value }))}
+                        style={{ fontSize: '12px', border: '1px solid #6B21A8', width: '48px', padding: '1px', outline: 'none' }}
+                      />
+                    ) : (
+                      <span>{(meal.nutrient as any)?.[n.key]}{n.unit}</span>
+                    )}
                   </div>
                 ))}
               </div>

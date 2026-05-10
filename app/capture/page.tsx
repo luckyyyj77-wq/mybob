@@ -32,6 +32,21 @@ type AnalysisResult = {
   };
 };
 
+type Portion = 1 | 0.5 | 0.25;
+type Rating = 2 | 1 | 0 | null;
+
+const PORTION_LABELS: { value: Portion; label: string }[] = [
+  { value: 1, label: '1' },
+  { value: 0.5, label: '½' },
+  { value: 0.25, label: '¼' },
+];
+
+const RATING_OPTIONS: { value: Rating; emoji: string; label: string }[] = [
+  { value: 2, emoji: '😊', label: '좋음' },
+  { value: 1, emoji: '😐', label: '보통' },
+  { value: 0, emoji: '😞', label: '나쁨' },
+];
+
 // 클라이언트에서 이미지 리사이즈 (전송 용량 절감)
 function resizeImage(dataUrl: string, maxWidth = 800): Promise<string> {
   return new Promise(resolve => {
@@ -74,6 +89,8 @@ export default function CameraCapturePage() {
   const [uploadStatus, setUploadStatus] = useState<{ upload: { used: number; limit: number }; analysis: { used: number; limit: number }; plan: string } | null>(null);
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [limitType, setLimitType] = useState<'analysis' | 'upload'>('analysis');
+  const [portion, setPortion] = useState<Portion>(1);
+  const [rating, setRating] = useState<Rating>(null);
 
   useEffect(() => {
     // 업로드/분석 현황 조회
@@ -215,25 +232,34 @@ export default function CameraCapturePage() {
     const mode = getStorageMode();
     const mealId = Date.now().toString();
 
+    // portion 적용: 칼로리 및 영양정보에 배수 적용
+    const scaledCalories = Math.round(analysis.calories * portion);
+    const scaledNutrients = Object.fromEntries(
+      Object.entries(analysis.nutrients).map(([k, v]) =>
+        [k, v != null ? Math.round((v as number) * portion * 10) / 10 : v]
+      )
+    );
+
     try {
       if (mode === 'local') {
-        // ── 로컬 모드: IndexedDB에 사진, localStorage에 메타 ──
         await savePhoto(mealId, imageSrc);
 
         const localMeal = {
           id: mealId,
           food_name: analysis.name,
-          calories: analysis.calories,
-          nutrient: analysis.nutrients,
+          calories: scaledCalories,
+          nutrient: scaledNutrients,
           category: analysis.category,
-          photo_url: `local:${mealId}`, // IndexedDB 참조 마커
+          photo_url: `local:${mealId}`,
           created_at: new Date().toISOString(),
+          rating,
+          portion,
+          original_nutrition: { calories: analysis.calories, nutrients: analysis.nutrients },
         };
         const existing = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
         localStorage.setItem('mybob_meals', JSON.stringify([localMeal, ...existing]));
 
       } else {
-        // ── 클라우드 모드: 서버 업로드 후 localStorage에도 캐시 ──
         const { data: { session } } = await supabase.auth.getSession();
         const token = session?.access_token;
 
@@ -247,11 +273,20 @@ export default function CameraCapturePage() {
         const res = await fetch('/api/meals', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ mealData: analysis, imageBase64: resizedForUpload }),
+          body: JSON.stringify({
+            mealData: {
+              ...analysis,
+              calories: scaledCalories,
+              nutrients: scaledNutrients,
+            },
+            imageBase64: resizedForUpload,
+            rating,
+            portion,
+            originalNutrition: { calories: analysis.calories, nutrients: analysis.nutrients },
+          }),
         });
         const result = await res.json();
 
-        // 업로드 제한 초과
         if (res.status === 429 && result.error === 'UPLOAD_LIMIT_EXCEEDED') {
           setUploadStatus(prev => prev ? {
             ...prev,
@@ -277,15 +312,17 @@ export default function CameraCapturePage() {
           }
         }
 
-        // 로컬 캐시 (클라우드 모드에서도 빠른 조회를 위해)
         const localMeal = {
           id: mealId,
           food_name: analysis.name,
-          calories: analysis.calories,
-          nutrient: analysis.nutrients,
+          calories: scaledCalories,
+          nutrient: scaledNutrients,
           category: analysis.category,
-          photo_url: serverPhotoUrl ?? imageSrc, // 서버 URL 없으면 base64 임시 저장
+          photo_url: serverPhotoUrl ?? imageSrc,
           created_at: new Date().toISOString(),
+          rating,
+          portion,
+          original_nutrition: { calories: analysis.calories, nutrients: analysis.nutrients },
         };
         const existing = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
         localStorage.setItem('mybob_meals', JSON.stringify([localMeal, ...existing]));
@@ -299,13 +336,14 @@ export default function CameraCapturePage() {
     }
   };
 
-  // 추가 촬영 — 웹캠은 유지, 이미지/결과만 초기화
   const retake = () => {
     setImageSrc(null);
     setAnalysis(null);
     setAnalysisSource(null);
     setAnalysisModel(null);
     setSaved(false);
+    setPortion(1);
+    setRating(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -604,13 +642,11 @@ export default function CameraCapturePage() {
                           {analysis.category && (
                             <span style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1px' }}>{analysis.category} · {analysis.amount || '1인분'}</span>
                           )}
-                          {/* 출처 배지 */}
                           {analysisSource && (
                             <span style={{ fontSize: '9px', padding: '2px 6px', backgroundColor: '#f3f4f6', color: '#6b7280', letterSpacing: '0.5px' }}>
                               {SOURCE_LABEL[analysisSource] || analysisSource}
                             </span>
                           )}
-                          {/* 신뢰도 배지 */}
                           {analysis.confidence && (
                             <span style={{ fontSize: '9px', padding: '2px 6px', backgroundColor: '#f3f4f6', color: CONFIDENCE_COLOR[analysis.confidence], letterSpacing: '0.5px', fontWeight: 500 }}>
                               신뢰도 {analysis.confidence === 'high' ? '높음' : analysis.confidence === 'medium' ? '보통' : '낮음'}
@@ -619,8 +655,53 @@ export default function CameraCapturePage() {
                         </div>
                       </div>
                       <div style={{ textAlign: 'right' }}>
-                        <p style={{ fontSize: '20px', color: '#6B21A8', lineHeight: 1 }}>{analysis.calories}</p>
+                        <p style={{ fontSize: '20px', color: '#6B21A8', lineHeight: 1 }}>{Math.round(analysis.calories * portion)}</p>
                         <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1px' }}>KCAL</p>
+                      </div>
+                    </div>
+
+                    {/* 식사량 선택 */}
+                    <div>
+                      <p style={{ fontSize: '9px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '6px' }}>식사량</p>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        {PORTION_LABELS.map(p => (
+                          <button
+                            key={p.value}
+                            onClick={() => setPortion(p.value)}
+                            style={{
+                              flex: 1, padding: '8px 0',
+                              backgroundColor: portion === p.value ? 'black' : 'white',
+                              color: portion === p.value ? 'white' : 'black',
+                              border: `1px solid ${portion === p.value ? 'black' : '#e5e7eb'}`,
+                              fontSize: '14px', cursor: 'pointer',
+                            }}
+                          >
+                            {p.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* AI 추론 평가 */}
+                    <div>
+                      <p style={{ fontSize: '9px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '6px' }}>AI 추론 평가</p>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        {RATING_OPTIONS.map(r => (
+                          <button
+                            key={r.value}
+                            onClick={() => setRating(rating === r.value ? null : r.value)}
+                            style={{
+                              flex: 1, padding: '8px 0',
+                              backgroundColor: rating === r.value ? '#f3e8ff' : 'white',
+                              border: `1px solid ${rating === r.value ? '#6B21A8' : '#e5e7eb'}`,
+                              fontSize: '18px', cursor: 'pointer',
+                              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px',
+                            }}
+                          >
+                            <span>{r.emoji}</span>
+                            <span style={{ fontSize: '8px', color: rating === r.value ? '#6B21A8' : '#9ca3af', letterSpacing: '0.5px' }}>{r.label}</span>
+                          </button>
+                        ))}
                       </div>
                     </div>
 

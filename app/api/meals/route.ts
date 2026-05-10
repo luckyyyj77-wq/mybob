@@ -57,7 +57,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { mealData, imageBase64 } = await request.json();
+    const { mealData, imageBase64, rating, portion, originalNutrition } = await request.json();
     if (!mealData || !imageBase64) {
       return NextResponse.json({ error: 'mealData and imageBase64 are required.' }, { status: 400 });
     }
@@ -128,6 +128,9 @@ export async function POST(request: Request) {
       price: toNum(mealData.price),
       location: mealData.location || null,
       photo_url: photoUrl,
+      rating: rating ?? null,
+      portion: portion ?? 1.0,
+      original_nutrition: originalNutrition ?? null,
     };
 
     const { data, error } = await adminSupabase
@@ -145,6 +148,67 @@ export async function POST(request: Request) {
       data,
       uploadStatus: { used: limitCheck.used + 1, limit: limitCheck.limit, plan: limitCheck.plan },
     });
+
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const adminSupabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+
+    // PRO 확인
+    const { data: profile } = await adminSupabase
+      .from('profiles')
+      .select('plan')
+      .eq('id', user.id)
+      .single();
+
+    if (!profile || profile.plan === 'free') {
+      return NextResponse.json({ error: 'PRO_REQUIRED' }, { status: 403 });
+    }
+
+    const { mealId, updates } = await request.json();
+    if (!mealId || !updates) {
+      return NextResponse.json({ error: 'mealId and updates are required.' }, { status: 400 });
+    }
+
+    const toNum = (v: any) => {
+      if (v == null) return null;
+      const n = parseFloat(String(v).replace(/[^\d.]/g, ''));
+      return isNaN(n) ? null : n;
+    };
+
+    const patchData: Record<string, any> = {};
+
+    if (updates.food_name !== undefined) patchData.food_name = updates.food_name;
+    if (updates.calories !== undefined) patchData.calories = toNum(updates.calories) ?? 0;
+    if (updates.rating !== undefined) patchData.rating = updates.rating;
+    if (updates.portion !== undefined) patchData.portion = updates.portion;
+    if (updates.nutrient !== undefined) {
+      patchData.nutrient = Object.fromEntries(
+        Object.entries(updates.nutrient).map(([k, v]) => [k, toNum(v)])
+      );
+      patchData.edited_nutrition = patchData.nutrient;
+      patchData.is_edited = true;
+    }
+
+    const { data, error } = await adminSupabase
+      .from('meals')
+      .update(patchData)
+      .eq('id', mealId)
+      .eq('user_id', user.id)
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+    return NextResponse.json({ success: true, data });
 
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
