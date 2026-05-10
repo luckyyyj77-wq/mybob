@@ -70,6 +70,16 @@ function MealDetailContent() {
   const [userPlan, setUserPlan] = useState<string>('free');
   const [editPortion, setEditPortion] = useState<number>(1);
   const [editRating, setEditRating] = useState<number | null>(null);
+  const [invalidFields, setInvalidFields] = useState<Set<string>>(new Set());
+
+  const handleNumericInput = (key: string, raw: string, setter: (v: string) => void) => {
+    const cleaned = raw.replace(/[^\d.]/g, '');
+    setter(cleaned);
+    if (cleaned !== raw && raw !== '') {
+      setInvalidFields(prev => new Set(prev).add(key));
+      setTimeout(() => setInvalidFields(prev => { const s = new Set(prev); s.delete(key); return s; }), 800);
+    }
+  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -457,8 +467,9 @@ function MealDetailContent() {
                 {isEditing ? (
                   <input
                     value={editCalories}
-                    onChange={e => setEditCalories(e.target.value)}
-                    style={{ fontSize: '24px', color: '#6B21A8', border: '2px solid #e5e7eb', borderRadius: '4px', padding: '2px 6px', width: '80px', textAlign: 'right', outline: 'none', backgroundColor: '#fafafa' }}
+                    onChange={e => handleNumericInput('calories', e.target.value, setEditCalories)}
+                    inputMode="decimal"
+                    style={{ fontSize: '24px', color: '#6B21A8', border: `2px solid ${invalidFields.has('calories') ? '#ef4444' : '#e5e7eb'}`, borderRadius: '4px', padding: '2px 6px', width: '80px', textAlign: 'right', outline: 'none', backgroundColor: '#fafafa', transition: 'border-color 0.2s' }}
                   />
                 ) : (
                   <p style={{ fontSize: '28px', color: 'black', lineHeight: 1 }}>{meal.calories}</p>
@@ -507,8 +518,9 @@ function MealDetailContent() {
                         {isEditing && !showOriginal ? (
                           <input
                             value={editNutrient[n.key] ?? ''}
-                            onChange={e => setEditNutrient(prev => ({ ...prev, [n.key]: e.target.value }))}
-                            style={{ fontSize: '14px', border: '1.5px solid #d1d5db', borderRadius: '3px', width: '58px', textAlign: 'center', padding: '3px 2px', outline: 'none', backgroundColor: 'white' }}
+                            onChange={e => handleNumericInput(n.key, e.target.value, v => setEditNutrient(prev => ({ ...prev, [n.key]: v })))}
+                            inputMode="decimal"
+                            style={{ fontSize: '14px', border: `1.5px solid ${invalidFields.has(n.key) ? '#ef4444' : '#d1d5db'}`, borderRadius: '3px', width: '58px', textAlign: 'center', padding: '3px 2px', outline: 'none', backgroundColor: 'white', transition: 'border-color 0.2s' }}
                           />
                         ) : (
                           <p style={{ fontSize: '15px' }}>{(displayNutrient as any)?.[n.key] ?? 0}{n.unit}</p>
@@ -536,8 +548,9 @@ function MealDetailContent() {
                     {isEditing ? (
                       <input
                         value={editNutrient[n.key] ?? ''}
-                        onChange={e => setEditNutrient(prev => ({ ...prev, [n.key]: e.target.value }))}
-                        style={{ fontSize: '12px', border: '1.5px solid #d1d5db', borderRadius: '3px', width: '48px', padding: '2px', outline: 'none', backgroundColor: 'white' }}
+                        onChange={e => handleNumericInput(n.key, e.target.value, v => setEditNutrient(prev => ({ ...prev, [n.key]: v })))}
+                        inputMode="decimal"
+                        style={{ fontSize: '12px', border: `1.5px solid ${invalidFields.has(n.key) ? '#ef4444' : '#d1d5db'}`, borderRadius: '3px', width: '48px', padding: '2px', outline: 'none', backgroundColor: 'white', transition: 'border-color 0.2s' }}
                       />
                     ) : (
                       <span>{(meal.nutrient as any)?.[n.key]}{n.unit}</span>

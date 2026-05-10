@@ -179,6 +179,11 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'mealId and updates are required.' }, { status: 400 });
     }
 
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(mealId);
+    if (!isUuid) {
+      return NextResponse.json({ success: true, localOnly: true });
+    }
+
     const toNum = (v: any) => {
       if (v == null) return null;
       const n = parseFloat(String(v).replace(/[^\d.]/g, ''));
@@ -193,7 +198,10 @@ export async function PATCH(request: Request) {
     if (updates.portion !== undefined) patchData.portion = updates.portion ?? 1.0;
     if (updates.nutrient !== undefined) {
       patchData.nutrient = Object.fromEntries(
-        Object.entries(updates.nutrient).map(([k, v]) => [k, toNum(v)])
+        Object.entries(updates.nutrient).map(([k, v]) => {
+          const n = toNum(v);
+          return [k, n != null ? Math.round(n * 10) / 10 : null];
+        })
       );
       patchData.edited_nutrition = patchData.nutrient;
       patchData.is_edited = true;
