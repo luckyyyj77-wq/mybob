@@ -279,7 +279,7 @@ function MealDetailContent() {
             </button>
           </div>
 
-          {/* 사진 */}
+          {/* 사진 — 평가 이모지를 우측 하단 오버레이로 */}
           <div style={{ position: 'relative', width: '100%', aspectRatio: '4/3', backgroundColor: '#f3f4f6', flexShrink: 0 }}>
             {meal.photo_url ? (
               <MealPhoto photoUrl={meal.photo_url} alt={meal.food_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -300,30 +300,39 @@ function MealDetailContent() {
             >
               <FaChevronRight color="black" />
             </button>
-          </div>
 
-          {/* 사진 하단: AI 평가 (이모지만, 간결하게) */}
-          <div style={{ padding: '10px 24px', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1px' }}>AI 평가</span>
-            <div style={{ display: 'flex', gap: '6px' }}>
-              {RATING_OPTIONS.map(r => (
-                <button
-                  key={r.value}
-                  onClick={() => handleRatingChange(meal.rating === r.value ? null : r.value)}
-                  disabled={savingRating}
-                  style={{
-                    width: '36px', height: '36px',
-                    backgroundColor: meal.rating === r.value ? '#f3e8ff' : 'transparent',
-                    border: meal.rating === r.value ? '1.5px solid #6B21A8' : '1.5px solid transparent',
-                    borderRadius: '50%',
-                    cursor: 'pointer', fontSize: '20px',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    padding: 0,
-                  }}
-                >
-                  {r.emoji}
-                </button>
-              ))}
+            {/* AI 평가 — 사진 우측 하단 오버레이 */}
+            <div style={{
+              position: 'absolute', bottom: '10px', right: '10px',
+              display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px',
+            }}>
+              <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.7)', letterSpacing: '1px', textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>AI 평가</span>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                {[
+                  { value: 2, emoji: '😊', activeColor: 'rgba(34,197,94,0.85)' },
+                  { value: 1, emoji: '😐', activeColor: 'rgba(234,179,8,0.85)' },
+                  { value: 0, emoji: '😞', activeColor: 'rgba(239,68,68,0.85)' },
+                ].map(r => (
+                  <button
+                    key={r.value}
+                    onClick={() => handleRatingChange(meal.rating === r.value ? null : r.value)}
+                    disabled={savingRating}
+                    style={{
+                      width: '34px', height: '34px',
+                      backgroundColor: meal.rating === r.value ? r.activeColor : 'rgba(0,0,0,0.35)',
+                      border: 'none',
+                      borderRadius: '50%',
+                      cursor: 'pointer', fontSize: '18px',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      padding: 0,
+                      backdropFilter: 'blur(4px)',
+                      transition: 'background-color 0.15s',
+                    }}
+                  >
+                    {r.emoji}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -336,26 +345,39 @@ function MealDetailContent() {
                 {new Date(meal.created_at).toLocaleString('ko-KR', { dateStyle: 'long', timeStyle: 'short' })}
               </p>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                {/* 식사량 표시 */}
-                {meal.portion != null && meal.portion !== 1 && (
-                  <span style={{ fontSize: '11px', color: '#6B21A8' }}>
-                    {meal.portion === 0.5 ? '½' : '¼'}
-                  </span>
-                )}
-                {/* 원본↔수정 스위칭 (수정된 경우만) */}
-                {meal.is_edited && meal.original_nutrition && (
-                  <button
-                    onClick={() => setShowOriginal(p => !p)}
-                    title={showOriginal ? 'AI 원본 보는 중' : '수정값 보는 중'}
-                    style={{
-                      background: 'none', border: 'none', cursor: 'pointer',
-                      fontSize: '16px', padding: '2px',
-                      filter: showOriginal ? 'none' : 'grayscale(1)',
-                      opacity: showOriginal ? 1 : 0.5,
-                    }}
-                  >
-                    🔄
-                  </button>
+                {/* 식사량 — 편집 중이면 선택 버튼, 아니면 텍스트 표시 */}
+                {isEditing ? (
+                  <div style={{ display: 'flex', gap: '3px' }}>
+                    {([1, 0.5, 0.25] as const).map(p => (
+                      <button
+                        key={p}
+                        onClick={() => {
+                          const label = p === 1 ? '1' : p === 0.5 ? '½' : '¼';
+                          setEditCalories(String(Math.round((meal.calories / (meal.portion ?? 1)) * p)));
+                          setEditNutrient(prev => {
+                            const orig = meal.original_nutrition?.nutrients ?? meal.nutrient ?? {};
+                            return Object.fromEntries(
+                              Object.entries(orig).map(([k, v]) => [k, v != null ? String(Math.round((v as number) * p * 10) / 10) : ''])
+                            );
+                          });
+                        }}
+                        style={{
+                          padding: '2px 7px', fontSize: '12px',
+                          backgroundColor: (meal.portion ?? 1) === p ? 'black' : 'white',
+                          color: (meal.portion ?? 1) === p ? 'white' : '#6b7280',
+                          border: '1px solid #e5e7eb', cursor: 'pointer',
+                        }}
+                      >
+                        {p === 1 ? '1' : p === 0.5 ? '½' : '¼'}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  meal.portion != null && meal.portion !== 1 && (
+                    <span style={{ fontSize: '11px', color: '#6B21A8' }}>
+                      {meal.portion === 0.5 ? '½' : '¼'}
+                    </span>
+                  )
                 )}
                 {/* 편집 버튼 */}
                 {isEditing ? (
@@ -363,24 +385,24 @@ function MealDetailContent() {
                     <button
                       onClick={() => setIsEditing(false)}
                       title="취소"
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', padding: '2px' }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', padding: '2px', lineHeight: 1 }}
                     >
-                      ↩️
+                      ✖️
                     </button>
                     <button
                       onClick={handleEditSave}
                       disabled={savingEdit}
                       title="저장"
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', padding: '2px', opacity: savingEdit ? 0.5 : 1 }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '22px', padding: '2px', opacity: savingEdit ? 0.5 : 1, lineHeight: 1 }}
                     >
-                      💾
+                      ✅
                     </button>
                   </div>
                 ) : userPlan !== 'free' ? (
                   <button
                     onClick={startEdit}
                     title="편집"
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', padding: '2px', filter: 'grayscale(1)' }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', padding: '2px', filter: 'grayscale(1)', lineHeight: 1 }}
                   >
                     ✏️
                   </button>
@@ -388,7 +410,7 @@ function MealDetailContent() {
                   <button
                     onClick={() => alert('PRO 플랜에서만 편집 가능합니다.')}
                     title="편집 (PRO 전용)"
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', padding: '2px', opacity: 0.35 }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', padding: '2px', opacity: 0.35, lineHeight: 1 }}
                   >
                     🔒
                   </button>
@@ -431,8 +453,20 @@ function MealDetailContent() {
             <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
                 <p style={{ fontSize: '11px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase' }}>Nutritional Info</p>
-                {isEditing && <span style={{ fontSize: '10px', color: '#6B21A8', letterSpacing: '0.5px' }}>✏️ 편집 중</span>}
-                {showOriginal && <span style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '0.5px' }}>AI 원본</span>}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {/* 되돌리기 — 편집 중이고 수정된 기록 있을 때만 */}
+                  {isEditing && meal.is_edited && meal.original_nutrition && (
+                    <button
+                      onClick={() => setShowOriginal(p => !p)}
+                      title={showOriginal ? '수정값으로 보기' : 'AI 원본으로 보기'}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', padding: '0', opacity: showOriginal ? 1 : 0.45, lineHeight: 1 }}
+                    >
+                      🔄
+                    </button>
+                  )}
+                  {isEditing && !showOriginal && <span style={{ fontSize: '10px', color: '#6B21A8' }}>✏️ 편집 중</span>}
+                  {showOriginal && <span style={{ fontSize: '10px', color: '#9ca3af' }}>AI 원본</span>}
+                </div>
               </div>
               {(() => {
                 const displayNutrient = showOriginal && meal.original_nutrition
