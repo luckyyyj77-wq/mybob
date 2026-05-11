@@ -119,6 +119,7 @@ export default function CameraCapturePage() {
   const [focusDistance, setFocusDistance] = useState(0);       // 0 = 가까움, 100 = 멀리
   const barcodeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scanControlsRef = useRef<{ stop: () => void } | null>(null);
+  const handleBarcodeResultRef = useRef<((code: string) => void) | null>(null);
 
   useEffect(() => {
     // 업로드/분석 현황 조회
@@ -281,8 +282,8 @@ export default function CameraCapturePage() {
           const code = result.getText();
           setBarcodeDetected(code);
           setBarcodeScanning(false);
-          // 바코드 번호를 직접 API로 — 이미지 캡처/Gemini 호출 없음
-          handleBarcodeResult(code);
+          // ref를 통해 최신 함수 호출 (클로저 stale 방지)
+          handleBarcodeResultRef.current?.(code);
         }
       }
     );
@@ -342,6 +343,11 @@ export default function CameraCapturePage() {
       setLoadingAnalysis(false);
     }
   }, [stopOcrCamera, startOcrCamera]);
+
+  // handleBarcodeResult를 ref에 동기화 (scan 클로저 stale 방지)
+  useEffect(() => {
+    handleBarcodeResultRef.current = handleBarcodeResult;
+  }, [handleBarcodeResult]);
 
   // 수동 포커스 거리 조절
   const handleFocusChange = useCallback(async (value: number) => {
