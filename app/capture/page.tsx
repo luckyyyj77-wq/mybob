@@ -183,39 +183,55 @@ export default function CameraCapturePage() {
   // OCR 모드 전용 카메라 스트림 시작
   const startOcrCamera = useCallback(async () => {
     if (ocrStreamRef.current) return;
+
+    // Android Chrome은 exact facingMode + 고해상도 명시가 필요
+    const videoConstraints: MediaTrackConstraints = {
+      facingMode: { ideal: 'environment' },
+      width: { min: 1280, ideal: 1920, max: 3840 },
+      height: { min: 720, ideal: 1080, max: 2160 },
+    };
+
+    let stream: MediaStream;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'environment',
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-        },
-      });
-      ocrStreamRef.current = stream;
-
-      // 자동초점 + 연속 초점 모드 적용 (지원 기기에서만)
-      const track = stream.getVideoTracks()[0];
-      if (track) {
-        const caps = track.getCapabilities() as any;
-        if (caps.focusMode?.includes('continuous')) {
-          await track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as any] });
-        }
-        // 수동 포커스 슬라이더 지원 여부 확인
-        if (caps.focusDistance) {
-          setFocusSupported(true);
-          // 초기값: 중간 거리
-          const min = caps.focusDistance.min ?? 0;
-          const max = caps.focusDistance.max ?? 100;
-          setFocusDistance(Math.round((min + max) / 2));
-        }
-      }
-
-      if (ocrVideoRef.current) {
-        ocrVideoRef.current.srcObject = stream;
-        await ocrVideoRef.current.play();
-      }
+      stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints });
     } catch {
-      // 권한 문제 시 무시
+      // 고해상도 실패 시 기본값으로 폴백
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
+      } catch {
+        return;
+      }
+    }
+    ocrStreamRef.current = stream;
+
+    const track = stream.getVideoTracks()[0];
+    if (track) {
+      const caps = track.getCapabilities() as any;
+      const advanced: Record<string, unknown>[] = [];
+
+      // 연속 자동초점
+      if (caps.focusMode?.includes('continuous')) advanced.push({ focusMode: 'continuous' });
+      // 연속 화이트밸런스 (Android 색감 개선)
+      if (caps.whiteBalanceMode?.includes('continuous')) advanced.push({ whiteBalanceMode: 'continuous' });
+      // 연속 노출 (Android 밝기 개선)
+      if (caps.exposureMode?.includes('continuous')) advanced.push({ exposureMode: 'continuous' });
+
+      if (advanced.length > 0) {
+        try { await track.applyConstraints({ advanced: advanced as any }); } catch { /* 미지원 무시 */ }
+      }
+
+      // 수동 포커스 슬라이더 지원 여부 확인
+      if (caps.focusDistance) {
+        setFocusSupported(true);
+        const min = caps.focusDistance.min ?? 0;
+        const max = caps.focusDistance.max ?? 100;
+        setFocusDistance(Math.round((min + max) / 2));
+      }
+    }
+
+    if (ocrVideoRef.current) {
+      ocrVideoRef.current.srcObject = stream;
+      await ocrVideoRef.current.play();
     }
   }, []);
 
@@ -681,11 +697,25 @@ export default function CameraCapturePage() {
               screenshotFormat="image/jpeg"
               screenshotQuality={0.95}
               videoConstraints={{
-                facingMode: 'environment',
-                width: { ideal: 1920 },
-                height: { ideal: 1080 },
+                facingMode: { ideal: 'environment' },
+                width: { min: 1280, ideal: 1920, max: 3840 },
+                height: { min: 720, ideal: 1080, max: 2160 },
               }}
-              onUserMedia={() => setCameraReady(true)}
+              onUserMedia={(stream) => {
+                setCameraReady(true);
+                // Android 색감·밝기 개선: 화이트밸런스·노출 연속 모드 적용
+                const track = stream.getVideoTracks()[0];
+                if (track) {
+                  const caps = track.getCapabilities() as any;
+                  const advanced: Record<string, unknown>[] = [];
+                  if (caps.whiteBalanceMode?.includes('continuous')) advanced.push({ whiteBalanceMode: 'continuous' });
+                  if (caps.exposureMode?.includes('continuous')) advanced.push({ exposureMode: 'continuous' });
+                  if (caps.focusMode?.includes('continuous')) advanced.push({ focusMode: 'continuous' });
+                  if (advanced.length > 0) {
+                    track.applyConstraints({ advanced: advanced as any }).catch(() => {});
+                  }
+                }
+              }}
               onUserMediaError={() => {
                 localStorage.removeItem('mybob_camera_granted');
                 setPermState('denied');
