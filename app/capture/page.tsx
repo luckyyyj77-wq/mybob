@@ -186,26 +186,35 @@ export default function CameraCapturePage() {
   const startOcrCamera = useCallback(async () => {
     if (ocrStreamRef.current) return;
     try {
+      // 안드로이드: aspectRatio 강제하면 저해상도로 fallback되는 경우 있어서 width/height만 지정
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: 'environment',
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
+          facingMode: { exact: 'environment' },
+          width:  { min: 640, ideal: 1920, max: 4096 },
+          height: { min: 480, ideal: 1080, max: 2160 },
         },
-      });
+      }).catch(() =>
+        // exact facingMode 실패 시 (일부 안드로이드) ideal로 재시도
+        navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: 'environment',
+            width:  { ideal: 1920 },
+            height: { ideal: 1080 },
+          },
+        })
+      );
+
       ocrStreamRef.current = stream;
 
-      // 자동초점 + 연속 초점 모드 적용 (지원 기기에서만)
+      // 연속 자동초점 적용 (지원 기기만)
       const track = stream.getVideoTracks()[0];
       if (track) {
         const caps = track.getCapabilities() as any;
         if (caps.focusMode?.includes('continuous')) {
-          await track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as any] });
+          await track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as any] }).catch(() => {});
         }
-        // 수동 포커스 슬라이더 지원 여부 확인
         if (caps.focusDistance) {
           setFocusSupported(true);
-          // 초기값: 중간 거리
           const min = caps.focusDistance.min ?? 0;
           const max = caps.focusDistance.max ?? 100;
           setFocusDistance(Math.round((min + max) / 2));
@@ -214,6 +223,7 @@ export default function CameraCapturePage() {
 
       if (ocrVideoRef.current) {
         ocrVideoRef.current.srcObject = stream;
+        ocrVideoRef.current.setAttribute('playsinline', 'true');
         await ocrVideoRef.current.play();
       }
     } catch {
@@ -222,12 +232,9 @@ export default function CameraCapturePage() {
   }, []);
 
   const stopOcrCamera = useCallback(() => {
-    barcodeScanningRef.current = false;
+    barcodeScanningRef.current = false;  // 루프 중단 플래그
     barcodeReaderRef.current = null;
-    if (scanControlsRef.current) {
-      try { scanControlsRef.current.stop(); } catch { /* 무시 */ }
-      scanControlsRef.current = null;
-    }
+    scanControlsRef.current = null;
     if (barcodeTimerRef.current) {
       clearTimeout(barcodeTimerRef.current);
       barcodeTimerRef.current = null;
@@ -252,7 +259,7 @@ export default function CameraCapturePage() {
     return () => { stopOcrCamera(); };
   }, [captureMode, imageSrc, permState, startOcrCamera, stopOcrCamera]);
 
-  // 바코드 실시간 스캔 — scan() API로 매 프레임 캔버스 디코딩
+  // 바코드 실시간 스캔 — rAF + decodeFromCanvas 직접 루프
   const startBarcodeScanning = useCallback(() => {
     if (barcodeScanningRef.current || !ocrVideoRef.current) return;
     barcodeScanningRef.current = true;
@@ -262,32 +269,46 @@ export default function CameraCapturePage() {
     const reader = new BrowserMultiFormatReader();
     barcodeReaderRef.current = reader;
 
+    // canvas는 루프 밖에서 1회 생성 (매 프레임 생성 방지)
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+
     // 15초 타임아웃
     barcodeTimerRef.current = setTimeout(() => {
       if (!barcodeScanningRef.current) return;
-      if (scanControlsRef.current) { try { scanControlsRef.current.stop(); } catch { /* 무시 */ } scanControlsRef.current = null; }
       barcodeScanningRef.current = false;
       setBarcodeScanning(false);
       setBarcodeTimeout(true);
     }, 15000);
 
-    // scan()은 매 프레임을 canvas에 그려 decodeFromCanvas로 디코딩
-    const controls = reader.scan(
-      ocrVideoRef.current,
-      (result) => {
-        if (result && barcodeScanningRef.current) {
-          if (barcodeTimerRef.current) { clearTimeout(barcodeTimerRef.current); barcodeTimerRef.current = null; }
-          if (scanControlsRef.current) { try { scanControlsRef.current.stop(); } catch { /* 무시 */ } scanControlsRef.current = null; }
-          barcodeScanningRef.current = false;
-          const code = result.getText();
-          setBarcodeDetected(code);
-          setBarcodeScanning(false);
-          // ref를 통해 최신 함수 호출 (클로저 stale 방지)
-          handleBarcodeResultRef.current?.(code);
-        }
+    const loop = () => {
+      if (!barcodeScanningRef.current) return;
+      const video = ocrVideoRef.current;
+      if (!video || video.readyState < 2 || video.videoWidth === 0) {
+        // 아직 프레임 없음 — 다음 프레임 대기
+        requestAnimationFrame(loop);
+        return;
       }
-    );
-    scanControlsRef.current = controls;
+
+      canvas.width  = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      try {
+        const result = reader.decodeFromCanvas(canvas);
+        // 성공
+        if (barcodeTimerRef.current) { clearTimeout(barcodeTimerRef.current); barcodeTimerRef.current = null; }
+        barcodeScanningRef.current = false;
+        setBarcodeScanning(false);
+        setBarcodeDetected(result.getText());
+        handleBarcodeResultRef.current?.(result.getText());
+      } catch {
+        // NotFoundException — 다음 프레임 재시도 (100ms 간격으로 CPU 절감)
+        setTimeout(() => requestAnimationFrame(loop), 100);
+      }
+    };
+
+    requestAnimationFrame(loop);
   }, []);
 
   // video가 재생되기 시작하면 바코드 스캔 시작
@@ -738,8 +759,8 @@ export default function CameraCapturePage() {
               screenshotQuality={0.95}
               videoConstraints={{
                 facingMode: 'environment',
-                width: { ideal: 1920 },
-                height: { ideal: 1080 },
+                width:  { min: 640, ideal: 1920, max: 4096 },
+                height: { min: 480, ideal: 1080, max: 2160 },
               }}
               onUserMedia={() => setCameraReady(true)}
               onUserMediaError={() => {
