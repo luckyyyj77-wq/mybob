@@ -116,7 +116,8 @@ export default function CameraCapturePage() {
   const [barcodeDetected, setBarcodeDetected] = useState<string | null>(null);
   const [barcodeTimeout, setBarcodeTimeout] = useState(false);
   const [focusSupported, setFocusSupported] = useState(false);
-  const [focusDistance, setFocusDistance] = useState(0);       // 0 = 가까움, 100 = 멀리
+  const [focusDistance, setFocusDistance] = useState(0);
+  const [rearCameraDeviceId, setRearCameraDeviceId] = useState<string | undefined>(undefined);
   const barcodeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -134,6 +135,13 @@ export default function CameraCapturePage() {
       } catch { /* 무시 */ }
     });
   }, []);
+
+  // 카메라 권한 허용 후 후면 카메라 deviceId 미리 조회
+  useEffect(() => {
+    if (permState === 'granted') {
+      getRearCameraDeviceId().then(id => setRearCameraDeviceId(id));
+    }
+  }, [permState]);
 
   useEffect(() => {
     // 이미 허용된 것으로 캐시된 경우 바로 granted
@@ -180,26 +188,47 @@ export default function CameraCapturePage() {
     }
   };
 
+  // Android 후면 메인 카메라 deviceId 탐색
+  const getRearCameraDeviceId = async (): Promise<string | undefined> => {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(d => d.kind === 'videoinput');
+      // "back", "rear", "environment" 키워드가 있는 장치 우선 선택
+      const rear = videoDevices.find(d =>
+        /back|rear|environment/i.test(d.label)
+      );
+      // 없으면 마지막 videoinput (Android는 보통 후면이 마지막)
+      return rear?.deviceId ?? videoDevices[videoDevices.length - 1]?.deviceId;
+    } catch {
+      return undefined;
+    }
+  };
+
   // OCR 모드 전용 카메라 스트림 시작
   const startOcrCamera = useCallback(async () => {
     if (ocrStreamRef.current) return;
 
-    // Android Chrome은 exact facingMode + 고해상도 명시가 필요
-    const videoConstraints: MediaTrackConstraints = {
-      facingMode: { ideal: 'environment' },
-      width: { min: 1280, ideal: 1920, max: 3840 },
-      height: { min: 720, ideal: 1080, max: 2160 },
-    };
+    // Android: deviceId로 후면 메인 카메라 직접 지정 → 화질 대폭 개선
+    const deviceId = await getRearCameraDeviceId();
+
+    const buildConstraints = (useDeviceId: boolean): MediaStreamConstraints => ({
+      video: useDeviceId && deviceId
+        ? { deviceId: { exact: deviceId }, width: { min: 1280, ideal: 1920, max: 3840 }, height: { min: 720, ideal: 1080, max: 2160 } }
+        : { facingMode: { ideal: 'environment' }, width: { min: 1280, ideal: 1920, max: 3840 }, height: { min: 720, ideal: 1080, max: 2160 } },
+    });
 
     let stream: MediaStream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints });
+      stream = await navigator.mediaDevices.getUserMedia(buildConstraints(true));
     } catch {
-      // 고해상도 실패 시 기본값으로 폴백
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
+        stream = await navigator.mediaDevices.getUserMedia(buildConstraints(false));
       } catch {
-        return;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
+        } catch {
+          return;
+        }
       }
     }
     ocrStreamRef.current = stream;
@@ -207,20 +236,10 @@ export default function CameraCapturePage() {
     const track = stream.getVideoTracks()[0];
     if (track) {
       const caps = track.getCapabilities() as any;
-      const advanced: Record<string, unknown>[] = [];
-
-      // 연속 자동초점
-      if (caps.focusMode?.includes('continuous')) advanced.push({ focusMode: 'continuous' });
-      // 연속 화이트밸런스 (Android 색감 개선)
-      if (caps.whiteBalanceMode?.includes('continuous')) advanced.push({ whiteBalanceMode: 'continuous' });
-      // 연속 노출 (Android 밝기 개선)
-      if (caps.exposureMode?.includes('continuous')) advanced.push({ exposureMode: 'continuous' });
-
-      if (advanced.length > 0) {
-        try { await track.applyConstraints({ advanced: advanced as any }); } catch { /* 미지원 무시 */ }
+      // 연속 자동초점만 적용 (화이트밸런스·노출은 Android에서 비표준이라 무시)
+      if (caps.focusMode?.includes('continuous')) {
+        try { await track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as any] }); } catch { /* 무시 */ }
       }
-
-      // 수동 포커스 슬라이더 지원 여부 확인
       if (caps.focusDistance) {
         setFocusSupported(true);
         const min = caps.focusDistance.min ?? 0;
@@ -696,23 +715,17 @@ export default function CameraCapturePage() {
               ref={webcamRef}
               screenshotFormat="image/jpeg"
               screenshotQuality={0.95}
-              videoConstraints={{
-                facingMode: { ideal: 'environment' },
-                width: { min: 1280, ideal: 1920, max: 3840 },
-                height: { min: 720, ideal: 1080, max: 2160 },
-              }}
+              videoConstraints={rearCameraDeviceId
+                ? { deviceId: { exact: rearCameraDeviceId }, width: { min: 1280, ideal: 1920, max: 3840 }, height: { min: 720, ideal: 1080, max: 2160 } }
+                : { facingMode: { ideal: 'environment' }, width: { min: 1280, ideal: 1920, max: 3840 }, height: { min: 720, ideal: 1080, max: 2160 } }
+              }
               onUserMedia={(stream) => {
                 setCameraReady(true);
-                // Android 색감·밝기 개선: 화이트밸런스·노출 연속 모드 적용
                 const track = stream.getVideoTracks()[0];
                 if (track) {
                   const caps = track.getCapabilities() as any;
-                  const advanced: Record<string, unknown>[] = [];
-                  if (caps.whiteBalanceMode?.includes('continuous')) advanced.push({ whiteBalanceMode: 'continuous' });
-                  if (caps.exposureMode?.includes('continuous')) advanced.push({ exposureMode: 'continuous' });
-                  if (caps.focusMode?.includes('continuous')) advanced.push({ focusMode: 'continuous' });
-                  if (advanced.length > 0) {
-                    track.applyConstraints({ advanced: advanced as any }).catch(() => {});
+                  if (caps.focusMode?.includes('continuous')) {
+                    track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as any] }).catch(() => {});
                   }
                 }
               }}
@@ -868,27 +881,60 @@ export default function CameraCapturePage() {
               </button>
             )}
 
-            {/* 수동 촬영 버튼 (OCR 모드 — 타임아웃 시에만 표시) */}
+            {/* 타임아웃 안내 + 버튼 (OCR 모드) */}
             {captureMode === 'ocr' && barcodeTimeout && (
-              <button
-                onClick={() => {
-                  if (!ocrVideoRef.current) return;
-                  const frame = captureFrameFromVideo(ocrVideoRef.current, 0.95);
-                  stopOcrCamera();
-                  setImageSrc(frame);
-                }}
-                style={{
-                  position: 'absolute', bottom: '40px', left: '50%', transform: 'translateX(-50%)',
-                  width: '68px', height: '68px',
-                  backgroundColor: 'rgba(220,38,38,0.85)', borderRadius: '50%',
-                  border: '4px solid rgba(255,255,255,0.3)',
-                  cursor: 'pointer', fontSize: '26px',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  zIndex: 10,
-                }}
-              >
-                📷
-              </button>
+              <div style={{
+                position: 'absolute', bottom: '28px', left: 0, right: 0,
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px',
+                zIndex: 10,
+              }}>
+                <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: '12px', textAlign: 'center' }}>
+                  바코드를 인식하지 못했어요
+                </span>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  {/* 재시도 */}
+                  <button
+                    onClick={() => {
+                      setBarcodeTimeout(false);
+                      startBarcodeScanning();
+                    }}
+                    style={{
+                      padding: '10px 20px',
+                      backgroundColor: 'rgba(107,33,168,0.85)', color: 'white',
+                      border: 'none', borderRadius: '24px', cursor: 'pointer', fontSize: '13px',
+                    }}
+                  >
+                    🔄 재시도
+                  </button>
+                  {/* 직접 촬영 (영양표 OCR) */}
+                  <button
+                    onClick={() => {
+                      if (!ocrVideoRef.current) return;
+                      const frame = captureFrameFromVideo(ocrVideoRef.current, 0.95);
+                      stopOcrCamera();
+                      setImageSrc(frame);
+                    }}
+                    style={{
+                      padding: '10px 20px',
+                      backgroundColor: 'rgba(220,38,38,0.85)', color: 'white',
+                      border: 'none', borderRadius: '24px', cursor: 'pointer', fontSize: '13px',
+                    }}
+                  >
+                    📷 직접 촬영
+                  </button>
+                  {/* 음식 모드로 복귀 */}
+                  <button
+                    onClick={() => { stopOcrCamera(); setCaptureMode('food'); }}
+                    style={{
+                      padding: '10px 20px',
+                      backgroundColor: 'rgba(0,0,0,0.6)', color: 'white',
+                      border: '1px solid rgba(255,255,255,0.3)', borderRadius: '24px', cursor: 'pointer', fontSize: '13px',
+                    }}
+                  >
+                    📷 음식
+                  </button>
+                </div>
+              </div>
             )}
           </motion.div>
         )}
