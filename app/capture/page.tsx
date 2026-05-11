@@ -34,6 +34,7 @@ type AnalysisResult = {
 
 type Portion = 1 | 0.5 | 0.25;
 type Rating = 2 | 1 | 0 | null;
+type CaptureMode = 'food' | 'ocr';
 
 const PORTION_LABELS: { value: Portion; label: string }[] = [
   { value: 1, label: '1' },
@@ -69,6 +70,7 @@ const SOURCE_LABEL: Record<string, string> = {
   'gemini_only':         'AI추론',
   'korean_db_only':      '한식DB',
   'openfoodfacts_only':  '글로벌DB',
+  'ocr':                 '영양표 직접 인식',
 };
 const CONFIDENCE_COLOR: Record<string, string> = { high: '#16a34a', medium: '#d97706', low: '#9ca3af' };
 
@@ -91,6 +93,8 @@ export default function CameraCapturePage() {
   const [limitType, setLimitType] = useState<'analysis' | 'upload'>('analysis');
   const [portion, setPortion] = useState<Portion>(1);
   const [rating, setRating] = useState<Rating>(null);
+  const [captureMode, setCaptureMode] = useState<CaptureMode>('food');
+  const [ocrMeta, setOcrMeta] = useState<{ serving_size?: string; servings_per_container?: number | null } | null>(null);
 
   useEffect(() => {
     // 업로드/분석 현황 조회
@@ -183,14 +187,15 @@ export default function CameraCapturePage() {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
 
-      const resized = await resizeImage(imageSrc, 800);
+      // OCR 모드는 해상도를 높게 유지 (1200px), 음식 모드는 800px
+      const resized = await resizeImage(imageSrc, captureMode === 'ocr' ? 1200 : 800);
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
       const res = await fetch('/api/analyze-food', {
         method: 'POST',
         headers,
-        body: JSON.stringify({ image: resized }),
+        body: JSON.stringify({ image: resized, mode: captureMode }),
       });
       const result = await res.json();
 
@@ -205,11 +210,18 @@ export default function CameraCapturePage() {
         return;
       }
 
+      // 영양표 인식 실패
+      if (res.status === 422 && result.error === 'OCR_NOT_READABLE') {
+        alert('영양성분표를 인식하지 못했습니다.\n표가 화면에 가득 차도록 다시 촬영해주세요.');
+        return;
+      }
+
       if (!res.ok) throw new Error(result.details || result.error || '분석 오류');
       if (result.success) {
         setAnalysis(result.food);
         setAnalysisSource(result.source || null);
         setAnalysisModel(result.modelUsed || null);
+        setOcrMeta(result.ocrMeta || null);
         // 분석 카운트 반영
         if (result.analysisStatus) {
           setUploadStatus(prev => prev ? {
@@ -346,6 +358,7 @@ export default function CameraCapturePage() {
     setSaved(false);
     setPortion(1);
     setRating(null);
+    setOcrMeta(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -567,13 +580,87 @@ export default function CameraCapturePage() {
               </div>
             )}
 
-            {/* 조준선 */}
+            {/* 촬영 모드 탭 */}
+            <div style={{
+              position: 'absolute', bottom: '120px', left: '50%', transform: 'translateX(-50%)',
+              zIndex: 10, display: 'flex', gap: '0',
+              backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: '24px', padding: '3px',
+            }}>
+              {([
+                { value: 'food', label: '🍱 음식' },
+                { value: 'ocr',  label: '📋 영양표' },
+              ] as { value: CaptureMode; label: string }[]).map(tab => (
+                <button
+                  key={tab.value}
+                  onClick={() => setCaptureMode(tab.value)}
+                  style={{
+                    padding: '7px 18px',
+                    backgroundColor: captureMode === tab.value ? 'white' : 'transparent',
+                    color: captureMode === tab.value ? 'black' : 'rgba(255,255,255,0.7)',
+                    border: 'none', borderRadius: '20px',
+                    fontSize: '12px', cursor: 'pointer',
+                    fontWeight: captureMode === tab.value ? 500 : 400,
+                    transition: 'all 0.2s',
+                    letterSpacing: '0.3px',
+                  }}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* 촬영 가이드 (OCR 모드) */}
+            {captureMode === 'ocr' && (
+              <div style={{
+                position: 'absolute', bottom: '165px', left: '50%', transform: 'translateX(-50%)',
+                zIndex: 10, backgroundColor: 'rgba(107,33,168,0.85)',
+                padding: '5px 14px', borderRadius: '12px', whiteSpace: 'nowrap',
+              }}>
+                <p style={{ fontSize: '11px', color: 'white', letterSpacing: '0.3px' }}>영양성분표가 화면에 가득 오도록 촬영하세요</p>
+              </div>
+            )}
+
+            {/* 조준선 (음식 모드에서만) */}
+            {captureMode === 'food' && (
             <div style={{
               position: 'absolute', inset: 0, pointerEvents: 'none',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
               <div style={{ width: '70px', height: '70px', border: '1.5px solid rgba(255,255,255,0.5)', borderRadius: '50%' }} />
             </div>
+            )}
+
+            {/* OCR 프레임 가이드 */}
+            {captureMode === 'ocr' && (
+              <div style={{
+                position: 'absolute', inset: 0, pointerEvents: 'none',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <div style={{
+                  width: '75%', height: '50%',
+                  border: '2px solid rgba(167,139,250,0.8)',
+                  borderRadius: '8px',
+                  boxShadow: '0 0 0 9999px rgba(0,0,0,0.3)',
+                }}>
+                  <div style={{
+                    position: 'absolute', top: '-1px', left: '-1px', width: '20px', height: '20px',
+                    borderTop: '3px solid #a78bfa', borderLeft: '3px solid #a78bfa', borderRadius: '8px 0 0 0',
+                  }} />
+                  <div style={{
+                    position: 'absolute', top: '-1px', right: '-1px', width: '20px', height: '20px',
+                    borderTop: '3px solid #a78bfa', borderRight: '3px solid #a78bfa', borderRadius: '0 8px 0 0',
+                  }} />
+                  <div style={{
+                    position: 'absolute', bottom: '-1px', left: '-1px', width: '20px', height: '20px',
+                    borderBottom: '3px solid #a78bfa', borderLeft: '3px solid #a78bfa', borderRadius: '0 0 0 8px',
+                  }} />
+                  <div style={{
+                    position: 'absolute', bottom: '-1px', right: '-1px', width: '20px', height: '20px',
+                    borderBottom: '3px solid #a78bfa', borderRight: '3px solid #a78bfa', borderRadius: '0 0 8px 0',
+                  }} />
+                </div>
+              </div>
+            )}
 
             {/* 촬영 버튼 — 하단 중앙 */}
             <button
@@ -645,11 +732,16 @@ export default function CameraCapturePage() {
                             <span style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1px' }}>{analysis.category} · {analysis.amount || '1인분'}</span>
                           )}
                           {analysisSource && (
-                            <span style={{ fontSize: '9px', padding: '2px 6px', backgroundColor: '#f3f4f6', color: '#6b7280', letterSpacing: '0.5px' }}>
+                            <span style={{
+                              fontSize: '9px', padding: '2px 6px', letterSpacing: '0.5px',
+                              backgroundColor: analysisSource === 'ocr' ? '#f3e8ff' : '#f3f4f6',
+                              color: analysisSource === 'ocr' ? '#6B21A8' : '#6b7280',
+                              fontWeight: analysisSource === 'ocr' ? 600 : 400,
+                            }}>
                               {SOURCE_LABEL[analysisSource] || analysisSource}
                             </span>
                           )}
-                          {analysis.confidence && (
+                          {analysis.confidence && analysisSource !== 'ocr' && (
                             <span style={{ fontSize: '9px', padding: '2px 6px', backgroundColor: '#f3f4f6', color: CONFIDENCE_COLOR[analysis.confidence], letterSpacing: '0.5px', fontWeight: 500 }}>
                               신뢰도 {analysis.confidence === 'high' ? '높음' : analysis.confidence === 'medium' ? '보통' : '낮음'}
                             </span>
@@ -662,11 +754,40 @@ export default function CameraCapturePage() {
                       </div>
                     </div>
 
+                    {/* OCR 전용: 1회 제공량 안내 배너 */}
+                    {analysisSource === 'ocr' && ocrMeta && (
+                      <div style={{
+                        padding: '8px 12px',
+                        backgroundColor: '#f3e8ff',
+                        border: '1px solid #d8b4fe',
+                        borderRadius: '6px',
+                        display: 'flex', alignItems: 'center', gap: '8px',
+                      }}>
+                        <span style={{ fontSize: '14px' }}>📋</span>
+                        <div>
+                          <p style={{ fontSize: '11px', color: '#6B21A8', fontWeight: 500 }}>영양성분표에서 직접 읽은 값</p>
+                          <p style={{ fontSize: '10px', color: '#7c3aed', marginTop: '1px' }}>
+                            1회 제공량: {ocrMeta.serving_size || analysis.amount}
+                            {ocrMeta.servings_per_container != null && ` · 총 ${ocrMeta.servings_per_container}회분`}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
                     {/* 식사량 선택 */}
                     <div>
-                      <p style={{ fontSize: '9px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '6px' }}>식사량</p>
+                      <p style={{ fontSize: '9px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '6px' }}>
+                        {analysisSource === 'ocr' ? '섭취량 (1회 제공량 기준)' : '식사량'}
+                      </p>
                       <div style={{ display: 'flex', gap: '6px' }}>
-                        {PORTION_LABELS.map(p => (
+                        {(analysisSource === 'ocr'
+                          ? [
+                              { value: 1 as Portion,    label: '1회분' },
+                              { value: 0.5 as Portion,  label: '½회분' },
+                              { value: 0.25 as Portion, label: '¼회분' },
+                            ]
+                          : PORTION_LABELS
+                        ).map(p => (
                           <button
                             key={p.value}
                             onClick={() => setPortion(p.value)}
@@ -675,7 +796,7 @@ export default function CameraCapturePage() {
                               backgroundColor: portion === p.value ? 'black' : 'white',
                               color: portion === p.value ? 'white' : 'black',
                               border: `1px solid ${portion === p.value ? 'black' : '#e5e7eb'}`,
-                              fontSize: '14px', cursor: 'pointer',
+                              fontSize: analysisSource === 'ocr' ? '12px' : '14px', cursor: 'pointer',
                             }}
                           >
                             {p.label}
@@ -778,7 +899,7 @@ export default function CameraCapturePage() {
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
                     }}
                   >
-                    AI 분석 시작
+                    {captureMode === 'ocr' ? '📋 영양표 읽기' : 'AI 분석 시작'}
                   </button>
                 )}
 

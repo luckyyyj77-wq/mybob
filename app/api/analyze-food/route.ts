@@ -174,10 +174,81 @@ ${nutritionContext}
   return { success: false, error: '모든 모델 한도 초과. 잠시 후 다시 시도해주세요.' };
 }
 
+// ── 영양성분표 OCR 분석 ───────────────────────────────────────────────────────
+async function analyzeNutritionLabel(base64Data: string, apiKey: string) {
+  const prompt = `당신은 식품 영양성분표 OCR 전문가입니다.
+이미지에 있는 영양성분표(또는 영양정보 패널)를 정확히 읽어서 아래 JSON으로 추출하세요.
+추론하지 말고 표에 적힌 숫자를 그대로 읽으세요.
+
+반드시 아래 JSON만 응답하세요:
+{
+  "product_name": "제품명 (패키지에서 읽기, 없으면 null)",
+  "serving_size": "1회 제공량 (예: 30g, 1봉, 200mL)",
+  "servings_per_container": 숫자 또는 null,
+  "per_serving": {
+    "calories": 숫자(kcal),
+    "carbohydrates": 숫자(g),
+    "sugar": 숫자(g),
+    "protein": 숫자(g),
+    "fat": 숫자(g),
+    "saturated_fat": 숫자(g) 또는 null,
+    "trans_fat": 숫자(g) 또는 null,
+    "fiber": 숫자(g) 또는 null,
+    "sodium": 숫자(mg),
+    "caffeine": 숫자(mg) 또는 null,
+    "vitaminA": 숫자(μg) 또는 null,
+    "vitaminC": 숫자(mg) 또는 null,
+    "vitaminD": 숫자(μg) 또는 null,
+    "calcium": 숫자(mg) 또는 null,
+    "iron": 숫자(mg) 또는 null,
+    "potassium": 숫자(mg) 또는 null
+  },
+  "readable": true
+}
+
+영양성분표가 이미지에 없거나 읽을 수 없으면:
+{ "readable": false }
+
+주의:
+- 100g 기준 표가 있더라도 1회 제공량 기준으로 환산해서 응답
+- 단위가 % DV(일일섭취량%)만 있는 항목은 null로 처리
+- JSON 외 텍스트 절대 금지`;
+
+  const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+  for (const model of modelsToTry) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [
+            { text: prompt },
+            { inline_data: { mime_type: 'image/jpeg', data: base64Data } },
+          ]}],
+          generationConfig: { response_mime_type: 'application/json', temperature: 0.05 },
+        }),
+      });
+      const result = await res.json();
+      if (res.ok && result.candidates?.[0]?.content?.parts?.[0]?.text) {
+        const parsed = JSON.parse(result.candidates[0].content.parts[0].text);
+        return { success: true, data: parsed, modelUsed: model };
+      }
+      const errMsg = result.error?.message || '';
+      if (errMsg.includes('quota') || errMsg.includes('RESOURCE_EXHAUSTED')) continue;
+      return { success: false, error: errMsg };
+    } catch (e: any) {
+      console.warn(`${model} OCR failed:`, e.message);
+      continue;
+    }
+  }
+  return { success: false, error: '모델 오류. 잠시 후 다시 시도해주세요.' };
+}
+
 // ── 메인 핸들러 ───────────────────────────────────────────────────────────────
 export async function POST(request: Request) {
   try {
-    const { image } = await request.json();
+    const { image, mode } = await request.json();
     const apiKey = process.env.GEMINI_API_KEY?.trim();
     if (!apiKey) return NextResponse.json({ error: 'API 키가 없습니다.' }, { status: 500 });
 
@@ -208,6 +279,62 @@ export async function POST(request: Request) {
     }
 
     const base64Data = image.includes(',') ? image.split(',')[1] : image;
+
+    // ── 영양성분표 OCR 모드 ────────────────────────────────────────────────────
+    if (mode === 'ocr') {
+      const ocrResult = await analyzeNutritionLabel(base64Data, apiKey);
+
+      if (!ocrResult.success) {
+        return NextResponse.json({ error: ocrResult.error }, { status: 500 });
+      }
+      if (!ocrResult.data.readable) {
+        return NextResponse.json({ error: 'OCR_NOT_READABLE' }, { status: 422 });
+      }
+
+      const d = ocrResult.data;
+      const p = d.per_serving;
+
+      // 분석 카운트 증가
+      const userId = (request as any)._userId;
+      const adminSupabase = (request as any)._adminSupabase;
+      const analysisUsed = (request as any)._analysisUsed ?? 0;
+      const analysisLimit = (request as any)._analysisLimit ?? 10;
+      const plan = (request as any)._plan ?? 'free';
+      if (userId && adminSupabase) await incrementAnalysisCount(adminSupabase, userId);
+
+      return NextResponse.json({
+        success: true,
+        food: {
+          name: d.product_name || '포장 식품',
+          calories: p.calories,
+          category: '기타',
+          amount: d.serving_size || '1회 제공량',
+          confidence: 'high',
+          nutrients: {
+            carbohydrates: p.carbohydrates,
+            protein:       p.protein,
+            fat:           p.fat,
+            fiber:         p.fiber     ?? undefined,
+            sugar:         p.sugar     ?? undefined,
+            sodium:        p.sodium,
+            caffeine:      p.caffeine  ?? undefined,
+            vitaminA:      p.vitaminA  ?? undefined,
+            vitaminC:      p.vitaminC  ?? undefined,
+            vitaminD:      p.vitaminD  ?? undefined,
+            calcium:       p.calcium   ?? undefined,
+            iron:          p.iron      ?? undefined,
+            potassium:     p.potassium ?? undefined,
+          },
+        },
+        source: 'ocr',
+        modelUsed: ocrResult.modelUsed,
+        ocrMeta: {
+          serving_size: d.serving_size,
+          servings_per_container: d.servings_per_container,
+        },
+        analysisStatus: { used: analysisUsed + 1, limit: analysisLimit, plan },
+      });
+    }
 
     // Step 1: 음식명 인식 (빠른 텍스트 전용 호출)
     let foodName = '';
