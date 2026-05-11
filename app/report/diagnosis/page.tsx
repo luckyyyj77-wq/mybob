@@ -139,7 +139,7 @@ export default function DiagnosisPage() {
       const now = new Date().toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
       setLastAnalyzed(now);
       // 캐시 저장 (24시간 캐싱 목적)
-      localStorage.setItem('mybob_diagnosis_cache', JSON.stringify({ result: data, analyzedAt: now }));
+      localStorage.setItem('mybob_diagnosis_cache', JSON.stringify({ result: data, analyzedAt: now, plan }));
     } catch (e: any) {
       setError(`오류: ${e.message}`);
     } finally {

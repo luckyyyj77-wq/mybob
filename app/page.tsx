@@ -116,6 +116,39 @@ export default function Home() {
   };
 
   const fetchAI = async (stats: ReturnType<typeof computeTodayStats>, weekly: DayStat[], goalData: any) => {
+    const todayKey = `mybob_coach_${new Date().toISOString().slice(0, 10)}`;
+
+    // 1) 오늘치 일반 캐시 확인
+    const cached = localStorage.getItem(todayKey);
+    if (cached) {
+      try {
+        setAiFeedback(JSON.parse(cached));
+        return;
+      } catch { }
+    }
+
+    // 2) PRO 진단 캐시 확인
+    const diagRaw = localStorage.getItem('mybob_diagnosis_cache');
+    if (diagRaw) {
+      try {
+        const { result, plan } = JSON.parse(diagRaw);
+        if ((plan === 'pro' || plan === 'lifetime') && result?.ai_message) {
+          const fromDiag: AIFeedback = {
+            feedback: result.ai_message,
+            goodPoint: result.strengths?.[0] ?? '',
+            improvement: result.issues?.[0]?.description ?? '',
+            recommendation: {
+              menu: result.recommendations?.[0]?.title ?? '',
+              reason: result.recommendations?.[0]?.description ?? '',
+            },
+          };
+          setAiFeedback(fromDiag);
+          return;
+        }
+      } catch { }
+    }
+
+    // 3) API 호출 (캐시 없을 때)
     setLoadingFeedback(true);
     try {
       const res = await fetch('/api/recommendation', {
@@ -128,7 +161,10 @@ export default function Home() {
         }),
       });
       const r = await res.json();
-      if (r.success) setAiFeedback(r.data);
+      if (r.success) {
+        setAiFeedback(r.data);
+        localStorage.setItem(todayKey, JSON.stringify(r.data));
+      }
     } catch { } finally {
       setLoadingFeedback(false);
     }
