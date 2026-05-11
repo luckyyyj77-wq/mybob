@@ -114,6 +114,10 @@ export default function CameraCapturePage() {
   const [ocrMeta, setOcrMeta] = useState<{ barcode?: string | null; serving_size?: string; servings_per_container?: number | null } | null>(null);
   const [barcodeScanning, setBarcodeScanning] = useState(false);
   const [barcodeDetected, setBarcodeDetected] = useState<string | null>(null);
+  const [barcodeTimeout, setBarcodeTimeout] = useState(false);
+  const [focusSupported, setFocusSupported] = useState(false);
+  const [focusDistance, setFocusDistance] = useState(0);       // 0 = 가까움, 100 = 멀리
+  const barcodeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     // 업로드/분석 현황 조회
@@ -188,24 +192,48 @@ export default function CameraCapturePage() {
         },
       });
       ocrStreamRef.current = stream;
+
+      // 자동초점 + 연속 초점 모드 적용 (지원 기기에서만)
+      const track = stream.getVideoTracks()[0];
+      if (track) {
+        const caps = track.getCapabilities() as any;
+        if (caps.focusMode?.includes('continuous')) {
+          await track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as any] });
+        }
+        // 수동 포커스 슬라이더 지원 여부 확인
+        if (caps.focusDistance) {
+          setFocusSupported(true);
+          // 초기값: 중간 거리
+          const min = caps.focusDistance.min ?? 0;
+          const max = caps.focusDistance.max ?? 100;
+          setFocusDistance(Math.round((min + max) / 2));
+        }
+      }
+
       if (ocrVideoRef.current) {
         ocrVideoRef.current.srcObject = stream;
         await ocrVideoRef.current.play();
       }
     } catch {
-      // 권한 문제 시 무시 (기존 webcam이 이미 처리함)
+      // 권한 문제 시 무시
     }
   }, []);
 
   const stopOcrCamera = useCallback(() => {
     barcodeScanningRef.current = false;
     barcodeReaderRef.current = null;
+    if (barcodeTimerRef.current) {
+      clearTimeout(barcodeTimerRef.current);
+      barcodeTimerRef.current = null;
+    }
     if (ocrStreamRef.current) {
       ocrStreamRef.current.getTracks().forEach(t => t.stop());
       ocrStreamRef.current = null;
     }
     setBarcodeScanning(false);
     setBarcodeDetected(null);
+    setBarcodeTimeout(false);
+    setFocusSupported(false);
   }, []);
 
   // OCR 모드 진입/해제 시 카메라 전환
@@ -223,15 +251,27 @@ export default function CameraCapturePage() {
     if (barcodeScanningRef.current || !ocrVideoRef.current) return;
     barcodeScanningRef.current = true;
     setBarcodeScanning(true);
+    setBarcodeTimeout(false);
 
     const reader = new BrowserMultiFormatReader();
     barcodeReaderRef.current = reader;
+
+    // 15초 타임아웃 — 감지 실패 시 직접 촬영 안내로 전환
+    barcodeTimerRef.current = setTimeout(() => {
+      if (barcodeScanningRef.current) {
+        barcodeScanningRef.current = false;
+        setBarcodeScanning(false);
+        setBarcodeTimeout(true);
+      }
+    }, 15000);
 
     const loop = async () => {
       if (!barcodeScanningRef.current || !ocrVideoRef.current) return;
       try {
         const result = await reader.decodeOnceFromVideoElement(ocrVideoRef.current);
         if (!barcodeScanningRef.current) return;
+        // 성공 — 타이머 취소
+        if (barcodeTimerRef.current) { clearTimeout(barcodeTimerRef.current); barcodeTimerRef.current = null; }
         barcodeScanningRef.current = false;
         setBarcodeDetected(result.getText());
         setBarcodeScanning(false);
@@ -239,7 +279,6 @@ export default function CameraCapturePage() {
         setImageSrc(frame);
       } catch (e) {
         if (e instanceof NotFoundException && barcodeScanningRef.current) {
-          // 아직 없음 — 짧은 딜레이 후 재시도
           await new Promise(r => setTimeout(r, 200));
           loop();
         }
@@ -252,6 +291,21 @@ export default function CameraCapturePage() {
   const handleOcrVideoPlay = useCallback(() => {
     startBarcodeScanning();
   }, [startBarcodeScanning]);
+
+  // 수동 포커스 거리 조절
+  const handleFocusChange = useCallback(async (value: number) => {
+    setFocusDistance(value);
+    const track = ocrStreamRef.current?.getVideoTracks()[0];
+    if (!track) return;
+    const caps = track.getCapabilities() as any;
+    if (!caps.focusDistance) return;
+    const min = caps.focusDistance.min ?? 0;
+    const max = caps.focusDistance.max ?? 100;
+    const actual = min + (value / 100) * (max - min);
+    try {
+      await track.applyConstraints({ advanced: [{ focusMode: 'manual', focusDistance: actual } as any] });
+    } catch { /* 미지원 기기 무시 */ }
+  }, []);
 
   const capture = useCallback(() => {
     if (webcamRef.current) {
@@ -732,11 +786,35 @@ export default function CameraCapturePage() {
               ))}
             </div>
 
+            {/* OCR 모드 — 포커스 슬라이더 */}
+            {captureMode === 'ocr' && focusSupported && (
+              <div style={{
+                position: 'absolute', top: '72px', right: '16px', zIndex: 10,
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px',
+              }}>
+                <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.7)', letterSpacing: '1px' }}>초점</span>
+                <input
+                  type="range" min={0} max={100} value={focusDistance}
+                  onChange={e => handleFocusChange(Number(e.target.value))}
+                  style={{
+                    writingMode: 'vertical-lr' as any,
+                    direction: 'rtl' as any,
+                    width: '28px', height: '120px',
+                    cursor: 'pointer', accentColor: '#a78bfa',
+                  }}
+                />
+                <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.5)' }}>근</span>
+              </div>
+            )}
+
             {/* 촬영 가이드 (OCR 모드) */}
             {captureMode === 'ocr' && (
               <div style={{
                 position: 'absolute', bottom: '165px', left: '50%', transform: 'translateX(-50%)',
-                zIndex: 10, backgroundColor: barcodeScanning ? 'rgba(107,33,168,0.85)' : 'rgba(0,0,0,0.6)',
+                zIndex: 10,
+                backgroundColor: barcodeTimeout
+                  ? 'rgba(220,38,38,0.85)'
+                  : barcodeScanning ? 'rgba(107,33,168,0.85)' : 'rgba(0,0,0,0.6)',
                 padding: '5px 14px', borderRadius: '12px', whiteSpace: 'nowrap',
                 display: 'flex', alignItems: 'center', gap: '6px',
                 transition: 'background-color 0.3s',
@@ -749,7 +827,11 @@ export default function CameraCapturePage() {
                   }} />
                 )}
                 <p style={{ fontSize: '11px', color: 'white', letterSpacing: '0.3px' }}>
-                  {barcodeScanning ? '바코드 자동 감지 중...' : '바코드 또는 영양성분표를 비춰주세요'}
+                  {barcodeTimeout
+                    ? '바코드 인식 실패 — 영양성분표를 직접 촬영하세요'
+                    : barcodeScanning
+                    ? '바코드 자동 감지 중...'
+                    : '바코드 또는 영양성분표를 비춰주세요'}
                 </p>
               </div>
             )}
@@ -816,7 +898,7 @@ export default function CameraCapturePage() {
                 <div style={{ width: '44px', height: '44px', backgroundColor: cameraReady ? 'white' : 'rgba(255,255,255,0.4)', borderRadius: '50%', border: '2px solid #e5e7eb' }} />
               </button>
             ) : (
-              // OCR 모드: 수동 촬영 버튼 (바코드 자동 감지 실패 시 직접 촬영)
+              // OCR 모드: 수동 촬영 버튼
               <button
                 onClick={() => {
                   if (!ocrVideoRef.current) return;
@@ -826,14 +908,18 @@ export default function CameraCapturePage() {
                 }}
                 style={{
                   position: 'absolute', bottom: '40px', left: '50%', transform: 'translateX(-50%)',
-                  padding: '14px 32px',
-                  backgroundColor: 'white', color: 'black', border: 'none',
+                  padding: '14px 36px',
+                  backgroundColor: barcodeTimeout ? '#dc2626' : 'white',
+                  color: barcodeTimeout ? 'white' : 'black',
+                  border: 'none',
                   fontSize: '13px', cursor: 'pointer', letterSpacing: '1px',
                   zIndex: 10,
                   borderRadius: '2px',
+                  transition: 'background-color 0.3s',
+                  animation: barcodeTimeout ? 'none' : undefined,
                 }}
               >
-                직접 촬영
+                {barcodeTimeout ? '📷 직접 촬영하기' : '직접 촬영'}
               </button>
             )}
           </motion.div>
