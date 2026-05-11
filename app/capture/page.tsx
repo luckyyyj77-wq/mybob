@@ -115,6 +115,7 @@ export default function CameraCapturePage() {
   const [barcodeScanning, setBarcodeScanning] = useState(false);
   const [barcodeDetected, setBarcodeDetected] = useState<string | null>(null);
   const [barcodeTimeout, setBarcodeTimeout] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
   const barcodeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -250,8 +251,8 @@ export default function CameraCapturePage() {
     return () => { stopOcrCamera(); };
   }, [captureMode, imageSrc, permState, startOcrCamera, stopOcrCamera]);
 
-  // 바코드 실시간 스캔 — decodeOnceFromVideoElement 루프 방식
-  const startBarcodeScanning = useCallback(async () => {
+  // 바코드 실시간 스캔 — decodeFromCanvas 루프 (비디오 스트림 간섭 없음)
+  const startBarcodeScanning = useCallback(() => {
     if (barcodeScanningRef.current || !ocrVideoRef.current) return;
     barcodeScanningRef.current = true;
     setBarcodeScanning(true);
@@ -260,7 +261,9 @@ export default function CameraCapturePage() {
     const reader = new BrowserMultiFormatReader();
     barcodeReaderRef.current = reader;
 
-    // 15초 타임아웃 — 감지 실패 시 직접 촬영 안내로 전환
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d')!;
+
     barcodeTimerRef.current = setTimeout(() => {
       if (barcodeScanningRef.current) {
         barcodeScanningRef.current = false;
@@ -269,26 +272,35 @@ export default function CameraCapturePage() {
       }
     }, 15000);
 
-    const loop = async () => {
+    const tick = () => {
       if (!barcodeScanningRef.current || !ocrVideoRef.current) return;
+      const video = ocrVideoRef.current;
+      if (video.readyState < 2) { requestAnimationFrame(tick); return; }
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0);
+
       try {
-        const result = await reader.decodeOnceFromVideoElement(ocrVideoRef.current);
-        if (!barcodeScanningRef.current) return;
-        // 성공 — 타이머 취소
-        if (barcodeTimerRef.current) { clearTimeout(barcodeTimerRef.current); barcodeTimerRef.current = null; }
-        barcodeScanningRef.current = false;
-        setBarcodeDetected(result.getText());
-        setBarcodeScanning(false);
-        const frame = captureFrameFromVideo(ocrVideoRef.current);
-        setImageSrc(frame);
-      } catch (e) {
-        if (e instanceof NotFoundException && barcodeScanningRef.current) {
-          await new Promise(r => setTimeout(r, 200));
-          loop();
+        const result = reader.decodeFromCanvas(canvas);
+        if (result && barcodeScanningRef.current) {
+          if (barcodeTimerRef.current) { clearTimeout(barcodeTimerRef.current); barcodeTimerRef.current = null; }
+          barcodeScanningRef.current = false;
+          setBarcodeDetected(result.getText());
+          setBarcodeScanning(false);
+          const frame = captureFrameFromVideo(video);
+          setImageSrc(frame);
+          return;
         }
+      } catch (e) {
+        if (!(e instanceof NotFoundException)) return;
       }
+
+      // 다음 프레임 — 너무 빠르면 CPU 낭비, 150ms 간격
+      setTimeout(() => { if (barcodeScanningRef.current) requestAnimationFrame(tick); }, 150);
     };
-    loop();
+
+    requestAnimationFrame(tick);
   }, []);
 
   // video가 재생되기 시작하면 바코드 스캔 시작
@@ -323,23 +335,30 @@ export default function CameraCapturePage() {
   const handleAnalysis = async () => {
     if (!imageSrc) return;
     setLoadingAnalysis(true);
+    setAnalysisError(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
 
-      // OCR 모드는 해상도를 높게 유지 (1200px), 음식 모드는 800px
-      const resized = await resizeImage(imageSrc, captureMode === 'ocr' ? 1200 : 800);
+      // 바코드가 감지된 경우 → food 모드로 일반 분석 (OCR 모드로 보내면 영양표 읽기 실패)
+      // OCR 직접 촬영의 경우만 mode: 'ocr' 전송
+      const apiMode = (captureMode === 'ocr' && !barcodeDetected) ? 'ocr' : 'food';
+
+      // OCR 모드는 원본 해상도 유지 (리사이즈하면 영양표 글씨가 너무 작아짐)
+      const imageToSend = apiMode === 'ocr'
+        ? imageSrc
+        : await resizeImage(imageSrc, 800);
+
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
       const res = await fetch('/api/analyze-food', {
         method: 'POST',
         headers,
-        body: JSON.stringify({ image: resized, mode: captureMode }),
+        body: JSON.stringify({ image: imageToSend, mode: apiMode }),
       });
       const result = await res.json();
 
-      // AI 분석 횟수 초과
       if (res.status === 429 && result.error === 'ANALYSIS_LIMIT_EXCEEDED') {
         setUploadStatus(prev => prev ? {
           ...prev,
@@ -350,19 +369,20 @@ export default function CameraCapturePage() {
         return;
       }
 
-      // 영양표 인식 실패
       if (res.status === 422 && result.error === 'OCR_NOT_READABLE') {
-        alert('영양성분표를 인식하지 못했습니다.\n표가 화면에 가득 차도록 다시 촬영해주세요.');
+        setAnalysisError('영양성분표를 인식하지 못했습니다.\n표가 화면에 가득 차도록 다시 촬영해주세요.');
         return;
       }
 
-      if (!res.ok) throw new Error(result.details || result.error || '분석 오류');
+      if (!res.ok) {
+        setAnalysisError(result.details || result.error || '분석 중 오류가 발생했습니다.');
+        return;
+      }
       if (result.success) {
         setAnalysis(result.food);
         setAnalysisSource(result.source || null);
         setAnalysisModel(result.modelUsed || null);
         setOcrMeta(result.ocrMeta || null);
-        // 분석 카운트 반영
         if (result.analysisStatus) {
           setUploadStatus(prev => prev ? {
             ...prev,
@@ -371,7 +391,7 @@ export default function CameraCapturePage() {
         }
       }
     } catch (err: any) {
-      alert(`분석 실패: ${err.message}`);
+      setAnalysisError(`분석 실패: ${err.message}`);
     } finally {
       setLoadingAnalysis(false);
     }
@@ -500,12 +520,10 @@ export default function CameraCapturePage() {
     setRating(null);
     setOcrMeta(null);
     setBarcodeDetected(null);
+    setAnalysisError(null);
+    setCaptureMode('food');
     if (fileInputRef.current) fileInputRef.current.value = '';
-    // OCR 모드면 카메라 재시작 + 바코드 스캔 재시작
-    if (captureMode === 'ocr') {
-      stopOcrCamera();
-      setTimeout(() => startOcrCamera(), 100);
-    }
+    stopOcrCamera();
   };
 
   // 확인 중
@@ -911,8 +929,30 @@ export default function CameraCapturePage() {
                   </div>
                 )}
 
+                {/* 에러 */}
+                {!loadingAnalysis && !analysis && analysisError && (
+                  <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', padding: '0 8px' }}>
+                    <p style={{ fontSize: '22px' }}>⚠️</p>
+                    <p style={{ fontSize: '13px', color: '#ef4444', textAlign: 'center', lineHeight: 1.6, whiteSpace: 'pre-line' }}>{analysisError}</p>
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                      <button
+                        onClick={() => setAnalysisError(null)}
+                        style={{ padding: '10px 18px', backgroundColor: 'black', color: 'white', border: 'none', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}
+                      >
+                        재시도
+                      </button>
+                      <button
+                        onClick={retake}
+                        style={{ padding: '10px 18px', backgroundColor: 'white', color: 'black', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}
+                      >
+                        다시 촬영
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {/* 안내 */}
-                {!loadingAnalysis && !analysis && (
+                {!loadingAnalysis && !analysis && !analysisError && (
                   <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <p style={{ fontSize: '13px', color: '#9ca3af' }}>아래 버튼을 눌러 AI로 분석하세요.</p>
                   </div>
@@ -1098,7 +1138,7 @@ export default function CameraCapturePage() {
               <div style={{ flexShrink: 0, padding: '10px 24px 24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
 
                 {/* 분석 전: AI 분석 버튼 */}
-                {!analysis && !loadingAnalysis && (
+                {!analysis && !loadingAnalysis && !analysisError && (
                   <button
                     onClick={handleAnalysis}
                     style={{
