@@ -8,6 +8,8 @@ import { supabase } from '@/lib/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getStorageMode } from '@/lib/storage-mode';
 import { savePhoto } from '@/lib/indexed-db';
+import { BrowserMultiFormatReader } from '@zxing/browser';
+import { NotFoundException } from '@zxing/library';
 
 type AnalysisResult = {
   name: string;
@@ -49,7 +51,7 @@ const RATING_OPTIONS: { value: Rating; emoji: string; label: string }[] = [
 ];
 
 // 클라이언트에서 이미지 리사이즈 (전송 용량 절감)
-function resizeImage(dataUrl: string, maxWidth = 800): Promise<string> {
+function resizeImage(dataUrl: string, maxWidth = 800, quality = 0.88): Promise<string> {
   return new Promise(resolve => {
     const img = new Image();
     img.onload = () => {
@@ -58,10 +60,19 @@ function resizeImage(dataUrl: string, maxWidth = 800): Promise<string> {
       canvas.width = img.width * scale;
       canvas.height = img.height * scale;
       canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
-      resolve(canvas.toDataURL('image/jpeg', 0.82));
+      resolve(canvas.toDataURL('image/jpeg', quality));
     };
     img.src = dataUrl;
   });
+}
+
+// video 프레임을 dataURL로 캡처
+function captureFrameFromVideo(video: HTMLVideoElement, quality = 0.95): string {
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d')!.drawImage(video, 0, 0);
+  return canvas.toDataURL('image/jpeg', quality);
 }
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -80,6 +91,10 @@ type PermState = 'checking' | 'granted' | 'denied' | 'prompt';
 
 export default function CameraCapturePage() {
   const webcamRef = useRef<Webcam>(null);
+  const ocrVideoRef = useRef<HTMLVideoElement>(null);
+  const ocrStreamRef = useRef<MediaStream | null>(null);
+  const barcodeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
+  const barcodeScanningRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
@@ -97,6 +112,8 @@ export default function CameraCapturePage() {
   const [rating, setRating] = useState<Rating>(null);
   const [captureMode, setCaptureMode] = useState<CaptureMode>('food');
   const [ocrMeta, setOcrMeta] = useState<{ barcode?: string | null; serving_size?: string; servings_per_container?: number | null } | null>(null);
+  const [barcodeScanning, setBarcodeScanning] = useState(false);
+  const [barcodeDetected, setBarcodeDetected] = useState<string | null>(null);
 
   useEffect(() => {
     // 업로드/분석 현황 조회
@@ -151,13 +168,90 @@ export default function CameraCapturePage() {
   const requestCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-      stream.getTracks().forEach(t => t.stop()); // 스트림 즉시 해제 (Webcam 컴포넌트가 다시 열 것)
+      stream.getTracks().forEach(t => t.stop());
       localStorage.setItem('mybob_camera_granted', '1');
       setPermState('granted');
     } catch {
       setPermState('denied');
     }
   };
+
+  // OCR 모드 전용 카메라 스트림 시작
+  const startOcrCamera = useCallback(async () => {
+    if (ocrStreamRef.current) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'environment',
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
+      });
+      ocrStreamRef.current = stream;
+      if (ocrVideoRef.current) {
+        ocrVideoRef.current.srcObject = stream;
+        await ocrVideoRef.current.play();
+      }
+    } catch {
+      // 권한 문제 시 무시 (기존 webcam이 이미 처리함)
+    }
+  }, []);
+
+  const stopOcrCamera = useCallback(() => {
+    barcodeScanningRef.current = false;
+    barcodeReaderRef.current = null;
+    if (ocrStreamRef.current) {
+      ocrStreamRef.current.getTracks().forEach(t => t.stop());
+      ocrStreamRef.current = null;
+    }
+    setBarcodeScanning(false);
+    setBarcodeDetected(null);
+  }, []);
+
+  // OCR 모드 진입/해제 시 카메라 전환
+  useEffect(() => {
+    if (captureMode === 'ocr' && !imageSrc && permState === 'granted') {
+      startOcrCamera();
+    } else {
+      stopOcrCamera();
+    }
+    return () => { stopOcrCamera(); };
+  }, [captureMode, imageSrc, permState, startOcrCamera, stopOcrCamera]);
+
+  // 바코드 실시간 스캔 — decodeOnceFromVideoElement 루프 방식
+  const startBarcodeScanning = useCallback(async () => {
+    if (barcodeScanningRef.current || !ocrVideoRef.current) return;
+    barcodeScanningRef.current = true;
+    setBarcodeScanning(true);
+
+    const reader = new BrowserMultiFormatReader();
+    barcodeReaderRef.current = reader;
+
+    const loop = async () => {
+      if (!barcodeScanningRef.current || !ocrVideoRef.current) return;
+      try {
+        const result = await reader.decodeOnceFromVideoElement(ocrVideoRef.current);
+        if (!barcodeScanningRef.current) return;
+        barcodeScanningRef.current = false;
+        setBarcodeDetected(result.getText());
+        setBarcodeScanning(false);
+        const frame = captureFrameFromVideo(ocrVideoRef.current);
+        setImageSrc(frame);
+      } catch (e) {
+        if (e instanceof NotFoundException && barcodeScanningRef.current) {
+          // 아직 없음 — 짧은 딜레이 후 재시도
+          await new Promise(r => setTimeout(r, 200));
+          loop();
+        }
+      }
+    };
+    loop();
+  }, []);
+
+  // video가 재생되기 시작하면 바코드 스캔 시작
+  const handleOcrVideoPlay = useCallback(() => {
+    startBarcodeScanning();
+  }, [startBarcodeScanning]);
 
   const capture = useCallback(() => {
     if (webcamRef.current) {
@@ -361,7 +455,13 @@ export default function CameraCapturePage() {
     setPortion(1);
     setRating(null);
     setOcrMeta(null);
+    setBarcodeDetected(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
+    // OCR 모드면 카메라 재시작 + 바코드 스캔 재시작
+    if (captureMode === 'ocr') {
+      stopOcrCamera();
+      setTimeout(() => startOcrCamera(), 100);
+    }
   };
 
   // 확인 중
@@ -520,17 +620,38 @@ export default function CameraCapturePage() {
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             style={{ position: 'absolute', inset: 0 }}
           >
+            {/* 음식 모드 카메라 */}
             <Webcam
               audio={false}
               ref={webcamRef}
               screenshotFormat="image/jpeg"
-              videoConstraints={{ facingMode: 'environment' }}
+              screenshotQuality={0.95}
+              videoConstraints={{
+                facingMode: 'environment',
+                width: { ideal: 1920 },
+                height: { ideal: 1080 },
+              }}
               onUserMedia={() => setCameraReady(true)}
               onUserMediaError={() => {
                 localStorage.removeItem('mybob_camera_granted');
                 setPermState('denied');
               }}
-              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+              style={{
+                position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
+                display: captureMode === 'food' ? 'block' : 'none',
+              }}
+            />
+
+            {/* OCR 모드 카메라 — 고해상도 직접 스트림 */}
+            <video
+              ref={ocrVideoRef}
+              playsInline
+              muted
+              onPlay={handleOcrVideoPlay}
+              style={{
+                position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
+                display: captureMode === 'ocr' ? 'block' : 'none',
+              }}
             />
 
             {/* 홈 — 좌상단 */}
@@ -615,10 +736,21 @@ export default function CameraCapturePage() {
             {captureMode === 'ocr' && (
               <div style={{
                 position: 'absolute', bottom: '165px', left: '50%', transform: 'translateX(-50%)',
-                zIndex: 10, backgroundColor: 'rgba(107,33,168,0.85)',
+                zIndex: 10, backgroundColor: barcodeScanning ? 'rgba(107,33,168,0.85)' : 'rgba(0,0,0,0.6)',
                 padding: '5px 14px', borderRadius: '12px', whiteSpace: 'nowrap',
+                display: 'flex', alignItems: 'center', gap: '6px',
+                transition: 'background-color 0.3s',
               }}>
-                <p style={{ fontSize: '11px', color: 'white', letterSpacing: '0.3px' }}>영양성분표가 화면에 가득 오도록 촬영하세요</p>
+                {barcodeScanning && (
+                  <div style={{
+                    width: '7px', height: '7px', borderRadius: '50%',
+                    backgroundColor: '#a78bfa',
+                    animation: 'pulse 1s ease-in-out infinite',
+                  }} />
+                )}
+                <p style={{ fontSize: '11px', color: 'white', letterSpacing: '0.3px' }}>
+                  {barcodeScanning ? '바코드 자동 감지 중...' : '바코드 또는 영양성분표를 비춰주세요'}
+                </p>
               </div>
             )}
 
@@ -664,24 +796,46 @@ export default function CameraCapturePage() {
               </div>
             )}
 
-            {/* 촬영 버튼 — 하단 중앙 */}
-            <button
-              onClick={capture}
-              disabled={!cameraReady}
-              style={{
-                position: 'absolute', bottom: '40px', left: '50%', transform: 'translateX(-50%)',
-                width: '68px', height: '68px',
-                backgroundColor: cameraReady ? 'white' : 'rgba(255,255,255,0.3)',
-                borderRadius: '50%',
-                border: '4px solid rgba(255,255,255,0.4)',
-                cursor: cameraReady ? 'pointer' : 'default',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                zIndex: 10,
-                transition: 'background-color 0.3s',
-              }}
-            >
-              <div style={{ width: '44px', height: '44px', backgroundColor: cameraReady ? 'white' : 'rgba(255,255,255,0.4)', borderRadius: '50%', border: '2px solid #e5e7eb' }} />
-            </button>
+            {/* 촬영 버튼 */}
+            {captureMode === 'food' ? (
+              <button
+                onClick={capture}
+                disabled={!cameraReady}
+                style={{
+                  position: 'absolute', bottom: '40px', left: '50%', transform: 'translateX(-50%)',
+                  width: '68px', height: '68px',
+                  backgroundColor: cameraReady ? 'white' : 'rgba(255,255,255,0.3)',
+                  borderRadius: '50%',
+                  border: '4px solid rgba(255,255,255,0.4)',
+                  cursor: cameraReady ? 'pointer' : 'default',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  zIndex: 10,
+                  transition: 'background-color 0.3s',
+                }}
+              >
+                <div style={{ width: '44px', height: '44px', backgroundColor: cameraReady ? 'white' : 'rgba(255,255,255,0.4)', borderRadius: '50%', border: '2px solid #e5e7eb' }} />
+              </button>
+            ) : (
+              // OCR 모드: 수동 촬영 버튼 (바코드 자동 감지 실패 시 직접 촬영)
+              <button
+                onClick={() => {
+                  if (!ocrVideoRef.current) return;
+                  const frame = captureFrameFromVideo(ocrVideoRef.current, 0.95);
+                  stopOcrCamera();
+                  setImageSrc(frame);
+                }}
+                style={{
+                  position: 'absolute', bottom: '40px', left: '50%', transform: 'translateX(-50%)',
+                  padding: '14px 32px',
+                  backgroundColor: 'white', color: 'black', border: 'none',
+                  fontSize: '13px', cursor: 'pointer', letterSpacing: '1px',
+                  zIndex: 10,
+                  borderRadius: '2px',
+                }}
+              >
+                직접 촬영
+              </button>
+            )}
           </motion.div>
         )}
 
@@ -971,7 +1125,10 @@ export default function CameraCapturePage() {
         )}
 
       </AnimatePresence>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes pulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.4; transform:scale(0.7); } }
+      `}</style>
     </div>
   );
 }
