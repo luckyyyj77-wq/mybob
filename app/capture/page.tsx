@@ -8,8 +8,8 @@ import { supabase } from '@/lib/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getStorageMode } from '@/lib/storage-mode';
 import { savePhoto } from '@/lib/indexed-db';
-import { BrowserMultiFormatReader } from '@zxing/browser';
-import { NotFoundException } from '@zxing/library';
+// import { BrowserMultiFormatReader } from '@zxing/browser'; // TODO: 바코드 스캔 재작업 시 복구
+// import { NotFoundException } from '@zxing/library';
 
 type AnalysisResult = {
   name: string;
@@ -93,8 +93,6 @@ export default function CameraCapturePage() {
   const webcamRef = useRef<Webcam>(null);
   const ocrVideoRef = useRef<HTMLVideoElement>(null);
   const ocrStreamRef = useRef<MediaStream | null>(null);
-  const barcodeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
-  const barcodeScanningRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
@@ -112,11 +110,12 @@ export default function CameraCapturePage() {
   const [rating, setRating] = useState<Rating>(null);
   const [captureMode, setCaptureMode] = useState<CaptureMode>('food');
   const [ocrMeta, setOcrMeta] = useState<{ barcode?: string | null; serving_size?: string; servings_per_container?: number | null } | null>(null);
-  const [barcodeScanning, setBarcodeScanning] = useState(false);
-  const [barcodeDetected, setBarcodeDetected] = useState<string | null>(null);
-  const [barcodeTimeout, setBarcodeTimeout] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
-  const barcodeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // TODO: 바코드 재작업 시 복구
+  // const [barcodeScanning, setBarcodeScanning] = useState(false);
+  // const [barcodeDetected, setBarcodeDetected] = useState<string | null>(null);
+  // const [barcodeTimeout, setBarcodeTimeout] = useState(false);
+  // const barcodeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     // 업로드/분석 현황 조회
@@ -226,19 +225,10 @@ export default function CameraCapturePage() {
   }, []);
 
   const stopOcrCamera = useCallback(() => {
-    barcodeScanningRef.current = false;
-    barcodeReaderRef.current = null;
-    if (barcodeTimerRef.current) {
-      clearTimeout(barcodeTimerRef.current);
-      barcodeTimerRef.current = null;
-    }
     if (ocrStreamRef.current) {
       ocrStreamRef.current.getTracks().forEach(t => t.stop());
       ocrStreamRef.current = null;
     }
-    setBarcodeScanning(false);
-    setBarcodeDetected(null);
-    setBarcodeTimeout(false);
   }, []);
 
   // OCR 모드 진입/해제 시 카메라 전환
@@ -251,62 +241,9 @@ export default function CameraCapturePage() {
     return () => { stopOcrCamera(); };
   }, [captureMode, imageSrc, permState, startOcrCamera, stopOcrCamera]);
 
-  // 바코드 실시간 스캔 — decodeFromCanvas 루프 (비디오 스트림 간섭 없음)
-  const startBarcodeScanning = useCallback(() => {
-    if (barcodeScanningRef.current || !ocrVideoRef.current) return;
-    barcodeScanningRef.current = true;
-    setBarcodeScanning(true);
-    setBarcodeTimeout(false);
-
-    const reader = new BrowserMultiFormatReader();
-    barcodeReaderRef.current = reader;
-
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d')!;
-
-    barcodeTimerRef.current = setTimeout(() => {
-      if (barcodeScanningRef.current) {
-        barcodeScanningRef.current = false;
-        setBarcodeScanning(false);
-        setBarcodeTimeout(true);
-      }
-    }, 15000);
-
-    const tick = () => {
-      if (!barcodeScanningRef.current || !ocrVideoRef.current) return;
-      const video = ocrVideoRef.current;
-      if (video.readyState < 2) { requestAnimationFrame(tick); return; }
-
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      ctx.drawImage(video, 0, 0);
-
-      try {
-        const result = reader.decodeFromCanvas(canvas);
-        if (result && barcodeScanningRef.current) {
-          if (barcodeTimerRef.current) { clearTimeout(barcodeTimerRef.current); barcodeTimerRef.current = null; }
-          barcodeScanningRef.current = false;
-          setBarcodeDetected(result.getText());
-          setBarcodeScanning(false);
-          const frame = captureFrameFromVideo(video);
-          setImageSrc(frame);
-          return;
-        }
-      } catch (e) {
-        if (!(e instanceof NotFoundException)) return;
-      }
-
-      // 다음 프레임 — 너무 빠르면 CPU 낭비, 150ms 간격
-      setTimeout(() => { if (barcodeScanningRef.current) requestAnimationFrame(tick); }, 150);
-    };
-
-    requestAnimationFrame(tick);
-  }, []);
-
-  // video가 재생되기 시작하면 바코드 스캔 시작
-  const handleOcrVideoPlay = useCallback(() => {
-    startBarcodeScanning();
-  }, [startBarcodeScanning]);
+  // TODO: 바코드 스캔 재작업 시 복구
+  // const startBarcodeScanning = useCallback(() => { ... }, []);
+  // const handleOcrVideoPlay = useCallback(() => { startBarcodeScanning(); }, [startBarcodeScanning]);
 
 
   const capture = useCallback(() => {
@@ -340,9 +277,7 @@ export default function CameraCapturePage() {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
 
-      // 바코드가 감지된 경우 → food 모드로 일반 분석 (OCR 모드로 보내면 영양표 읽기 실패)
-      // OCR 직접 촬영의 경우만 mode: 'ocr' 전송
-      const apiMode = (captureMode === 'ocr' && !barcodeDetected) ? 'ocr' : 'food';
+      const apiMode = captureMode === 'ocr' ? 'ocr' : 'food';
 
       // OCR 모드는 원본 해상도 유지 (리사이즈하면 영양표 글씨가 너무 작아짐)
       const imageToSend = apiMode === 'ocr'
@@ -519,7 +454,6 @@ export default function CameraCapturePage() {
     setPortion(1);
     setRating(null);
     setOcrMeta(null);
-    setBarcodeDetected(null);
     setAnalysisError(null);
     setCaptureMode('food');
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -718,7 +652,6 @@ export default function CameraCapturePage() {
               ref={ocrVideoRef}
               playsInline
               muted
-              onPlay={handleOcrVideoPlay}
               style={{
                 position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
                 display: captureMode === 'ocr' ? 'block' : 'none',
@@ -773,7 +706,7 @@ export default function CameraCapturePage() {
 
             {/* 모드 전환 버튼 — 우하단 */}
             {captureMode === 'food' ? (
-              // 음식 모드 → 바코드 이모지로 스캔 모드 진입
+              // 음식 모드 → 영양표 스캔 모드 진입
               <button
                 onClick={() => setCaptureMode('ocr')}
                 style={{
@@ -784,10 +717,10 @@ export default function CameraCapturePage() {
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}
               >
-                🔖
+                📋
               </button>
             ) : (
-              // 스캔 모드 → 카메라 이모지로 촬영 모드 복귀
+              // 영양표 모드 → 음식 모드 복귀
               <button
                 onClick={() => { stopOcrCamera(); setCaptureMode('food'); }}
                 style={{
@@ -817,10 +750,8 @@ export default function CameraCapturePage() {
                   <div style={{ position: 'absolute', top: '-1px', right: '-1px', width: '20px', height: '20px', borderTop: '3px solid #a78bfa', borderRight: '3px solid #a78bfa', borderRadius: '0 8px 0 0' }} />
                   <div style={{ position: 'absolute', bottom: '-1px', left: '-1px', width: '20px', height: '20px', borderBottom: '3px solid #a78bfa', borderLeft: '3px solid #a78bfa', borderRadius: '0 0 0 8px' }} />
                   <div style={{ position: 'absolute', bottom: '-1px', right: '-1px', width: '20px', height: '20px', borderBottom: '3px solid #a78bfa', borderRight: '3px solid #a78bfa', borderRadius: '0 0 8px 0' }} />
-                  {/* 스캔 중 펄스 라인 */}
-                  {barcodeScanning && !barcodeTimeout && (
-                    <div style={{ position: 'absolute', left: 0, right: 0, top: '50%', height: '2px', backgroundColor: 'rgba(167,139,250,0.7)', animation: 'scanline 2s ease-in-out infinite' }} />
-                  )}
+                  {/* 스캔 애니메이션 라인 */}
+                  <div style={{ position: 'absolute', left: 0, right: 0, top: '50%', height: '2px', backgroundColor: 'rgba(167,139,250,0.7)', animation: 'scanline 2s ease-in-out infinite' }} />
                 </div>
               </div>
             )}
@@ -845,60 +776,27 @@ export default function CameraCapturePage() {
               </button>
             )}
 
-            {/* 타임아웃 안내 + 버튼 (OCR 모드) */}
-            {captureMode === 'ocr' && barcodeTimeout && (
-              <div style={{
-                position: 'absolute', bottom: '28px', left: 0, right: 0,
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px',
-                zIndex: 10,
-              }}>
-                <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: '12px', textAlign: 'center' }}>
-                  바코드를 인식하지 못했어요
-                </span>
-                <div style={{ display: 'flex', gap: '12px' }}>
-                  {/* 재시도 */}
-                  <button
-                    onClick={() => {
-                      setBarcodeTimeout(false);
-                      startBarcodeScanning();
-                    }}
-                    style={{
-                      padding: '10px 20px',
-                      backgroundColor: 'rgba(107,33,168,0.85)', color: 'white',
-                      border: 'none', borderRadius: '24px', cursor: 'pointer', fontSize: '13px',
-                    }}
-                  >
-                    🔄 재시도
-                  </button>
-                  {/* 직접 촬영 (영양표 OCR) */}
-                  <button
-                    onClick={() => {
-                      if (!ocrVideoRef.current) return;
-                      const frame = captureFrameFromVideo(ocrVideoRef.current, 0.95);
-                      stopOcrCamera();
-                      setImageSrc(frame);
-                    }}
-                    style={{
-                      padding: '10px 20px',
-                      backgroundColor: 'rgba(220,38,38,0.85)', color: 'white',
-                      border: 'none', borderRadius: '24px', cursor: 'pointer', fontSize: '13px',
-                    }}
-                  >
-                    📷 직접 촬영
-                  </button>
-                  {/* 음식 모드로 복귀 */}
-                  <button
-                    onClick={() => { stopOcrCamera(); setCaptureMode('food'); }}
-                    style={{
-                      padding: '10px 20px',
-                      backgroundColor: 'rgba(0,0,0,0.6)', color: 'white',
-                      border: '1px solid rgba(255,255,255,0.3)', borderRadius: '24px', cursor: 'pointer', fontSize: '13px',
-                    }}
-                  >
-                    📷 음식
-                  </button>
-                </div>
-              </div>
+            {/* OCR 모드 — 촬영 버튼 */}
+            {captureMode === 'ocr' && (
+              <button
+                onClick={() => {
+                  if (!ocrVideoRef.current) return;
+                  const frame = captureFrameFromVideo(ocrVideoRef.current, 0.95);
+                  stopOcrCamera();
+                  setImageSrc(frame);
+                }}
+                style={{
+                  position: 'absolute', bottom: '40px', left: '50%', transform: 'translateX(-50%)',
+                  width: '68px', height: '68px',
+                  backgroundColor: 'white', borderRadius: '50%',
+                  border: '4px solid rgba(255,255,255,0.4)',
+                  cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  zIndex: 10,
+                }}
+              >
+                <div style={{ width: '44px', height: '44px', backgroundColor: 'white', borderRadius: '50%', border: '2px solid #e5e7eb' }} />
+              </button>
             )}
           </motion.div>
         )}
@@ -996,8 +894,8 @@ export default function CameraCapturePage() {
                       </div>
                     </div>
 
-                    {/* OCR/바코드 전용: 출처 안내 배너 */}
-                    {ocrMeta && analysisSource && ['ocr','barcode+off','barcode+ocr'].includes(analysisSource) && (
+                    {/* OCR 출처 안내 배너 */}
+                    {ocrMeta && analysisSource === 'ocr' && (
                       <div style={{
                         padding: '8px 12px',
                         backgroundColor: '#f3e8ff',
@@ -1005,17 +903,9 @@ export default function CameraCapturePage() {
                         borderRadius: '6px',
                         display: 'flex', alignItems: 'center', gap: '8px',
                       }}>
-                        <span style={{ fontSize: '14px' }}>
-                          {analysisSource === 'barcode+off' ? '🔖' : '📋'}
-                        </span>
+                        <span style={{ fontSize: '14px' }}>📋</span>
                         <div>
-                          <p style={{ fontSize: '11px', color: '#6B21A8', fontWeight: 500 }}>
-                            {analysisSource === 'barcode+off'
-                              ? `바코드 DB에서 가져온 정확한 값 ${ocrMeta.barcode ? `(${ocrMeta.barcode})` : ''}`
-                              : analysisSource === 'barcode+ocr'
-                              ? `바코드 인식 후 영양표로 보완 ${ocrMeta.barcode ? `(${ocrMeta.barcode})` : ''}`
-                              : '영양성분표에서 직접 읽은 값'}
-                          </p>
+                          <p style={{ fontSize: '11px', color: '#6B21A8', fontWeight: 500 }}>영양성분표에서 직접 읽은 값</p>
                           <p style={{ fontSize: '10px', color: '#7c3aed', marginTop: '1px' }}>
                             1회 제공량: {ocrMeta.serving_size || analysis.amount}
                             {ocrMeta.servings_per_container != null && ` · 총 ${ocrMeta.servings_per_container}회분`}
