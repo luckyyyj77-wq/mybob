@@ -34,6 +34,8 @@ export default function ReportLayout({ children }: { children: React.ReactNode }
           {[
             { label: '일간', href: '/report/daily' },
             { label: '주간', href: '/report/weekly' },
+            { label: '월간', href: '/report/monthly' },
+            { label: '진단', href: '/report/diagnosis' },
           ].map((tab) => {
             const active = pathname === tab.href;
             return (
@@ -41,11 +43,13 @@ export default function ReportLayout({ children }: { children: React.ReactNode }
                 key={tab.href}
                 href={tab.href}
                 style={{
-                  padding: '10px 24px',
+                  flex: 1,
+                  padding: '10px 0',
                   fontSize: '12px',
                   letterSpacing: '1px',
                   textTransform: 'uppercase',
                   textDecoration: 'none',
+                  textAlign: 'center',
                   color: active ? 'white' : 'black',
                   backgroundColor: active ? 'black' : 'white',
                   borderRight: '1px solid #e5e7eb',
