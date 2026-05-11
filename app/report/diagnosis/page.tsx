@@ -72,6 +72,7 @@ export default function DiagnosisPage() {
   const [stats, setStats] = useState<{ avgCal: number; days: number; meals: number } | null>(null);
   const [lastAnalyzed, setLastAnalyzed] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'detail' | 'plan'>('overview');
+  const [plan, setPlan] = useState<string | null>(null); // null = 로딩 중
 
   useEffect(() => {
     // 캐시된 진단 결과 복원
@@ -85,11 +86,17 @@ export default function DiagnosisPage() {
       } catch { /* 무시 */ }
     }
 
-    // 식단 데이터 로드
+    // 식단 데이터 + 플랜 로드
     const local: Meal[] = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
     setMeals(local);
     supabase.auth.getSession().then(({ data: { session } }) => {
       const token = session?.access_token;
+      if (!token) { setPlan('free'); return; }
+
+      // 플랜 확인
+      fetch('/api/upload-status', { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.json()).then(d => setPlan(d.plan || 'free')).catch(() => setPlan('free'));
+
       fetch('/api/meals', { headers: token ? { Authorization: `Bearer ${token}` } : {} })
         .then(r => r.json()).then(result => {
           if (result.success && Array.isArray(result.data)) {
@@ -144,6 +151,38 @@ export default function DiagnosisPage() {
     const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 30);
     return new Date(m.created_at) >= cutoff;
   }).length;
+
+  // 플랜 로딩 중
+  if (plan === null) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '80px 0' }}>
+        <FaSpinner style={{ fontSize: '22px', animation: 'spin 1s linear infinite', color: '#9ca3af' }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  // 무료 플랜 잠금 화면
+  if (plan === 'free') {
+    return (
+      <div style={{ padding: '40px 24px', textAlign: 'center' }}>
+        <p style={{ fontSize: '40px', marginBottom: '12px' }}>🔒</p>
+        <p style={{ fontSize: '15px', color: 'black', marginBottom: '8px' }}>PRO 전용 기능</p>
+        <p style={{ fontSize: '12px', color: '#9ca3af', lineHeight: 1.8, marginBottom: '24px' }}>
+          AI 정밀 진단은 PRO 플랜 이상에서<br />사용할 수 있습니다.
+        </p>
+        <div style={{ border: '1px solid #e5e7eb', padding: '20px', marginBottom: '20px', textAlign: 'left' }}>
+          <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>PRO 진단 포함 기능</p>
+          {['5개 지표 종합 건강 점수 (A+~D 등급)', '문제점 심층 분석 + 개선 방법', 'AI 맞춤 주간 식단 플랜', '나트륨 · 식이섬유 · 영양 균형 평가'].map(f => (
+            <p key={f} style={{ fontSize: '12px', color: '#6b7280', marginBottom: '6px' }}>✓ {f}</p>
+          ))}
+        </div>
+        <div style={{ backgroundColor: '#f3f4f6', padding: '14px', fontSize: '12px', color: '#9ca3af' }}>
+          업그레이드 준비 중
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ padding: '20px 24px 40px' }}>
