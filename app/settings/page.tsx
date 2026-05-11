@@ -374,13 +374,14 @@ export default function SettingsPage() {
               /* 플랜 로딩 중 — 깜빡임 방지 */
               <div style={{ height: '48px' }} />
             ) : planStatus?.plan === 'free' || !planStatus ? (
-              /* 무료 또는 비로그인 — 잠금 상태 안내 */
+              /* 무료 — 랜덤 닉네임 표시, 변경은 PRO 안내 */
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
-                  <p style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '4px' }}>닉네임 · 프로필 사진</p>
-                  <p style={{ fontSize: '11px', color: '#d1d5db' }}>PRO 플랜에서 사용 가능합니다</p>
+                  <p style={{ fontSize: '11px', color: '#9ca3af', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '6px' }}>내 닉네임</p>
+                  <p style={{ fontSize: '15px', color: 'black', marginBottom: '4px' }}>{profile.nickname || '닉네임 로딩 중...'}</p>
+                  <p style={{ fontSize: '11px', color: '#d1d5db' }}>닉네임 변경은 PRO 플랜에서 가능합니다</p>
                 </div>
-                <span style={{ fontSize: '18px' }}>🔒</span>
+                <span style={{ fontSize: '16px', color: '#d1d5db' }}>🔒</span>
               </div>
             ) : (
               /* PRO — 편집 가능 */
