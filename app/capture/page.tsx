@@ -118,6 +118,7 @@ export default function CameraCapturePage() {
   const [focusSupported, setFocusSupported] = useState(false);
   const [focusDistance, setFocusDistance] = useState(0);       // 0 = 가까움, 100 = 멀리
   const barcodeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scanControlsRef = useRef<{ stop: () => void } | null>(null);
 
   useEffect(() => {
     // 업로드/분석 현황 조회
@@ -222,6 +223,10 @@ export default function CameraCapturePage() {
   const stopOcrCamera = useCallback(() => {
     barcodeScanningRef.current = false;
     barcodeReaderRef.current = null;
+    if (scanControlsRef.current) {
+      try { scanControlsRef.current.stop(); } catch { /* 무시 */ }
+      scanControlsRef.current = null;
+    }
     if (barcodeTimerRef.current) {
       clearTimeout(barcodeTimerRef.current);
       barcodeTimerRef.current = null;
@@ -246,8 +251,8 @@ export default function CameraCapturePage() {
     return () => { stopOcrCamera(); };
   }, [captureMode, imageSrc, permState, startOcrCamera, stopOcrCamera]);
 
-  // 바코드 실시간 스캔 — decodeOnceFromVideoElement 루프 방식
-  const startBarcodeScanning = useCallback(async () => {
+  // 바코드 실시간 스캔 — scan() API로 매 프레임 캔버스 디코딩
+  const startBarcodeScanning = useCallback(() => {
     if (barcodeScanningRef.current || !ocrVideoRef.current) return;
     barcodeScanningRef.current = true;
     setBarcodeScanning(true);
@@ -256,35 +261,35 @@ export default function CameraCapturePage() {
     const reader = new BrowserMultiFormatReader();
     barcodeReaderRef.current = reader;
 
-    // 15초 타임아웃 — 감지 실패 시 직접 촬영 안내로 전환
+    // 15초 타임아웃
     barcodeTimerRef.current = setTimeout(() => {
-      if (barcodeScanningRef.current) {
-        barcodeScanningRef.current = false;
-        setBarcodeScanning(false);
-        setBarcodeTimeout(true);
-      }
+      if (!barcodeScanningRef.current) return;
+      if (scanControlsRef.current) { try { scanControlsRef.current.stop(); } catch { /* 무시 */ } scanControlsRef.current = null; }
+      barcodeScanningRef.current = false;
+      setBarcodeScanning(false);
+      setBarcodeTimeout(true);
     }, 15000);
 
-    const loop = async () => {
-      if (!barcodeScanningRef.current || !ocrVideoRef.current) return;
-      try {
-        const result = await reader.decodeOnceFromVideoElement(ocrVideoRef.current);
-        if (!barcodeScanningRef.current) return;
-        // 성공 — 타이머 취소
-        if (barcodeTimerRef.current) { clearTimeout(barcodeTimerRef.current); barcodeTimerRef.current = null; }
-        barcodeScanningRef.current = false;
-        setBarcodeDetected(result.getText());
-        setBarcodeScanning(false);
-        const frame = captureFrameFromVideo(ocrVideoRef.current);
-        setImageSrc(frame);
-      } catch (e) {
-        if (e instanceof NotFoundException && barcodeScanningRef.current) {
-          await new Promise(r => setTimeout(r, 200));
-          loop();
+    // scan()은 매 프레임을 canvas에 그려 decodeFromCanvas로 디코딩
+    const controls = reader.scan(
+      ocrVideoRef.current,
+      (result, error) => {
+        if (result && barcodeScanningRef.current) {
+          // 성공
+          if (barcodeTimerRef.current) { clearTimeout(barcodeTimerRef.current); barcodeTimerRef.current = null; }
+          if (scanControlsRef.current) { try { scanControlsRef.current.stop(); } catch { /* 무시 */ } scanControlsRef.current = null; }
+          barcodeScanningRef.current = false;
+          setBarcodeDetected(result.getText());
+          setBarcodeScanning(false);
+          if (ocrVideoRef.current) {
+            const frame = captureFrameFromVideo(ocrVideoRef.current);
+            setImageSrc(frame);
+          }
         }
+        // NotFoundException은 정상 — 계속 스캔
       }
-    };
-    loop();
+    );
+    scanControlsRef.current = controls;
   }, []);
 
   // video가 재생되기 시작하면 바코드 스캔 시작
