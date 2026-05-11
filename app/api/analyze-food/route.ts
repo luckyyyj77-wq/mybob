@@ -174,27 +174,85 @@ ${nutritionContext}
   return { success: false, error: '모든 모델 한도 초과. 잠시 후 다시 시도해주세요.' };
 }
 
-// ── 영양성분표 OCR 분석 ───────────────────────────────────────────────────────
-async function analyzeNutritionLabel(base64Data: string, apiKey: string) {
-  const prompt = `당신은 식품 영양성분표 OCR 전문가입니다.
-이미지에 있는 영양성분표(또는 영양정보 패널)를 정확히 읽어서 아래 JSON으로 추출하세요.
-추론하지 말고 표에 적힌 숫자를 그대로 읽으세요.
+// ── Open Food Facts 바코드 조회 ───────────────────────────────────────────────
+async function lookupBarcode(barcode: string): Promise<{
+  product_name: string | null;
+  serving_size: string | null;
+  servings_per_container: number | null;
+  per_serving: Record<string, number | null>;
+} | null> {
+  try {
+    const res = await fetch(
+      `https://world.openfoodfacts.org/api/v0/product/${barcode}.json?fields=product_name,serving_size,servings_per_container,nutriments`,
+      { signal: AbortSignal.timeout(5000) }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.status !== 1 || !data.product) return null;
 
-반드시 아래 JSON만 응답하세요:
+    const p = data.product;
+    const n = p.nutriments || {};
+
+    // OFF는 100g 기준 저장 — serving_size_g가 있으면 환산, 없으면 100g 기준 그대로
+    const servingG = p.serving_quantity ? parseFloat(p.serving_quantity) : 100;
+    const scale = servingG / 100;
+
+    const round1 = (v: number | undefined) => v != null ? Math.round(v * scale * 10) / 10 : null;
+    const roundInt = (v: number | undefined) => v != null ? Math.round(v * scale) : null;
+
+    return {
+      product_name: p.product_name || null,
+      serving_size: p.serving_size || `${servingG}g`,
+      servings_per_container: p.servings_per_container ? parseFloat(p.servings_per_container) : null,
+      per_serving: {
+        calories:      roundInt(n['energy-kcal_100g']),
+        carbohydrates: round1(n['carbohydrates_100g']),
+        sugar:         round1(n['sugars_100g']),
+        protein:       round1(n['proteins_100g']),
+        fat:           round1(n['fat_100g']),
+        saturated_fat: round1(n['saturated-fat_100g']),
+        trans_fat:     round1(n['trans-fat_100g']),
+        fiber:         round1(n['fiber_100g']),
+        sodium:        roundInt(n['sodium_100g'] != null ? n['sodium_100g'] * 1000 / scale * scale : undefined),
+        caffeine:      round1(n['caffeine_100g']),
+        vitaminA:      round1(n['vitamin-a_100g']),
+        vitaminC:      round1(n['vitamin-c_100g']),
+        vitaminD:      round1(n['vitamin-d_100g']),
+        calcium:       roundInt(n['calcium_100g'] != null ? n['calcium_100g'] * 1000 / scale * scale : undefined),
+        iron:          round1(n['iron_100g']),
+        potassium:     roundInt(n['potassium_100g'] != null ? n['potassium_100g'] * 1000 / scale * scale : undefined),
+      },
+    };
+  } catch {
+    return null;
+  }
+}
+
+// ── 영양성분표 + 바코드 통합 분석 ─────────────────────────────────────────────
+async function analyzeNutritionLabel(base64Data: string, apiKey: string) {
+  // Gemini에게 바코드 숫자 추출 + 영양표 읽기를 한 번에 요청
+  const prompt = `당신은 식품 패키지 분석 전문가입니다. 이미지를 보고 아래 JSON으로만 응답하세요.
+
+우선순위:
+1. 바코드(EAN-13, EAN-8, UPC-A 등)가 보이면 숫자를 읽어 barcode 필드에 기록
+2. 영양성분표가 보이면 수치를 그대로 읽기 (추론 금지)
+3. 둘 다 없으면 readable: false
+
 {
-  "product_name": "제품명 (패키지에서 읽기, 없으면 null)",
-  "serving_size": "1회 제공량 (예: 30g, 1봉, 200mL)",
+  "barcode": "바코드 숫자 문자열 또는 null",
+  "product_name": "제품명 또는 null",
+  "serving_size": "1회 제공량 (예: 30g, 1봉, 200mL) 또는 null",
   "servings_per_container": 숫자 또는 null,
   "per_serving": {
-    "calories": 숫자(kcal),
-    "carbohydrates": 숫자(g),
-    "sugar": 숫자(g),
-    "protein": 숫자(g),
-    "fat": 숫자(g),
+    "calories": 숫자(kcal) 또는 null,
+    "carbohydrates": 숫자(g) 또는 null,
+    "sugar": 숫자(g) 또는 null,
+    "protein": 숫자(g) 또는 null,
+    "fat": 숫자(g) 또는 null,
     "saturated_fat": 숫자(g) 또는 null,
     "trans_fat": 숫자(g) 또는 null,
     "fiber": 숫자(g) 또는 null,
-    "sodium": 숫자(mg),
+    "sodium": 숫자(mg) 또는 null,
     "caffeine": 숫자(mg) 또는 null,
     "vitaminA": 숫자(μg) 또는 null,
     "vitaminC": 숫자(mg) 또는 null,
@@ -206,12 +264,12 @@ async function analyzeNutritionLabel(base64Data: string, apiKey: string) {
   "readable": true
 }
 
-영양성분표가 이미지에 없거나 읽을 수 없으면:
-{ "readable": false }
+바코드만 있고 영양표가 없으면 per_serving의 모든 값을 null로, readable: true로 응답.
+아무것도 없으면: { "readable": false }
 
 주의:
-- 100g 기준 표가 있더라도 1회 제공량 기준으로 환산해서 응답
-- 단위가 % DV(일일섭취량%)만 있는 항목은 null로 처리
+- 100g 기준 표는 1회 제공량 기준으로 환산
+- % DV(일일섭취량%)만 있는 항목은 null
 - JSON 외 텍스트 절대 금지`;
 
   const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash'];
@@ -280,7 +338,7 @@ export async function POST(request: Request) {
 
     const base64Data = image.includes(',') ? image.split(',')[1] : image;
 
-    // ── 영양성분표 OCR 모드 ────────────────────────────────────────────────────
+    // ── 영양성분표 + 바코드 OCR 모드 ─────────────────────────────────────────
     if (mode === 'ocr') {
       const ocrResult = await analyzeNutritionLabel(base64Data, apiKey);
 
@@ -292,7 +350,32 @@ export async function POST(request: Request) {
       }
 
       const d = ocrResult.data;
-      const p = d.per_serving;
+      let p = d.per_serving;
+      let source = 'ocr';
+      let productName = d.product_name;
+      let servingSize = d.serving_size;
+      let servingsPerContainer = d.servings_per_container;
+
+      // 바코드가 인식됐으면 Open Food Facts 조회 (OCR 영양표보다 DB가 더 정확)
+      if (d.barcode) {
+        console.log(`Barcode detected: ${d.barcode} — querying Open Food Facts`);
+        const barcodeData = await lookupBarcode(d.barcode);
+        if (barcodeData) {
+          // DB 데이터를 우선 사용, 없는 항목은 OCR로 보완
+          productName = barcodeData.product_name || productName;
+          servingSize = barcodeData.serving_size || servingSize;
+          servingsPerContainer = barcodeData.servings_per_container ?? servingsPerContainer;
+          // 칼로리가 DB에 있으면 DB 전체를 신뢰
+          if (barcodeData.per_serving.calories != null) {
+            p = { ...p, ...Object.fromEntries(
+              Object.entries(barcodeData.per_serving).filter(([, v]) => v != null)
+            )};
+            source = 'barcode+off';
+          }
+        } else {
+          source = 'barcode+ocr'; // 바코드는 읽었지만 DB 미등록 제품
+        }
+      }
 
       // 분석 카운트 증가
       const userId = (request as any)._userId;
@@ -305,32 +388,33 @@ export async function POST(request: Request) {
       return NextResponse.json({
         success: true,
         food: {
-          name: d.product_name || '포장 식품',
+          name: productName || '포장 식품',
           calories: p.calories,
           category: '기타',
-          amount: d.serving_size || '1회 제공량',
+          amount: servingSize || '1회 제공량',
           confidence: 'high',
           nutrients: {
-            carbohydrates: p.carbohydrates,
-            protein:       p.protein,
-            fat:           p.fat,
-            fiber:         p.fiber     ?? undefined,
-            sugar:         p.sugar     ?? undefined,
-            sodium:        p.sodium,
-            caffeine:      p.caffeine  ?? undefined,
-            vitaminA:      p.vitaminA  ?? undefined,
-            vitaminC:      p.vitaminC  ?? undefined,
-            vitaminD:      p.vitaminD  ?? undefined,
-            calcium:       p.calcium   ?? undefined,
-            iron:          p.iron      ?? undefined,
-            potassium:     p.potassium ?? undefined,
+            carbohydrates: p.carbohydrates ?? undefined,
+            protein:       p.protein       ?? undefined,
+            fat:           p.fat           ?? undefined,
+            fiber:         p.fiber         ?? undefined,
+            sugar:         p.sugar         ?? undefined,
+            sodium:        p.sodium        ?? undefined,
+            caffeine:      p.caffeine      ?? undefined,
+            vitaminA:      p.vitaminA      ?? undefined,
+            vitaminC:      p.vitaminC      ?? undefined,
+            vitaminD:      p.vitaminD      ?? undefined,
+            calcium:       p.calcium       ?? undefined,
+            iron:          p.iron          ?? undefined,
+            potassium:     p.potassium     ?? undefined,
           },
         },
-        source: 'ocr',
+        source,
         modelUsed: ocrResult.modelUsed,
         ocrMeta: {
-          serving_size: d.serving_size,
-          servings_per_container: d.servings_per_container,
+          barcode: d.barcode || null,
+          serving_size: servingSize,
+          servings_per_container: servingsPerContainer,
         },
         analysisStatus: { used: analysisUsed + 1, limit: analysisLimit, plan },
       });

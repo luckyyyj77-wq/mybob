@@ -71,6 +71,8 @@ const SOURCE_LABEL: Record<string, string> = {
   'korean_db_only':      '한식DB',
   'openfoodfacts_only':  '글로벌DB',
   'ocr':                 '영양표 직접 인식',
+  'barcode+off':         '바코드 DB',
+  'barcode+ocr':         '바코드+영양표',
 };
 const CONFIDENCE_COLOR: Record<string, string> = { high: '#16a34a', medium: '#d97706', low: '#9ca3af' };
 
@@ -94,7 +96,7 @@ export default function CameraCapturePage() {
   const [portion, setPortion] = useState<Portion>(1);
   const [rating, setRating] = useState<Rating>(null);
   const [captureMode, setCaptureMode] = useState<CaptureMode>('food');
-  const [ocrMeta, setOcrMeta] = useState<{ serving_size?: string; servings_per_container?: number | null } | null>(null);
+  const [ocrMeta, setOcrMeta] = useState<{ barcode?: string | null; serving_size?: string; servings_per_container?: number | null } | null>(null);
 
   useEffect(() => {
     // 업로드/분석 현황 조회
@@ -754,8 +756,8 @@ export default function CameraCapturePage() {
                       </div>
                     </div>
 
-                    {/* OCR 전용: 1회 제공량 안내 배너 */}
-                    {analysisSource === 'ocr' && ocrMeta && (
+                    {/* OCR/바코드 전용: 출처 안내 배너 */}
+                    {ocrMeta && analysisSource && ['ocr','barcode+off','barcode+ocr'].includes(analysisSource) && (
                       <div style={{
                         padding: '8px 12px',
                         backgroundColor: '#f3e8ff',
@@ -763,9 +765,17 @@ export default function CameraCapturePage() {
                         borderRadius: '6px',
                         display: 'flex', alignItems: 'center', gap: '8px',
                       }}>
-                        <span style={{ fontSize: '14px' }}>📋</span>
+                        <span style={{ fontSize: '14px' }}>
+                          {analysisSource === 'barcode+off' ? '🔖' : '📋'}
+                        </span>
                         <div>
-                          <p style={{ fontSize: '11px', color: '#6B21A8', fontWeight: 500 }}>영양성분표에서 직접 읽은 값</p>
+                          <p style={{ fontSize: '11px', color: '#6B21A8', fontWeight: 500 }}>
+                            {analysisSource === 'barcode+off'
+                              ? `바코드 DB에서 가져온 정확한 값 ${ocrMeta.barcode ? `(${ocrMeta.barcode})` : ''}`
+                              : analysisSource === 'barcode+ocr'
+                              ? `바코드 인식 후 영양표로 보완 ${ocrMeta.barcode ? `(${ocrMeta.barcode})` : ''}`
+                              : '영양성분표에서 직접 읽은 값'}
+                          </p>
                           <p style={{ fontSize: '10px', color: '#7c3aed', marginTop: '1px' }}>
                             1회 제공량: {ocrMeta.serving_size || analysis.amount}
                             {ocrMeta.servings_per_container != null && ` · 총 ${ocrMeta.servings_per_container}회분`}
