@@ -119,8 +119,6 @@ export default function CameraCapturePage() {
   const [focusDistance, setFocusDistance] = useState(0);       // 0 = 가까움, 100 = 멀리
   const barcodeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scanControlsRef = useRef<{ stop: () => void } | null>(null);
-  const handleBarcodeResultRef = useRef<((code: string) => void) | null>(null);
-
   useEffect(() => {
     // 업로드/분석 현황 조회
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -259,7 +257,7 @@ export default function CameraCapturePage() {
     return () => { stopOcrCamera(); };
   }, [captureMode, imageSrc, permState, startOcrCamera, stopOcrCamera]);
 
-  // 바코드 실시간 스캔 — rAF + decodeFromCanvas 직접 루프
+  // 바코드 실시간 스캔 — scan() API (5063fdf 기준 원복)
   const startBarcodeScanning = useCallback(() => {
     if (barcodeScanningRef.current || !ocrVideoRef.current) return;
     barcodeScanningRef.current = true;
@@ -269,106 +267,41 @@ export default function CameraCapturePage() {
     const reader = new BrowserMultiFormatReader();
     barcodeReaderRef.current = reader;
 
-    // canvas는 루프 밖에서 1회 생성 (매 프레임 생성 방지)
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
-
     // 15초 타임아웃
     barcodeTimerRef.current = setTimeout(() => {
       if (!barcodeScanningRef.current) return;
+      if (scanControlsRef.current) { try { scanControlsRef.current.stop(); } catch { /* 무시 */ } scanControlsRef.current = null; }
       barcodeScanningRef.current = false;
       setBarcodeScanning(false);
       setBarcodeTimeout(true);
     }, 15000);
 
-    const loop = () => {
-      if (!barcodeScanningRef.current) return;
-      const video = ocrVideoRef.current;
-      if (!video || video.readyState < 2 || video.videoWidth === 0) {
-        // 아직 프레임 없음 — 다음 프레임 대기
-        requestAnimationFrame(loop);
-        return;
+    const controls = reader.scan(
+      ocrVideoRef.current,
+      (result) => {
+        if (result && barcodeScanningRef.current) {
+          if (barcodeTimerRef.current) { clearTimeout(barcodeTimerRef.current); barcodeTimerRef.current = null; }
+          if (scanControlsRef.current) { try { scanControlsRef.current.stop(); } catch { /* 무시 */ } scanControlsRef.current = null; }
+          barcodeScanningRef.current = false;
+          const code = result.getText();
+          setBarcodeDetected(code);
+          setBarcodeScanning(false);
+          // 프레임 캡처 후 프리뷰로 이동 (분석은 프리뷰에서 버튼으로)
+          if (ocrVideoRef.current) {
+            const frame = captureFrameFromVideo(ocrVideoRef.current);
+            stopOcrCamera();
+            setImageSrc(frame);
+          }
+        }
       }
-
-      canvas.width  = video.videoWidth;
-      canvas.height = video.videoHeight;
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-      try {
-        const result = reader.decodeFromCanvas(canvas);
-        // 성공
-        if (barcodeTimerRef.current) { clearTimeout(barcodeTimerRef.current); barcodeTimerRef.current = null; }
-        barcodeScanningRef.current = false;
-        setBarcodeScanning(false);
-        setBarcodeDetected(result.getText());
-        handleBarcodeResultRef.current?.(result.getText());
-      } catch {
-        // NotFoundException — 다음 프레임 재시도 (100ms 간격으로 CPU 절감)
-        setTimeout(() => requestAnimationFrame(loop), 100);
-      }
-    };
-
-    requestAnimationFrame(loop);
-  }, []);
+    );
+    scanControlsRef.current = controls;
+  }, [stopOcrCamera]);
 
   // video가 재생되기 시작하면 바코드 스캔 시작
   const handleOcrVideoPlay = useCallback(() => {
     startBarcodeScanning();
   }, [startBarcodeScanning]);
-
-  // 바코드 감지 후 Open Food Facts 직접 조회 (이미지/Gemini 없음)
-  const handleBarcodeResult = useCallback(async (code: string) => {
-    stopOcrCamera();
-    setLoadingAnalysis(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
-      const res = await fetch('/api/analyze-food', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ mode: 'barcode', barcode: code }),
-      });
-      const result = await res.json();
-
-      if (res.status === 429 && result.error === 'ANALYSIS_LIMIT_EXCEEDED') {
-        setUploadStatus(prev => prev ? { ...prev, analysis: { used: result.used, limit: result.limit } } : null);
-        setLimitType('analysis');
-        setShowLimitModal(true);
-        return;
-      }
-      if (res.status === 404 && result.error === 'BARCODE_NOT_FOUND') {
-        // DB에 없는 제품 — 스캔 화면으로 돌아가 OCR로 전환
-        alert('바코드 DB에 등록되지 않은 제품입니다.\n영양성분표를 직접 촬영해주세요.');
-        setCaptureMode('ocr');
-        startOcrCamera();
-        return;
-      }
-      if (!res.ok) throw new Error(result.error || '조회 오류');
-      if (result.success) {
-        setAnalysis(result.food);
-        setAnalysisSource(result.source || null);
-        setAnalysisModel(null);
-        setOcrMeta(result.ocrMeta || null);
-        // 바코드 결과는 imageSrc 없이 분석 결과만 표시 — 더미 이미지 설정
-        setImageSrc('barcode');
-        if (result.analysisStatus) {
-          setUploadStatus(prev => prev ? { ...prev, analysis: { used: result.analysisStatus.used, limit: result.analysisStatus.limit } } : null);
-        }
-      }
-    } catch (err: any) {
-      alert(`조회 실패: ${err.message}`);
-    } finally {
-      setLoadingAnalysis(false);
-    }
-  }, [stopOcrCamera, startOcrCamera]);
-
-  // handleBarcodeResult를 ref에 동기화 (scan 클로저 stale 방지)
-  useEffect(() => {
-    handleBarcodeResultRef.current = handleBarcodeResult;
-  }, [handleBarcodeResult]);
 
   // 수동 포커스 거리 조절
   const handleFocusChange = useCallback(async (value: number) => {
@@ -414,12 +347,39 @@ export default function CameraCapturePage() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
-
-      // OCR 모드는 해상도를 높게 유지 (1200px), 음식 모드는 800px
-      const resized = await resizeImage(imageSrc, captureMode === 'ocr' ? 1200 : 800);
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
+      // 바코드 감지된 경우 → 이미지 없이 바코드 번호로 직접 조회
+      if (barcodeDetected) {
+        const res = await fetch('/api/analyze-food', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ mode: 'barcode', barcode: barcodeDetected }),
+        });
+        const result = await res.json();
+        if (res.status === 429 && result.error === 'ANALYSIS_LIMIT_EXCEEDED') {
+          setUploadStatus(prev => prev ? { ...prev, analysis: { used: result.used, limit: result.limit } } : null);
+          setLimitType('analysis'); setShowLimitModal(true); return;
+        }
+        if (res.status === 404 && result.error === 'BARCODE_NOT_FOUND') {
+          // DB 미등록 → OCR로 자동 전환
+          alert('바코드 DB에 없는 제품입니다.\n영양성분표를 직접 촬영해주세요.');
+          setBarcodeDetected(null);
+          return;
+        }
+        if (res.ok && result.success) {
+          setAnalysis(result.food);
+          setAnalysisSource(result.source || null);
+          setAnalysisModel(null);
+          setOcrMeta(result.ocrMeta || null);
+          if (result.analysisStatus) setUploadStatus(prev => prev ? { ...prev, analysis: { used: result.analysisStatus.used, limit: result.analysisStatus.limit } } : null);
+        }
+        return;
+      }
+
+      // 일반 이미지 분석 (OCR 모드는 1200px, 음식 모드는 800px)
+      const resized = await resizeImage(imageSrc, captureMode === 'ocr' ? 1200 : 800);
       const res = await fetch('/api/analyze-food', {
         method: 'POST',
         headers,
