@@ -720,23 +720,24 @@ export default function CameraCapturePage() {
               </div>
             </Link>
 
-            {/* 갤러리 — 우상단 */}
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              style={{
-                position: 'absolute', top: '20px', right: '20px', zIndex: 10,
-                width: '40px', height: '40px',
-                backgroundColor: 'rgba(0,0,0,0.5)',
-                borderRadius: '50%',
-                border: 'none', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
-            >
-              <FaUpload size={14} color="white" />
-            </button>
+            {/* 갤러리 — 우상단 (음식 모드만) */}
+            {captureMode === 'food' && (
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  position: 'absolute', top: '20px', right: '20px', zIndex: 10,
+                  width: '40px', height: '40px',
+                  backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: '50%',
+                  border: 'none', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <FaUpload size={14} color="white" />
+              </button>
+            )}
             <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" style={{ display: 'none' }} />
 
-            {/* 오늘 AI 분석 현황 배지 */}
+            {/* 분석 횟수 배지 — 상단 중앙 */}
             {uploadStatus && (
               <div style={{
                 position: 'absolute', top: '20px', left: '50%', transform: 'translateX(-50%)',
@@ -744,142 +745,82 @@ export default function CameraCapturePage() {
                 padding: '4px 12px', borderRadius: '20px',
                 display: 'flex', alignItems: 'center', gap: '6px',
               }}>
-                <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.7)', letterSpacing: '0.5px' }}>분석</span>
-                <span style={{
-                  fontSize: '12px', fontWeight: 500,
-                  color: uploadStatus.analysis.used >= uploadStatus.analysis.limit ? '#f87171' : 'white',
-                }}>
+                <span style={{ fontSize: '12px', fontWeight: 500, color: uploadStatus.analysis.used >= uploadStatus.analysis.limit ? '#f87171' : 'white' }}>
                   {uploadStatus.analysis.used}/{uploadStatus.analysis.limit}
                 </span>
                 {uploadStatus.plan !== 'free' && (
-                  <span style={{ fontSize: '9px', color: '#a78bfa', letterSpacing: '1px', textTransform: 'uppercase' }}>PRO</span>
+                  <span style={{ fontSize: '9px', color: '#a78bfa', letterSpacing: '1px' }}>PRO</span>
                 )}
               </div>
             )}
 
-            {/* 촬영 모드 탭 */}
-            <div style={{
-              position: 'absolute', bottom: '120px', left: '50%', transform: 'translateX(-50%)',
-              zIndex: 10, display: 'flex', gap: '0',
-              backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: '24px', padding: '3px',
-            }}>
-              {([
-                { value: 'food', label: '🍱 음식' },
-                { value: 'ocr',  label: '📋 영양표' },
-              ] as { value: CaptureMode; label: string }[]).map(tab => (
-                <button
-                  key={tab.value}
-                  onClick={() => setCaptureMode(tab.value)}
-                  style={{
-                    padding: '7px 18px',
-                    backgroundColor: captureMode === tab.value ? 'white' : 'transparent',
-                    color: captureMode === tab.value ? 'black' : 'rgba(255,255,255,0.7)',
-                    border: 'none', borderRadius: '20px',
-                    fontSize: '12px', cursor: 'pointer',
-                    fontWeight: captureMode === tab.value ? 500 : 400,
-                    transition: 'all 0.2s',
-                    letterSpacing: '0.3px',
-                  }}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {/* OCR 모드 — 포커스 슬라이더 */}
-            {captureMode === 'ocr' && focusSupported && (
-              <div style={{
-                position: 'absolute', top: '72px', right: '16px', zIndex: 10,
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px',
-              }}>
-                <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.7)', letterSpacing: '1px' }}>초점</span>
-                <input
-                  type="range" min={0} max={100} value={focusDistance}
-                  onChange={e => handleFocusChange(Number(e.target.value))}
-                  style={{
-                    writingMode: 'vertical-lr' as any,
-                    direction: 'rtl' as any,
-                    width: '28px', height: '120px',
-                    cursor: 'pointer', accentColor: '#a78bfa',
-                  }}
-                />
-                <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.5)' }}>근</span>
-              </div>
+            {/* 모드 전환 버튼 — 우하단 */}
+            {captureMode === 'food' ? (
+              // 음식 모드 → 바코드 이모지로 스캔 모드 진입
+              <button
+                onClick={() => setCaptureMode('ocr')}
+                style={{
+                  position: 'absolute', bottom: '40px', right: '28px', zIndex: 10,
+                  width: '48px', height: '48px',
+                  backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: '50%',
+                  border: 'none', cursor: 'pointer', fontSize: '22px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                🔖
+              </button>
+            ) : (
+              // 스캔 모드 → 카메라 이모지로 촬영 모드 복귀
+              <button
+                onClick={() => { stopOcrCamera(); setCaptureMode('food'); }}
+                style={{
+                  position: 'absolute', bottom: '40px', right: '28px', zIndex: 10,
+                  width: '48px', height: '48px',
+                  backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: '50%',
+                  border: 'none', cursor: 'pointer', fontSize: '22px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                📷
+              </button>
             )}
 
-            {/* 촬영 가이드 (OCR 모드) */}
-            {captureMode === 'ocr' && (
-              <div style={{
-                position: 'absolute', bottom: '165px', left: '50%', transform: 'translateX(-50%)',
-                zIndex: 10,
-                backgroundColor: barcodeTimeout
-                  ? 'rgba(220,38,38,0.85)'
-                  : barcodeScanning ? 'rgba(107,33,168,0.85)' : 'rgba(0,0,0,0.6)',
-                padding: '5px 14px', borderRadius: '12px', whiteSpace: 'nowrap',
-                display: 'flex', alignItems: 'center', gap: '6px',
-                transition: 'background-color 0.3s',
-              }}>
-                {barcodeScanning && (
-                  <div style={{
-                    width: '7px', height: '7px', borderRadius: '50%',
-                    backgroundColor: '#a78bfa',
-                    animation: 'pulse 1s ease-in-out infinite',
-                  }} />
-                )}
-                <p style={{ fontSize: '11px', color: 'white', letterSpacing: '0.3px' }}>
-                  {barcodeTimeout
-                    ? '바코드 인식 실패 — 영양성분표를 직접 촬영하세요'
-                    : barcodeScanning
-                    ? '바코드 자동 감지 중...'
-                    : '바코드 또는 영양성분표를 비춰주세요'}
-                </p>
-              </div>
-            )}
-
-            {/* 조준선 (음식 모드에서만) */}
+            {/* 조준선 (음식 모드) */}
             {captureMode === 'food' && (
-            <div style={{
-              position: 'absolute', inset: 0, pointerEvents: 'none',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <div style={{ width: '70px', height: '70px', border: '1.5px solid rgba(255,255,255,0.5)', borderRadius: '50%' }} />
-            </div>
+              <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: '70px', height: '70px', border: '1.5px solid rgba(255,255,255,0.5)', borderRadius: '50%' }} />
+              </div>
             )}
 
             {/* OCR 프레임 가이드 */}
             {captureMode === 'ocr' && (
-              <div style={{
-                position: 'absolute', inset: 0, pointerEvents: 'none',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <div style={{
-                  width: '75%', height: '50%',
-                  border: '2px solid rgba(167,139,250,0.8)',
-                  borderRadius: '8px',
-                  boxShadow: '0 0 0 9999px rgba(0,0,0,0.3)',
-                }}>
-                  <div style={{
-                    position: 'absolute', top: '-1px', left: '-1px', width: '20px', height: '20px',
-                    borderTop: '3px solid #a78bfa', borderLeft: '3px solid #a78bfa', borderRadius: '8px 0 0 0',
-                  }} />
-                  <div style={{
-                    position: 'absolute', top: '-1px', right: '-1px', width: '20px', height: '20px',
-                    borderTop: '3px solid #a78bfa', borderRight: '3px solid #a78bfa', borderRadius: '0 8px 0 0',
-                  }} />
-                  <div style={{
-                    position: 'absolute', bottom: '-1px', left: '-1px', width: '20px', height: '20px',
-                    borderBottom: '3px solid #a78bfa', borderLeft: '3px solid #a78bfa', borderRadius: '0 0 0 8px',
-                  }} />
-                  <div style={{
-                    position: 'absolute', bottom: '-1px', right: '-1px', width: '20px', height: '20px',
-                    borderBottom: '3px solid #a78bfa', borderRight: '3px solid #a78bfa', borderRadius: '0 0 8px 0',
-                  }} />
+              <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: '75%', height: '50%', border: '2px solid rgba(167,139,250,0.8)', borderRadius: '8px', boxShadow: '0 0 0 9999px rgba(0,0,0,0.3)', position: 'relative' }}>
+                  <div style={{ position: 'absolute', top: '-1px', left: '-1px', width: '20px', height: '20px', borderTop: '3px solid #a78bfa', borderLeft: '3px solid #a78bfa', borderRadius: '8px 0 0 0' }} />
+                  <div style={{ position: 'absolute', top: '-1px', right: '-1px', width: '20px', height: '20px', borderTop: '3px solid #a78bfa', borderRight: '3px solid #a78bfa', borderRadius: '0 8px 0 0' }} />
+                  <div style={{ position: 'absolute', bottom: '-1px', left: '-1px', width: '20px', height: '20px', borderBottom: '3px solid #a78bfa', borderLeft: '3px solid #a78bfa', borderRadius: '0 0 0 8px' }} />
+                  <div style={{ position: 'absolute', bottom: '-1px', right: '-1px', width: '20px', height: '20px', borderBottom: '3px solid #a78bfa', borderRight: '3px solid #a78bfa', borderRadius: '0 0 8px 0' }} />
+                  {/* 스캔 중 펄스 라인 */}
+                  {barcodeScanning && !barcodeTimeout && (
+                    <div style={{ position: 'absolute', left: 0, right: 0, top: '50%', height: '2px', backgroundColor: 'rgba(167,139,250,0.7)', animation: 'scanline 2s ease-in-out infinite' }} />
+                  )}
                 </div>
               </div>
             )}
 
-            {/* 촬영 버튼 */}
-            {captureMode === 'food' ? (
+            {/* OCR 포커스 슬라이더 — 지원 기기만 */}
+            {captureMode === 'ocr' && focusSupported && (
+              <div style={{ position: 'absolute', top: '72px', right: '16px', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                <input
+                  type="range" min={0} max={100} value={focusDistance}
+                  onChange={e => handleFocusChange(Number(e.target.value))}
+                  style={{ writingMode: 'vertical-lr' as any, direction: 'rtl' as any, width: '28px', height: '100px', cursor: 'pointer', accentColor: '#a78bfa' }}
+                />
+              </div>
+            )}
+
+            {/* 촬영 버튼 (음식 모드) */}
+            {captureMode === 'food' && (
               <button
                 onClick={capture}
                 disabled={!cameraReady}
@@ -887,18 +828,18 @@ export default function CameraCapturePage() {
                   position: 'absolute', bottom: '40px', left: '50%', transform: 'translateX(-50%)',
                   width: '68px', height: '68px',
                   backgroundColor: cameraReady ? 'white' : 'rgba(255,255,255,0.3)',
-                  borderRadius: '50%',
-                  border: '4px solid rgba(255,255,255,0.4)',
+                  borderRadius: '50%', border: '4px solid rgba(255,255,255,0.4)',
                   cursor: cameraReady ? 'pointer' : 'default',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   zIndex: 10,
-                  transition: 'background-color 0.3s',
                 }}
               >
                 <div style={{ width: '44px', height: '44px', backgroundColor: cameraReady ? 'white' : 'rgba(255,255,255,0.4)', borderRadius: '50%', border: '2px solid #e5e7eb' }} />
               </button>
-            ) : (
-              // OCR 모드: 수동 촬영 버튼
+            )}
+
+            {/* 수동 촬영 버튼 (OCR 모드 — 타임아웃 시에만 표시) */}
+            {captureMode === 'ocr' && barcodeTimeout && (
               <button
                 onClick={() => {
                   if (!ocrVideoRef.current) return;
@@ -908,18 +849,15 @@ export default function CameraCapturePage() {
                 }}
                 style={{
                   position: 'absolute', bottom: '40px', left: '50%', transform: 'translateX(-50%)',
-                  padding: '14px 36px',
-                  backgroundColor: barcodeTimeout ? '#dc2626' : 'white',
-                  color: barcodeTimeout ? 'white' : 'black',
-                  border: 'none',
-                  fontSize: '13px', cursor: 'pointer', letterSpacing: '1px',
+                  width: '68px', height: '68px',
+                  backgroundColor: 'rgba(220,38,38,0.85)', borderRadius: '50%',
+                  border: '4px solid rgba(255,255,255,0.3)',
+                  cursor: 'pointer', fontSize: '26px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
                   zIndex: 10,
-                  borderRadius: '2px',
-                  transition: 'background-color 0.3s',
-                  animation: barcodeTimeout ? 'none' : undefined,
                 }}
               >
-                {barcodeTimeout ? '📷 직접 촬영하기' : '직접 촬영'}
+                📷
               </button>
             )}
           </motion.div>
@@ -1214,6 +1152,7 @@ export default function CameraCapturePage() {
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes pulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.4; transform:scale(0.7); } }
+        @keyframes scanline { 0%,100% { top:10%; } 50% { top:90%; } }
       `}</style>
     </div>
   );
