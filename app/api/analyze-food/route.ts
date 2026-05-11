@@ -306,7 +306,7 @@ async function analyzeNutritionLabel(base64Data: string, apiKey: string) {
 // ── 메인 핸들러 ───────────────────────────────────────────────────────────────
 export async function POST(request: Request) {
   try {
-    const { image, mode } = await request.json();
+    const { image, mode, barcode } = await request.json();
     const apiKey = process.env.GEMINI_API_KEY?.trim();
     if (!apiKey) return NextResponse.json({ error: 'API 키가 없습니다.' }, { status: 500 });
 
@@ -336,10 +336,65 @@ export async function POST(request: Request) {
       }
     }
 
-    const base64Data = image.includes(',') ? image.split(',')[1] : image;
+    // ── 바코드 직접 조회 모드 (Gemini 호출 없음) ──────────────────────────────
+    if (mode === 'barcode' && barcode) {
+      const barcodeData = await lookupBarcode(String(barcode));
+
+      const userId = (request as any)._userId;
+      const adminSupabase = (request as any)._adminSupabase;
+      const analysisUsed = (request as any)._analysisUsed ?? 0;
+      const analysisLimit = (request as any)._analysisLimit ?? 10;
+      const plan = (request as any)._plan ?? 'free';
+      if (userId && adminSupabase) await incrementAnalysisCount(adminSupabase, userId);
+
+      if (!barcodeData || barcodeData.per_serving.calories == null) {
+        return NextResponse.json({ error: 'BARCODE_NOT_FOUND' }, { status: 404 });
+      }
+
+      const p = barcodeData.per_serving;
+      return NextResponse.json({
+        success: true,
+        food: {
+          name: barcodeData.product_name || '포장 식품',
+          calories: p.calories ?? 0,
+          category: '기타',
+          amount: barcodeData.serving_size || '1회 제공량',
+          confidence: 'high',
+          nutrients: {
+            carbohydrates: p.carbohydrates ?? undefined,
+            protein:       p.protein       ?? undefined,
+            fat:           p.fat           ?? undefined,
+            fiber:         p.fiber         ?? undefined,
+            sugar:         p.sugar         ?? undefined,
+            sodium:        p.sodium        ?? undefined,
+            caffeine:      p.caffeine      ?? undefined,
+            vitaminA:      p.vitaminA      ?? undefined,
+            vitaminC:      p.vitaminC      ?? undefined,
+            vitaminD:      p.vitaminD      ?? undefined,
+            calcium:       p.calcium       ?? undefined,
+            iron:          p.iron          ?? undefined,
+            potassium:     p.potassium     ?? undefined,
+          },
+        },
+        source: 'barcode+off',
+        modelUsed: null,
+        ocrMeta: {
+          barcode,
+          serving_size: barcodeData.serving_size,
+          servings_per_container: barcodeData.servings_per_container,
+        },
+        analysisStatus: { used: analysisUsed + 1, limit: analysisLimit, plan },
+      });
+    }
+
+    const base64Data = image ? (image.includes(',') ? image.split(',')[1] : image) : null;
+    if (!base64Data && mode !== 'barcode') {
+      return NextResponse.json({ error: '이미지가 없습니다.' }, { status: 400 });
+    }
 
     // ── 영양성분표 + 바코드 OCR 모드 ─────────────────────────────────────────
     if (mode === 'ocr') {
+      if (!base64Data) return NextResponse.json({ error: '이미지가 없습니다.' }, { status: 400 });
       const ocrResult = await analyzeNutritionLabel(base64Data, apiKey);
 
       if (!ocrResult.success) {
@@ -419,6 +474,8 @@ export async function POST(request: Request) {
         analysisStatus: { used: analysisUsed + 1, limit: analysisLimit, plan },
       });
     }
+
+    if (!base64Data) return NextResponse.json({ error: '이미지가 없습니다.' }, { status: 400 });
 
     // Step 1: 음식명 인식 (빠른 텍스트 전용 호출)
     let foodName = '';

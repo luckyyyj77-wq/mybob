@@ -273,20 +273,17 @@ export default function CameraCapturePage() {
     // scan()은 매 프레임을 canvas에 그려 decodeFromCanvas로 디코딩
     const controls = reader.scan(
       ocrVideoRef.current,
-      (result, error) => {
+      (result) => {
         if (result && barcodeScanningRef.current) {
-          // 성공
           if (barcodeTimerRef.current) { clearTimeout(barcodeTimerRef.current); barcodeTimerRef.current = null; }
           if (scanControlsRef.current) { try { scanControlsRef.current.stop(); } catch { /* 무시 */ } scanControlsRef.current = null; }
           barcodeScanningRef.current = false;
-          setBarcodeDetected(result.getText());
+          const code = result.getText();
+          setBarcodeDetected(code);
           setBarcodeScanning(false);
-          if (ocrVideoRef.current) {
-            const frame = captureFrameFromVideo(ocrVideoRef.current);
-            setImageSrc(frame);
-          }
+          // 바코드 번호를 직접 API로 — 이미지 캡처/Gemini 호출 없음
+          handleBarcodeResult(code);
         }
-        // NotFoundException은 정상 — 계속 스캔
       }
     );
     scanControlsRef.current = controls;
@@ -296,6 +293,55 @@ export default function CameraCapturePage() {
   const handleOcrVideoPlay = useCallback(() => {
     startBarcodeScanning();
   }, [startBarcodeScanning]);
+
+  // 바코드 감지 후 Open Food Facts 직접 조회 (이미지/Gemini 없음)
+  const handleBarcodeResult = useCallback(async (code: string) => {
+    stopOcrCamera();
+    setLoadingAnalysis(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch('/api/analyze-food', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ mode: 'barcode', barcode: code }),
+      });
+      const result = await res.json();
+
+      if (res.status === 429 && result.error === 'ANALYSIS_LIMIT_EXCEEDED') {
+        setUploadStatus(prev => prev ? { ...prev, analysis: { used: result.used, limit: result.limit } } : null);
+        setLimitType('analysis');
+        setShowLimitModal(true);
+        return;
+      }
+      if (res.status === 404 && result.error === 'BARCODE_NOT_FOUND') {
+        // DB에 없는 제품 — 스캔 화면으로 돌아가 OCR로 전환
+        alert('바코드 DB에 등록되지 않은 제품입니다.\n영양성분표를 직접 촬영해주세요.');
+        setCaptureMode('ocr');
+        startOcrCamera();
+        return;
+      }
+      if (!res.ok) throw new Error(result.error || '조회 오류');
+      if (result.success) {
+        setAnalysis(result.food);
+        setAnalysisSource(result.source || null);
+        setAnalysisModel(null);
+        setOcrMeta(result.ocrMeta || null);
+        // 바코드 결과는 imageSrc 없이 분석 결과만 표시 — 더미 이미지 설정
+        setImageSrc('barcode');
+        if (result.analysisStatus) {
+          setUploadStatus(prev => prev ? { ...prev, analysis: { used: result.analysisStatus.used, limit: result.analysisStatus.limit } } : null);
+        }
+      }
+    } catch (err: any) {
+      alert(`조회 실패: ${err.message}`);
+    } finally {
+      setLoadingAnalysis(false);
+    }
+  }, [stopOcrCamera, startOcrCamera]);
 
   // 수동 포커스 거리 조절
   const handleFocusChange = useCallback(async (value: number) => {
@@ -407,9 +453,11 @@ export default function CameraCapturePage() {
       )
     );
 
+    const isBarcodeOnly = imageSrc === 'barcode';
+
     try {
       if (mode === 'local') {
-        await savePhoto(mealId, imageSrc);
+        if (!isBarcodeOnly) await savePhoto(mealId, imageSrc);
 
         const localMeal = {
           id: mealId,
@@ -436,7 +484,7 @@ export default function CameraCapturePage() {
 
         let serverPhotoUrl: string | null = null;
 
-        const resizedForUpload = await resizeImage(imageSrc, 800);
+        const resizedForUpload = isBarcodeOnly ? null : await resizeImage(imageSrc, 800);
         const res = await fetch('/api/meals', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -515,12 +563,9 @@ export default function CameraCapturePage() {
     setRating(null);
     setOcrMeta(null);
     setBarcodeDetected(null);
+    setCaptureMode('food');
+    stopOcrCamera();
     if (fileInputRef.current) fileInputRef.current.value = '';
-    // OCR 모드면 카메라 재시작 + 바코드 스캔 재시작
-    if (captureMode === 'ocr') {
-      stopOcrCamera();
-      setTimeout(() => startOcrCamera(), 100);
-    }
   };
 
   // 확인 중
@@ -877,7 +922,14 @@ export default function CameraCapturePage() {
           >
             {/* 이미지 — 상단 45% */}
             <div style={{ flex: '0 0 45%', position: 'relative', overflow: 'hidden', backgroundColor: 'black' }}>
-              <img src={imageSrc} alt="촬영됨" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+              {imageSrc === 'barcode' ? (
+                <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '48px' }}>🔖</span>
+                  {barcodeDetected && <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', letterSpacing: '1px' }}>{barcodeDetected}</p>}
+                </div>
+              ) : (
+                <img src={imageSrc} alt="촬영됨" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+              )}
             </div>
 
             {/* 분석 패널 — 하단 55% */}
