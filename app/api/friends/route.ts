@@ -15,11 +15,6 @@ async function getUser(request: Request) {
   return user;
 }
 
-async function getProfile(db: any, id: string) {
-  const { data } = await db.from('profiles').select('id, nickname, avatar_url').eq('id', id).single();
-  return data;
-}
-
 // GET /api/friends
 export async function GET(request: Request) {
   const user = await getUser(request);
@@ -27,54 +22,65 @@ export async function GET(request: Request) {
 
   const db = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-  // 수락된 친구
-  const { data: acceptedRows } = await db
-    .from('friendships')
-    .select('id, requester_id, receiver_id')
-    .or(`requester_id.eq.${user.id},receiver_id.eq.${user.id}`)
-    .eq('status', 'accepted');
+  // 3개 쿼리 병렬 실행
+  const [acceptedRes, incomingRes, outgoingRes] = await Promise.all([
+    db.from('friendships')
+      .select('id, requester_id, receiver_id')
+      .or(`requester_id.eq.${user.id},receiver_id.eq.${user.id}`)
+      .eq('status', 'accepted'),
+    db.from('friendships')
+      .select('id, requester_id, created_at')
+      .eq('receiver_id', user.id)
+      .eq('status', 'pending'),
+    db.from('friendships')
+      .select('id, receiver_id, created_at')
+      .eq('requester_id', user.id)
+      .eq('status', 'pending'),
+  ]);
 
-  // 받은 대기 요청
-  const { data: incomingRows } = await db
-    .from('friendships')
-    .select('id, requester_id, created_at')
-    .eq('receiver_id', user.id)
-    .eq('status', 'pending');
+  const acceptedRows = acceptedRes.data ?? [];
+  const incomingRows = incomingRes.data ?? [];
+  const outgoingRows = outgoingRes.data ?? [];
 
-  // 보낸 대기 요청
-  const { data: outgoingRows } = await db
-    .from('friendships')
-    .select('id, receiver_id, created_at')
-    .eq('requester_id', user.id)
-    .eq('status', 'pending');
+  // 필요한 모든 프로필 ID 수집 후 한 번에 조회
+  const profileIds = new Set<string>();
+  acceptedRows.forEach(f => {
+    profileIds.add(f.requester_id === user.id ? f.receiver_id : f.requester_id);
+  });
+  incomingRows.forEach(f => profileIds.add(f.requester_id));
+  outgoingRows.forEach(f => profileIds.add(f.receiver_id));
 
-  // 프로필 병렬 로드
-  const friendList = await Promise.all(
-    (acceptedRows ?? []).map(async (f) => {
-      const otherId = f.requester_id === user.id ? f.receiver_id : f.requester_id;
-      const profile = await getProfile(db, otherId);
-      return { friendshipId: f.id, ...(profile ?? { id: otherId, nickname: '알 수 없음', avatar_url: null }) };
-    })
-  );
+  const profileMap: Record<string, any> = {};
+  if (profileIds.size > 0) {
+    const { data: profiles } = await db
+      .from('profiles')
+      .select('id, nickname, avatar_url')
+      .in('id', Array.from(profileIds));
+    (profiles ?? []).forEach(p => { profileMap[p.id] = p; });
+  }
 
-  const incoming = await Promise.all(
-    (incomingRows ?? []).map(async (f) => {
-      const profile = await getProfile(db, f.requester_id);
-      return { id: f.id, created_at: f.created_at, requester: profile ?? { id: f.requester_id, nickname: '알 수 없음', avatar_url: null } };
-    })
-  );
+  const friends = acceptedRows.map(f => {
+    const otherId = f.requester_id === user.id ? f.receiver_id : f.requester_id;
+    const p = profileMap[otherId] ?? { id: otherId, nickname: '알 수 없음', avatar_url: null };
+    return { friendshipId: f.id, ...p };
+  });
 
-  const outgoing = await Promise.all(
-    (outgoingRows ?? []).map(async (f) => {
-      const profile = await getProfile(db, f.receiver_id);
-      return { id: f.id, created_at: f.created_at, receiver: profile ?? { id: f.receiver_id, nickname: '알 수 없음', avatar_url: null } };
-    })
-  );
+  const incoming = incomingRows.map(f => ({
+    id: f.id,
+    created_at: f.created_at,
+    requester: profileMap[f.requester_id] ?? { id: f.requester_id, nickname: '알 수 없음', avatar_url: null },
+  }));
 
-  return NextResponse.json({ friends: friendList, incoming, outgoing });
+  const outgoing = outgoingRows.map(f => ({
+    id: f.id,
+    created_at: f.created_at,
+    receiver: profileMap[f.receiver_id] ?? { id: f.receiver_id, nickname: '알 수 없음', avatar_url: null },
+  }));
+
+  return NextResponse.json({ friends, incoming, outgoing });
 }
 
-// POST /api/friends — 친구 요청 보내기
+// POST /api/friends — 이웃 요청
 export async function POST(request: Request) {
   const user = await getUser(request);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -93,7 +99,6 @@ export async function POST(request: Request) {
   if (!target) return NextResponse.json({ error: '해당 닉네임의 사용자를 찾을 수 없습니다.' }, { status: 404 });
   if (target.id === user.id) return NextResponse.json({ error: '자기 자신에게는 요청할 수 없습니다.' }, { status: 400 });
 
-  // 이미 관계 있는지 확인 (maybeSingle — 없으면 null)
   const { data: existing } = await db
     .from('friendships')
     .select('id, status')
@@ -101,7 +106,7 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   if (existing) {
-    const msg = existing.status === 'accepted' ? '이미 이웃입니다.' : '이미 요청이 존재합니다.';
+    const msg = existing.status === 'accepted' ? '이미 이웃입니다.' : '이미 요청을 보냈습니다.';
     return NextResponse.json({ error: msg }, { status: 409 });
   }
 
@@ -129,7 +134,7 @@ export async function PATCH(request: Request) {
 
   const { data: friendship } = await db
     .from('friendships')
-    .select('id, status')
+    .select('id')
     .eq('id', friendshipId)
     .eq('receiver_id', user.id)
     .eq('status', 'pending')
@@ -138,11 +143,13 @@ export async function PATCH(request: Request) {
   if (!friendship) return NextResponse.json({ error: '요청을 찾을 수 없습니다.' }, { status: 404 });
 
   if (action === 'accept') {
-    await db.from('friendships').update({ status: 'accepted', updated_at: new Date().toISOString() }).eq('id', friendshipId);
-    return NextResponse.json({ success: true, message: '이웃 요청을 수락했습니다.' });
+    await db.from('friendships')
+      .update({ status: 'accepted', updated_at: new Date().toISOString() })
+      .eq('id', friendshipId);
+    return NextResponse.json({ success: true, message: '이웃이 되었습니다!' });
   } else {
     await db.from('friendships').delete().eq('id', friendshipId);
-    return NextResponse.json({ success: true, message: '이웃 요청을 거절했습니다.' });
+    return NextResponse.json({ success: true, message: '요청을 거절했습니다.' });
   }
 }
 
