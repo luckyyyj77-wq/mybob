@@ -115,9 +115,6 @@ export default function CameraCapturePage() {
   const [barcodeScanning, setBarcodeScanning] = useState(false);
   const [barcodeDetected, setBarcodeDetected] = useState<string | null>(null);
   const [barcodeTimeout, setBarcodeTimeout] = useState(false);
-  const [focusSupported, setFocusSupported] = useState(false);
-  const [focusDistance, setFocusDistance] = useState(0);
-  const [rearCameraDeviceId, setRearCameraDeviceId] = useState<string | undefined>(undefined);
   const barcodeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -135,13 +132,6 @@ export default function CameraCapturePage() {
       } catch { /* 무시 */ }
     });
   }, []);
-
-  // 카메라 권한 허용 후 후면 카메라 deviceId 미리 조회
-  useEffect(() => {
-    if (permState === 'granted') {
-      getRearCameraDeviceId().then(id => setRearCameraDeviceId(id));
-    }
-  }, [permState]);
 
   useEffect(() => {
     // 이미 허용된 것으로 캐시된 경우 바로 granted
@@ -188,47 +178,34 @@ export default function CameraCapturePage() {
     }
   };
 
-  // Android 후면 메인 카메라 deviceId 탐색
-  const getRearCameraDeviceId = async (): Promise<string | undefined> => {
-    try {
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const videoDevices = devices.filter(d => d.kind === 'videoinput');
-      // "back", "rear", "environment" 키워드가 있는 장치 우선 선택
-      const rear = videoDevices.find(d =>
-        /back|rear|environment/i.test(d.label)
-      );
-      // 없으면 마지막 videoinput (Android는 보통 후면이 마지막)
-      return rear?.deviceId ?? videoDevices[videoDevices.length - 1]?.deviceId;
-    } catch {
-      return undefined;
-    }
-  };
-
   // OCR 모드 전용 카메라 스트림 시작
   const startOcrCamera = useCallback(async () => {
     if (ocrStreamRef.current) return;
 
-    // Android: deviceId로 후면 메인 카메라 직접 지정 → 화질 대폭 개선
-    const deviceId = await getRearCameraDeviceId();
-
-    const buildConstraints = (useDeviceId: boolean): MediaStreamConstraints => ({
-      video: useDeviceId && deviceId
-        ? { deviceId: { exact: deviceId }, width: { min: 1280, ideal: 1920, max: 3840 }, height: { min: 720, ideal: 1080, max: 2160 } }
-        : { facingMode: { ideal: 'environment' }, width: { min: 1280, ideal: 1920, max: 3840 }, height: { min: 720, ideal: 1080, max: 2160 } },
-    });
-
+    // facingMode environment + ideal 해상도만 사용
+    // min/max 범위 제약은 Android에서 오히려 저해상도 폴백을 유발하므로 제거
+    // deviceId 방식도 제거 — iOS에서 줌 카메라 선택 부작용
     let stream: MediaStream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia(buildConstraints(true));
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { exact: 'environment' },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
+      });
     } catch {
+      // exact facingMode 실패(일부 안드로이드) → ideal로 폴백
       try {
-        stream = await navigator.mediaDevices.getUserMedia(buildConstraints(false));
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+          },
+        });
       } catch {
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
-        } catch {
-          return;
-        }
+        return;
       }
     }
     ocrStreamRef.current = stream;
@@ -236,15 +213,8 @@ export default function CameraCapturePage() {
     const track = stream.getVideoTracks()[0];
     if (track) {
       const caps = track.getCapabilities() as any;
-      // 연속 자동초점만 적용 (화이트밸런스·노출은 Android에서 비표준이라 무시)
       if (caps.focusMode?.includes('continuous')) {
         try { await track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as any] }); } catch { /* 무시 */ }
-      }
-      if (caps.focusDistance) {
-        setFocusSupported(true);
-        const min = caps.focusDistance.min ?? 0;
-        const max = caps.focusDistance.max ?? 100;
-        setFocusDistance(Math.round((min + max) / 2));
       }
     }
 
@@ -268,7 +238,6 @@ export default function CameraCapturePage() {
     setBarcodeScanning(false);
     setBarcodeDetected(null);
     setBarcodeTimeout(false);
-    setFocusSupported(false);
   }, []);
 
   // OCR 모드 진입/해제 시 카메라 전환
@@ -327,20 +296,6 @@ export default function CameraCapturePage() {
     startBarcodeScanning();
   }, [startBarcodeScanning]);
 
-  // 수동 포커스 거리 조절
-  const handleFocusChange = useCallback(async (value: number) => {
-    setFocusDistance(value);
-    const track = ocrStreamRef.current?.getVideoTracks()[0];
-    if (!track) return;
-    const caps = track.getCapabilities() as any;
-    if (!caps.focusDistance) return;
-    const min = caps.focusDistance.min ?? 0;
-    const max = caps.focusDistance.max ?? 100;
-    const actual = min + (value / 100) * (max - min);
-    try {
-      await track.applyConstraints({ advanced: [{ focusMode: 'manual', focusDistance: actual } as any] });
-    } catch { /* 미지원 기기 무시 */ }
-  }, []);
 
   const capture = useCallback(() => {
     if (webcamRef.current) {
@@ -715,10 +670,11 @@ export default function CameraCapturePage() {
               ref={webcamRef}
               screenshotFormat="image/jpeg"
               screenshotQuality={0.95}
-              videoConstraints={rearCameraDeviceId
-                ? { deviceId: { exact: rearCameraDeviceId }, width: { min: 1280, ideal: 1920, max: 3840 }, height: { min: 720, ideal: 1080, max: 2160 } }
-                : { facingMode: { ideal: 'environment' }, width: { min: 1280, ideal: 1920, max: 3840 }, height: { min: 720, ideal: 1080, max: 2160 } }
-              }
+              videoConstraints={{
+                facingMode: { ideal: 'environment' },
+                width: { ideal: 1920 },
+                height: { ideal: 1080 },
+              }}
               onUserMedia={(stream) => {
                 setCameraReady(true);
                 const track = stream.getVideoTracks()[0];
@@ -851,16 +807,6 @@ export default function CameraCapturePage() {
               </div>
             )}
 
-            {/* OCR 포커스 슬라이더 — 지원 기기만 */}
-            {captureMode === 'ocr' && focusSupported && (
-              <div style={{ position: 'absolute', top: '72px', right: '16px', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-                <input
-                  type="range" min={0} max={100} value={focusDistance}
-                  onChange={e => handleFocusChange(Number(e.target.value))}
-                  style={{ writingMode: 'vertical-lr' as any, direction: 'rtl' as any, width: '28px', height: '100px', cursor: 'pointer', accentColor: '#a78bfa' }}
-                />
-              </div>
-            )}
 
             {/* 촬영 버튼 (음식 모드) */}
             {captureMode === 'food' && (
