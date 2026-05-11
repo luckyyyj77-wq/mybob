@@ -14,9 +14,17 @@ const INGREDIENTS = [
   '연근', '무', '파', '생강', '미역', '다시마', '버섯', '표고버섯',
 ];
 
+// 28 × 46 × 100 = 128,800 조합
 export function generateNickname(): string {
   const adj = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
   const ing = INGREDIENTS[Math.floor(Math.random() * INGREDIENTS.length)];
-  const num = String(Math.floor(Math.random() * 900) + 100); // 100~999
+  const num = String(Math.floor(Math.random() * 100) + 100); // 100~199
   return `${adj}${ing}_${num}`;
+}
+
+// 조합 고갈 시 임시 발급: mb_ + 영문+숫자 8자리
+export function generateFallbackNickname(): string {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  const rand = Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+  return `mb_${rand}`;
 }

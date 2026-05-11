@@ -69,7 +69,8 @@ export default function CommunityLayout({ children }: { children: React.ReactNod
         {/* Tabs */}
         <nav style={{ display: 'flex' }}>
           {[
-            { label: '추천 피드', href: '/community/recommendation', proOnly: false },
+            { label: '추천', href: '/community/recommendation', proOnly: false },
+            { label: '이웃', href: '/community/neighbors', proOnly: false },
             { label: '챌린지', href: '/community/challenge', proOnly: true },
           ].map((tab, i) => {
             const active = pathname === tab.href;
@@ -79,7 +80,7 @@ export default function CommunityLayout({ children }: { children: React.ReactNod
                 key={tab.href}
                 href={locked ? '#' : tab.href}
                 style={{
-                  padding: '10px 20px', fontSize: '12px',
+                  flex: 1, padding: '10px 0', fontSize: '12px', textAlign: 'center',
                   color: active ? 'white' : locked ? '#d1d5db' : 'black',
                   backgroundColor: active ? 'black' : 'white',
                   textDecoration: 'none',
