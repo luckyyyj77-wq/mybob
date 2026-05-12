@@ -58,6 +58,7 @@ export default function NeighborsPage() {
   const [sendLoading, setSendLoading] = useState(false);
   const [sendResult, setSendResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -155,6 +156,11 @@ export default function NeighborsPage() {
 
   const handleRemove = async (friendshipId: string) => {
     if (!token) return;
+    if (confirmRemoveId !== friendshipId) {
+      setConfirmRemoveId(friendshipId);
+      return;
+    }
+    setConfirmRemoveId(null);
     await withActionLoading(friendshipId, async () => {
       await fetch('/api/friends', {
         method: 'DELETE',
@@ -182,7 +188,7 @@ export default function NeighborsPage() {
           { key: 'requests', label: `요청${incomingCount > 0 ? ` · ${incomingCount}` : ''}` },
           { key: 'add', label: '+ 추가' },
         ] as { key: typeof tab; label: string }[]).map((t) => (
-          <button key={t.key} onClick={() => setTab(t.key)} style={{
+          <button key={t.key} onClick={() => { setTab(t.key); setConfirmRemoveId(null); }} style={{
             flex: 1, padding: '12px 0', fontSize: '12px', letterSpacing: '0.5px',
             border: 'none', cursor: 'pointer', backgroundColor: 'white',
             color: tab === t.key ? '#6B21A8' : '#9ca3af',
@@ -217,13 +223,32 @@ export default function NeighborsPage() {
                   <div style={{ flex: 1 }}>
                     <p style={{ fontSize: '14px', color: 'black' }}>{f.nickname}</p>
                   </div>
-                  <button
-                    onClick={() => handleRemove(f.friendshipId)}
-                    disabled={!!actionLoading[f.friendshipId]}
-                    style={{ background: 'none', border: '1px solid #e5e7eb', padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', color: '#9ca3af', fontSize: '11px', opacity: actionLoading[f.friendshipId] ? 0.5 : 1 }}
-                  >
-                    <FaUserMinus size={11} /> {actionLoading[f.friendshipId] ? '...' : '삭제'}
-                  </button>
+                  {confirmRemoveId === f.friendshipId ? (
+                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                      <span style={{ fontSize: '11px', color: '#ef4444', marginRight: '2px' }}>삭제할까요?</span>
+                      <button
+                        onClick={() => handleRemove(f.friendshipId)}
+                        disabled={!!actionLoading[f.friendshipId]}
+                        style={{ padding: '5px 10px', backgroundColor: '#ef4444', color: 'white', border: 'none', cursor: 'pointer', fontSize: '11px', opacity: actionLoading[f.friendshipId] ? 0.5 : 1 }}
+                      >
+                        {actionLoading[f.friendshipId] ? '...' : '확인'}
+                      </button>
+                      <button
+                        onClick={() => setConfirmRemoveId(null)}
+                        style={{ padding: '5px 10px', background: 'none', border: '1px solid #e5e7eb', cursor: 'pointer', fontSize: '11px', color: '#9ca3af' }}
+                      >
+                        취소
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => handleRemove(f.friendshipId)}
+                      disabled={!!actionLoading[f.friendshipId]}
+                      style={{ background: 'none', border: '1px solid #e5e7eb', padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', color: '#9ca3af', fontSize: '11px', opacity: actionLoading[f.friendshipId] ? 0.5 : 1 }}
+                    >
+                      <FaUserMinus size={11} /> 삭제
+                    </button>
+                  )}
                 </div>
               ))}
             </div>

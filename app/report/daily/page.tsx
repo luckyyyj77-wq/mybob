@@ -107,8 +107,11 @@ export default function DailyReportPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: '#e5e7eb' }}>
 
       {/* 날짜 네비게이션 */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', backgroundColor: 'white' }}>
-        <button onClick={() => moveDate(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 8px', backgroundColor: 'white' }}>
+        <button
+          onPointerDown={() => moveDate(-1)}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '12px 20px', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+        >
           <FaChevronLeft size={12} color="black" />
         </button>
         <div style={{ textAlign: 'center' }}>
@@ -116,9 +119,9 @@ export default function DailyReportPage() {
           {isToday && <p style={{ fontSize: '10px', color: '#6B21A8', letterSpacing: '1px' }}>TODAY</p>}
         </div>
         <button
-          onClick={() => moveDate(1)}
+          onPointerDown={() => !isToday && moveDate(1)}
           disabled={isToday}
-          style={{ background: 'none', border: 'none', cursor: isToday ? 'default' : 'pointer', padding: '4px 8px', opacity: isToday ? 0.2 : 1 }}
+          style={{ background: 'none', border: 'none', cursor: isToday ? 'default' : 'pointer', padding: '12px 20px', opacity: isToday ? 0.2 : 1, touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
         >
           <FaChevronRight size={12} color="black" />
         </button>

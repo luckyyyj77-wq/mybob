@@ -80,6 +80,11 @@ export async function GET(request: Request) {
   return NextResponse.json({ friends, incoming, outgoing });
 }
 
+const MAX_FRIENDS = 200;        // 최대 이웃 수
+const MAX_PENDING_OUT = 30;     // 보낸 요청 대기 최대
+const DAILY_REQUEST_LIMIT = 20; // 하루 최대 요청 수
+const BURST_LIMIT = 10;         // 연속 요청 한도 (1시간 내)
+
 // POST /api/friends — 이웃 요청
 export async function POST(request: Request) {
   const user = await getUser(request);
@@ -89,6 +94,47 @@ export async function POST(request: Request) {
   if (!nickname?.trim()) return NextResponse.json({ error: '닉네임을 입력하세요.' }, { status: 400 });
 
   const db = createClient(supabaseUrl, supabaseServiceRoleKey);
+
+  // ── 한도 체크 병렬 실행 ──────────────────────────────────────────
+  const today = new Date().toISOString().slice(0, 10);
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+
+  const [acceptedRes, pendingOutRes, dailyRes, burstRes] = await Promise.all([
+    // 현재 이웃 수
+    db.from('friendships')
+      .select('id', { count: 'exact', head: true })
+      .or(`requester_id.eq.${user.id},receiver_id.eq.${user.id}`)
+      .eq('status', 'accepted'),
+    // 보낸 요청 대기 중 수
+    db.from('friendships')
+      .select('id', { count: 'exact', head: true })
+      .eq('requester_id', user.id)
+      .eq('status', 'pending'),
+    // 오늘 보낸 요청 수
+    db.from('friendships')
+      .select('id', { count: 'exact', head: true })
+      .eq('requester_id', user.id)
+      .gte('created_at', `${today}T00:00:00.000Z`),
+    // 최근 1시간 내 보낸 요청 수 (연속 요청 방지)
+    db.from('friendships')
+      .select('id', { count: 'exact', head: true })
+      .eq('requester_id', user.id)
+      .gte('created_at', oneHourAgo),
+  ]);
+
+  if ((acceptedRes.count ?? 0) >= MAX_FRIENDS) {
+    return NextResponse.json({ error: `이웃은 최대 ${MAX_FRIENDS}명까지 가능합니다.` }, { status: 429 });
+  }
+  if ((pendingOutRes.count ?? 0) >= MAX_PENDING_OUT) {
+    return NextResponse.json({ error: `대기 중인 요청이 ${MAX_PENDING_OUT}개를 초과했습니다. 수락되지 않은 요청을 취소해 주세요.` }, { status: 429 });
+  }
+  if ((dailyRes.count ?? 0) >= DAILY_REQUEST_LIMIT) {
+    return NextResponse.json({ error: `오늘 이웃 요청 한도(${DAILY_REQUEST_LIMIT}회)를 초과했습니다. 내일 다시 시도해 주세요.` }, { status: 429 });
+  }
+  if ((burstRes.count ?? 0) >= BURST_LIMIT) {
+    return NextResponse.json({ error: `연속 요청이 많습니다. 1시간 후에 다시 시도해 주세요.` }, { status: 429 });
+  }
+  // ────────────────────────────────────────────────────────────────
 
   const { data: target } = await db
     .from('profiles')

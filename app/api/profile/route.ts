@@ -23,7 +23,7 @@ export async function GET(request: Request) {
   const adminSupabase = createClient(supabaseUrl, supabaseServiceRoleKey);
   const { data: profile } = await adminSupabase
     .from('profiles')
-    .select('plan, nickname, avatar_url')
+    .select('plan, nickname, avatar_url, nickname_changed')
     .eq('id', user.id)
     .single();
 
@@ -41,6 +41,7 @@ export async function GET(request: Request) {
     plan: profile?.plan ?? 'free',
     nickname,
     avatar_url: profile?.avatar_url ?? null,
+    nickname_changed: profile?.nickname_changed ?? false,
     email: user.email,
   });
 }
@@ -53,25 +54,29 @@ export async function PATCH(request: Request) {
 
   const { data: profile } = await adminSupabase
     .from('profiles')
-    .select('plan')
+    .select('plan, nickname_changed')
     .eq('id', user.id)
     .single();
 
   const plan = profile?.plan ?? 'free';
 
   const body = await request.json();
-  const updates: Record<string, string> = {};
+  const updates: Record<string, unknown> = {};
 
   if (typeof body.nickname === 'string') {
-    // 무료 사용자는 닉네임 직접 변경 불가
     if (plan === 'free') {
       return NextResponse.json({ error: 'PRO_REQUIRED' }, { status: 403 });
+    }
+    // PRO/lifetime 사용자는 1회만 변경 가능
+    if (profile?.nickname_changed) {
+      return NextResponse.json({ error: 'NICKNAME_ALREADY_CHANGED' }, { status: 403 });
     }
     const nick = body.nickname.trim();
     if (nick.length < 2 || nick.length > 16) {
       return NextResponse.json({ error: '닉네임은 2~16자여야 합니다.' }, { status: 400 });
     }
     updates.nickname = nick;
+    updates.nickname_changed = true;
   }
 
   if (typeof body.avatar_url === 'string') {

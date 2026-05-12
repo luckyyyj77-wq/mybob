@@ -129,8 +129,11 @@ export default function WeeklyReportPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: '#e5e7eb' }}>
 
       {/* 주간 네비게이션 */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', backgroundColor: 'white' }}>
-        <button onClick={() => setWeekOffset(w => w - 1)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 8px', backgroundColor: 'white' }}>
+        <button
+          onPointerDown={() => setWeekOffset(w => w - 1)}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '12px 20px', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+        >
           <FaChevronLeft size={12} color="black" />
         </button>
         <div style={{ textAlign: 'center' }}>
@@ -138,9 +141,9 @@ export default function WeeklyReportPage() {
           {isThisWeek && <p style={{ fontSize: '10px', color: '#6B21A8', letterSpacing: '1px' }}>THIS WEEK</p>}
         </div>
         <button
-          onClick={() => setWeekOffset(w => w + 1)}
+          onPointerDown={() => !isThisWeek && setWeekOffset(w => w + 1)}
           disabled={isThisWeek}
-          style={{ background: 'none', border: 'none', cursor: isThisWeek ? 'default' : 'pointer', padding: '4px 8px', opacity: isThisWeek ? 0.2 : 1 }}
+          style={{ background: 'none', border: 'none', cursor: isThisWeek ? 'default' : 'pointer', padding: '12px 20px', opacity: isThisWeek ? 0.2 : 1, touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
         >
           <FaChevronRight size={12} color="black" />
         </button>

@@ -247,7 +247,7 @@ export default function SettingsPage() {
   const [deleteSchedule, setDeleteSchedule] = useState<{ scheduledAt: Date; daysLeft: number } | null>(null);
   const [planStatus, setPlanStatus] = useState<PlanStatus | null>(null);
   const [planLoaded, setPlanLoaded] = useState(false);
-  const [profile, setProfile] = useState<{ nickname: string | null; avatar_url: string | null }>({ nickname: null, avatar_url: null });
+  const [profile, setProfile] = useState<{ nickname: string | null; avatar_url: string | null; nickname_changed: boolean }>({ nickname: null, avatar_url: null, nickname_changed: false });
   const [nicknameInput, setNicknameInput] = useState('');
   const [nicknameSaving, setNicknameSaving] = useState(false);
   const [nicknameSaved, setNicknameSaved] = useState(false);
@@ -271,7 +271,7 @@ export default function SettingsPage() {
           if (statusRes.ok) setPlanStatus(await statusRes.json());
           if (profileRes.ok) {
             const p = await profileRes.json();
-            setProfile({ nickname: p.nickname, avatar_url: p.avatar_url });
+            setProfile({ nickname: p.nickname, avatar_url: p.avatar_url, nickname_changed: p.nickname_changed ?? false });
             setNicknameInput(p.nickname ?? '');
           }
         } catch { /* 무시 */ }
@@ -304,9 +304,11 @@ export default function SettingsPage() {
     });
     const result = await res.json();
     if (result.success) {
-      setProfile(prev => ({ ...prev, nickname: nick }));
+      setProfile(prev => ({ ...prev, nickname: nick, nickname_changed: true }));
       setNicknameSaved(true);
       setTimeout(() => setNicknameSaved(false), 1500);
+    } else if (result.error === 'NICKNAME_ALREADY_CHANGED') {
+      alert('닉네임은 1회만 변경할 수 있습니다.');
     } else {
       alert(result.error || '저장 실패');
     }
@@ -426,33 +428,43 @@ export default function SettingsPage() {
 
                 {/* 닉네임 입력 */}
                 <div>
-                  <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '6px' }}>닉네임 (2~16자)</p>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <input
-                      type="text"
-                      value={nicknameInput}
-                      onChange={e => setNicknameInput(e.target.value)}
-                      maxLength={16}
-                      placeholder="닉네임을 입력하세요"
-                      style={{
-                        flex: 1, padding: '10px 12px', border: '1px solid #e5e7eb',
-                        fontSize: '14px', outline: 'none', backgroundColor: 'white',
-                      }}
-                    />
-                    <button
-                      onClick={handleNicknameSave}
-                      disabled={nicknameSaving || nicknameInput.trim() === (profile.nickname ?? '')}
-                      style={{
-                        padding: '10px 16px', fontSize: '12px', border: 'none',
-                        backgroundColor: nicknameSaved ? '#6B21A8' : nicknameSaving || nicknameInput.trim() === (profile.nickname ?? '') ? '#e5e7eb' : 'black',
-                        color: nicknameSaved || (!nicknameSaving && nicknameInput.trim() !== (profile.nickname ?? '')) ? 'white' : '#9ca3af',
-                        cursor: nicknameSaving || nicknameInput.trim() === (profile.nickname ?? '') ? 'not-allowed' : 'pointer',
-                        transition: 'all 0.2s', letterSpacing: '0.5px',
-                      }}
-                    >
-                      {nicknameSaved ? '저장됨' : '저장'}
-                    </button>
-                  </div>
+                  <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '6px' }}>닉네임</p>
+                  {profile.nickname_changed ? (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', border: '1px solid #e5e7eb', backgroundColor: '#fafafa' }}>
+                      <p style={{ fontSize: '14px', color: 'black' }}>{profile.nickname}</p>
+                      <span style={{ fontSize: '11px', color: '#9ca3af' }}>변경 완료 (1회 한정)</span>
+                    </div>
+                  ) : (
+                    <>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <input
+                          type="text"
+                          value={nicknameInput}
+                          onChange={e => setNicknameInput(e.target.value)}
+                          maxLength={16}
+                          placeholder="닉네임을 입력하세요 (2~16자)"
+                          style={{
+                            flex: 1, padding: '10px 12px', border: '1px solid #e5e7eb',
+                            fontSize: '14px', outline: 'none', backgroundColor: 'white',
+                          }}
+                        />
+                        <button
+                          onClick={handleNicknameSave}
+                          disabled={nicknameSaving || nicknameInput.trim() === (profile.nickname ?? '') || nicknameInput.trim().length < 2}
+                          style={{
+                            padding: '10px 16px', fontSize: '12px', border: 'none',
+                            backgroundColor: nicknameSaved ? '#6B21A8' : (nicknameSaving || nicknameInput.trim() === (profile.nickname ?? '') || nicknameInput.trim().length < 2) ? '#e5e7eb' : 'black',
+                            color: nicknameSaved || (!nicknameSaving && nicknameInput.trim() !== (profile.nickname ?? '') && nicknameInput.trim().length >= 2) ? 'white' : '#9ca3af',
+                            cursor: (nicknameSaving || nicknameInput.trim() === (profile.nickname ?? '') || nicknameInput.trim().length < 2) ? 'not-allowed' : 'pointer',
+                            transition: 'all 0.2s', letterSpacing: '0.5px',
+                          }}
+                        >
+                          {nicknameSaved ? '저장됨' : '저장'}
+                        </button>
+                      </div>
+                      <p style={{ fontSize: '11px', color: '#ef4444', marginTop: '6px' }}>닉네임은 1회만 변경할 수 있습니다.</p>
+                    </>
+                  )}
                 </div>
 
               </div>

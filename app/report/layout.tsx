@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { FaArrowLeft } from 'react-icons/fa';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 export default function ReportLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
 
   return (
     <div style={{
@@ -29,7 +30,7 @@ export default function ReportLayout({ children }: { children: React.ReactNode }
           </Link>
         </div>
 
-        {/* Tabs */}
+        {/* Tabs — button 기반으로 터치 반응성 개선 */}
         <nav style={{ display: 'flex' }}>
           {[
             { label: '일간', href: '/report/daily' },
@@ -39,26 +40,31 @@ export default function ReportLayout({ children }: { children: React.ReactNode }
           ].map((tab, i) => {
             const active = pathname === tab.href;
             return (
-              <Link
+              <button
                 key={tab.href}
-                href={tab.href}
+                onPointerDown={() => router.push(tab.href)}
                 style={{
                   flex: 1,
-                  padding: '10px 0',
+                  minHeight: '48px',
+                  padding: '0',
                   fontSize: '12px',
                   letterSpacing: '1px',
                   textTransform: 'uppercase',
-                  textDecoration: 'none',
                   textAlign: 'center',
                   color: active ? 'white' : 'black',
                   backgroundColor: active ? 'black' : 'white',
                   borderLeft: i === 0 ? '1px solid #e5e7eb' : 'none',
                   borderRight: '1px solid #e5e7eb',
+                  borderTop: 'none',
+                  borderBottom: 'none',
+                  cursor: 'pointer',
+                  touchAction: 'manipulation',
                   transition: 'all 0.15s',
+                  WebkitTapHighlightColor: 'transparent',
                 }}
               >
                 {tab.label}
-              </Link>
+              </button>
             );
           })}
         </nav>

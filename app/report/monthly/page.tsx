@@ -107,15 +107,21 @@ export default function MonthlyReportPage() {
 
       {/* 월 네비게이션 */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-        <button onClick={() => setMonthOffset(o => o - 1)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px' }}>
+        <button
+          onPointerDown={() => setMonthOffset(o => o - 1)}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '12px 20px', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+        >
           <FaChevronLeft size={14} color="black" />
         </button>
         <div style={{ textAlign: 'center' }}>
           <p style={{ fontSize: '16px', fontWeight: 400, color: 'black' }}>{year}년 {month + 1}월</p>
           {isCurrentMonth && <span style={{ fontSize: '9px', letterSpacing: '2px', color: '#6B21A8', textTransform: 'uppercase' }}>THIS MONTH</span>}
         </div>
-        <button onClick={() => setMonthOffset(o => o + 1)} disabled={monthOffset >= 0}
-          style={{ background: 'none', border: 'none', cursor: monthOffset < 0 ? 'pointer' : 'default', padding: '8px', opacity: monthOffset < 0 ? 1 : 0.2 }}>
+        <button
+          onPointerDown={() => monthOffset < 0 && setMonthOffset(o => o + 1)}
+          disabled={monthOffset >= 0}
+          style={{ background: 'none', border: 'none', cursor: monthOffset < 0 ? 'pointer' : 'default', padding: '12px 20px', opacity: monthOffset < 0 ? 1 : 0.2, touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+        >
           <FaChevronRight size={14} color="black" />
         </button>
       </div>
