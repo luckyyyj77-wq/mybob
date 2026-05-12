@@ -74,8 +74,8 @@ export default function Home() {
     const localStats = computeTodayStats(localMeals);
     setTodayStats(localStats);
 
-    // 2단계: AI 코치 — 로컬 데이터로 바로 시작 (기록 있을 때)
-    if (localStats.count > 0 && !aiFetchedRef.current) {
+    // 2단계: AI 코치 — 로컬 데이터로 바로 시작 (기록 5개 이상일 때)
+    if (localStats.count >= 5 && !aiFetchedRef.current) {
       aiFetchedRef.current = true;
       const weekly = buildWeekly(localMeals);
       const goalData = JSON.parse(localStorage.getItem('mybob_goal') || '{"goal":"유지"}');
@@ -105,8 +105,8 @@ export default function Home() {
       const newStats = computeTodayStats(merged);
       setTodayStats(newStats);
 
-      // 서버 동기화 후 AI 아직 안 불렀고 오늘 기록 있으면 AI 요청
-      if (newStats.count > 0 && !aiFetchedRef.current) {
+      // 서버 동기화 후 AI 아직 안 불렀고 오늘 기록 5개 이상이면 AI 요청
+      if (newStats.count >= 5 && !aiFetchedRef.current) {
         aiFetchedRef.current = true;
         const weekly = buildWeekly(merged);
         const goalData = JSON.parse(localStorage.getItem('mybob_goal') || '{"goal":"유지"}');
@@ -234,7 +234,7 @@ export default function Home() {
               ) : aiFeedback ? (
                 <p style={{ fontSize: '13px', color: '#374151', lineHeight: 1.6 }}>"{aiFeedback.feedback}"</p>
               ) : (
-                <p style={{ fontSize: '12px', color: '#9ca3af' }}>기록이 쌓이면 코칭이 시작됩니다.</p>
+                <p style={{ fontSize: '12px', color: '#9ca3af' }}>식단 5개 이상 기록하면 코칭이 시작됩니다.</p>
               )}
             </div>
           </li>
