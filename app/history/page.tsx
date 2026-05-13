@@ -8,6 +8,8 @@ import { FaThList, FaThLarge, FaTh, FaPlus, FaMinus, FaSearch, FaTimes } from 'r
 import { supabase } from '@/lib/supabase/client';
 import { MealPhoto } from '@/components/MealPhoto';
 
+const PAGE_SIZE = 20;
+
 type Meal = {
   id: string;
   food_name: string;
@@ -97,6 +99,10 @@ export default function HistoryPage() {
   const [sort, setSort] = useState<SortKey>('date_desc');
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // 무한스크롤 pagination
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     const local: Meal[] = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
     const sorted = (arr: Meal[]) => arr.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -121,12 +127,30 @@ export default function HistoryPage() {
     if (showSearch) setTimeout(() => searchInputRef.current?.focus(), 80);
   }, [showSearch]);
 
+  // 필터/정렬 변경 시 visibleCount 리셋
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [query, category, sort, viewMode]);
+
+  // IntersectionObserver — sentinel 진입 시 더 로드
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(
+      entries => { if (entries[0].isIntersecting) setVisibleCount(c => c + PAGE_SIZE); },
+      { rootMargin: '200px' }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, []);
+
   const handleZoom = (delta: number) => {
     setGalleryScale(prev => Math.max(3, Math.min(6, prev + delta)));
   };
 
   const filtered = applyFilters(meals, query, category, sort);
-  const groups = groupByDate(filtered);
+  const visibleFiltered = filtered.slice(0, visibleCount);
+  const groups = groupByDate(visibleFiltered);
 
   // 검색/필터 활성화 여부
   const isFiltered = query.trim() !== '' || category !== '전체' || sort !== 'date_desc';
@@ -372,7 +396,7 @@ export default function HistoryPage() {
               <motion.div key="grid" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '2px', backgroundColor: '#e5e7eb' }}
               >
-                {filtered.map(meal => (
+                {visibleFiltered.map(meal => (
                   <div key={meal.id} onClick={() => router.push(`/history/${meal.id}`)}
                     style={{ position: 'relative', width: '100%', aspectRatio: '1/1', backgroundColor: '#f3f4f6', cursor: 'pointer', overflow: 'hidden' }}
                   >
@@ -392,7 +416,7 @@ export default function HistoryPage() {
               <motion.div key="gallery" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 style={{ display: 'grid', gridTemplateColumns: `repeat(${galleryScale}, 1fr)`, gap: '1px', backgroundColor: '#e5e7eb' }}
               >
-                {filtered.map(meal => (
+                {visibleFiltered.map(meal => (
                   <div key={meal.id} onClick={() => router.push(`/history/${meal.id}`)}
                     style={{ width: '100%', aspectRatio: '1/1', backgroundColor: '#f3f4f6', cursor: 'pointer', overflow: 'hidden' }}
                   >
@@ -405,6 +429,11 @@ export default function HistoryPage() {
           </AnimatePresence>
         )}
       </main>
+
+      {/* 무한스크롤 sentinel */}
+      {!loading && visibleCount < filtered.length && (
+        <div ref={sentinelRef} style={{ height: '40px' }} />
+      )}
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>

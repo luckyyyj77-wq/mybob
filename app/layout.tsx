@@ -27,6 +27,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const isAdminRoute = pathname?.startsWith('/admin') || false;
   const isProtectedRoute = pathname === '/' || ['/capture', '/report', '/history', '/community', '/settings'].some(r => pathname?.startsWith(r));
 
+  // 라우트 보호 체크 — pathname은 ref로 추적해 클로저 최신값 유지
+  const pathnameRef = useRef(pathname);
+  useEffect(() => { pathnameRef.current = pathname; }, [pathname]);
+
   useEffect(() => {
     // 최초 1회만 스플래시 표시
     const splashShown = localStorage.getItem('mybob_splash_shown');
@@ -39,27 +43,33 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       }, 2000);
     }
 
-    // iOS detection (no beforeinstallprompt support)
+    // iOS detection
     const ua = navigator.userAgent;
     const ios = /iphone|ipad|ipod/i.test(ua) && !(window as any).MSStream;
     setIsIOS(ios);
 
-    const checkSession = async () => {
-      const { data: { session: s } } = await supabase.auth.getSession();
+    const redirect = (s: typeof session) => {
+      const p = pathnameRef.current ?? '';
+      const isAuth = p.startsWith('/auth');
+      const isProtected = p === '/' || ['/capture', '/report', '/history', '/community', '/settings'].some(r => p.startsWith(r));
+      if (!s && isProtected && !isAuth) router.push('/auth/login');
+      else if (s && isAuth) router.push('/');
+    };
+
+    // 초기 세션 1회만 체크
+    supabase.auth.getSession().then(({ data: { session: s } }) => {
       setSession(s);
       setLoading(false);
-      if (!s && isProtectedRoute && !isAuthRoute) router.push('/auth/login');
-      else if (s && isAuthRoute) router.push('/');
-    };
-    checkSession();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange((_e, s) => {
-      setSession(s);
-      if (!s && isProtectedRoute && !isAuthRoute) router.push('/auth/login');
-      else if (s && isAuthRoute) router.push('/');
+      redirect(s);
     });
 
-    // PWA 설치 프롬프트 캐치 — store in ref so it's always current
+    // 이후 로그인/로그아웃 이벤트만 감지
+    const { data: authListener } = supabase.auth.onAuthStateChange((_e, s) => {
+      setSession(s);
+      redirect(s);
+    });
+
+    // PWA 설치 프롬프트 캐치
     const onBeforeInstall = (e: Event) => {
       e.preventDefault();
       installPromptRef.current = e;
@@ -67,10 +77,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     };
     window.addEventListener('beforeinstallprompt', onBeforeInstall);
 
-    // 이미 설치된 경우
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      setIsInstalled(true);
-    }
+    if (window.matchMedia('(display-mode: standalone)').matches) setIsInstalled(true);
     const onInstalled = () => setIsInstalled(true);
     window.addEventListener('appinstalled', onInstalled);
 
@@ -80,7 +87,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       window.removeEventListener('beforeinstallprompt', onBeforeInstall);
       window.removeEventListener('appinstalled', onInstalled);
     };
-  }, [pathname, isProtectedRoute, isAuthRoute, router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleInstall = async () => {
     const prompt = installPromptRef.current;
