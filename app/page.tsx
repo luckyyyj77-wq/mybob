@@ -71,46 +71,42 @@ export default function Home() {
     // 1단계: 로컬 데이터 즉시 렌더링 (블로킹 없음)
     const localRaw = localStorage.getItem('mybob_meals');
     const localMeals: Meal[] = localRaw ? JSON.parse(localRaw) : [];
-    const localStats = computeTodayStats(localMeals);
-    setTodayStats(localStats);
+    setTodayStats(computeTodayStats(localMeals));
 
-    // 2단계: AI 코치 — 로컬 데이터로 바로 시작 (기록 5개 이상일 때)
-    if (localStats.count >= 5 && !aiFetchedRef.current) {
-      aiFetchedRef.current = true;
-      const weekly = buildWeekly(localMeals);
-      const goalData = JSON.parse(localStorage.getItem('mybob_goal') || '{"goal":"유지"}');
-      fetchAI(localStats, weekly, goalData);
-    }
-
-    // 3단계: 서버 데이터 백그라운드 동기화 (UI 차단 없음)
+    // 2단계: 서버 동기화 완료 후 최종 데이터로 AI 1회만 호출
     syncFromServer(localMeals);
   }, []);
 
   const syncFromServer = async (localMeals: Meal[]) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) return;
 
-      const res = await fetch('/api/meals', {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-      if (!res.ok) return;
-      const result = await res.json();
-      if (!result.success || !Array.isArray(result.data)) return;
+      let merged = localMeals;
 
-      const serverIds = new Set(result.data.map((m: Meal) => m.id));
-      const uniqueLocal = localMeals.filter(m => !serverIds.has(m.id));
-      const merged: Meal[] = [...result.data, ...uniqueLocal];
+      if (session?.access_token) {
+        const res = await fetch('/api/meals', {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        if (res.ok) {
+          const result = await res.json();
+          if (result.success && Array.isArray(result.data)) {
+            const serverIds = new Set(result.data.map((m: Meal) => m.id));
+            const uniqueLocal = localMeals.filter(m => !serverIds.has(m.id));
+            merged = [...result.data, ...uniqueLocal];
+            setTodayStats(computeTodayStats(merged));
+          }
+        }
+      }
 
-      const newStats = computeTodayStats(merged);
-      setTodayStats(newStats);
-
-      // 서버 동기화 후 AI 아직 안 불렀고 오늘 기록 5개 이상이면 AI 요청
-      if (newStats.count >= 5 && !aiFetchedRef.current) {
-        aiFetchedRef.current = true;
-        const weekly = buildWeekly(merged);
-        const goalData = JSON.parse(localStorage.getItem('mybob_goal') || '{"goal":"유지"}');
-        fetchAI(newStats, weekly, goalData);
+      // 서버 동기화 완료 후 AI 1회만 호출 (중복 방지)
+      if (!aiFetchedRef.current) {
+        const finalStats = computeTodayStats(merged);
+        if (finalStats.count >= 5) {
+          aiFetchedRef.current = true;
+          const weekly = buildWeekly(merged);
+          const goalData = JSON.parse(localStorage.getItem('mybob_goal') || '{"goal":"유지"}');
+          fetchAI(finalStats, weekly, goalData);
+        }
       }
     } catch { /* 서버 실패 시 로컬 데이터 유지 */ }
   };
@@ -151,9 +147,15 @@ export default function Home() {
     // 3) API 호출 (캐시 없을 때)
     setLoadingFeedback(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return;
+
       const res = await fetch('/api/recommendation', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({
           today: { calories: stats.totalCalories, ...stats.nutrients },
           weekly,

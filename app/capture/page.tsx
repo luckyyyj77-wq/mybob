@@ -8,8 +8,6 @@ import { supabase } from '@/lib/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getStorageMode } from '@/lib/storage-mode';
 import { savePhoto } from '@/lib/indexed-db';
-// import { BrowserMultiFormatReader } from '@zxing/browser'; // TODO: 바코드 스캔 재작업 시 복구
-// import { NotFoundException } from '@zxing/library';
 
 type AnalysisResult = {
   name: string;

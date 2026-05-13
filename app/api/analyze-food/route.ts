@@ -443,32 +443,32 @@ export async function POST(request: Request) {
       }
     } catch { /* 실패 시 DB 조회 생략하고 Gemini 전체 분석으로 진행 */ }
 
-    // Step 2: 한식DB + OpenFoodFacts 병렬 조회 (음식명 인식 성공 시)
+    // Step 2: 한식DB 조회(동기) + OpenFoodFacts·Gemini 병렬 실행
     let dbResult: { source: string; nutrients: any; portion: number } | null = null;
-    if (foodName) {
-      // 한식 DB 먼저 (로컬, 빠름) — 없으면 OpenFoodFacts
-      const koreanHit = searchKoreanDB(foodName);
-      if (koreanHit) {
-        dbResult = koreanHit;
-        console.log(`Korean DB hit: ${foodName}`);
-      } else {
-        const offHit = await searchOpenFoodFacts(foodName);
-        if (offHit) {
-          dbResult = offHit;
-          console.log(`OpenFoodFacts hit: ${foodName}`);
-        }
-      }
+
+    const koreanHit = foodName ? searchKoreanDB(foodName) : null;
+    if (koreanHit) {
+      dbResult = koreanHit;
+      console.log(`Korean DB hit: ${foodName}`);
     }
 
-    // Step 3: Gemini 비전 분석 (DB 결과를 컨텍스트로 제공)
-    const geminiResult = await analyzeWithGemini(
-      base64Data, apiKey,
-      dbResult?.nutrients || null,
-      dbResult?.source || null,
-      dbResult?.portion || 250
-    );
+    // OpenFoodFacts(한식DB 미스일 때)와 Gemini를 병렬 실행
+    const [offHit, geminiResult] = await Promise.all([
+      (!koreanHit && foodName) ? searchOpenFoodFacts(foodName) : Promise.resolve(null),
+      analyzeWithGemini(
+        base64Data, apiKey,
+        koreanHit?.nutrients ?? null,
+        koreanHit?.source ?? null,
+        koreanHit?.portion ?? 250
+      ),
+    ]);
 
-    // Gemini 완전 실패 → DB 데이터 폴백
+    if (offHit) {
+      dbResult = offHit;
+      console.log(`OpenFoodFacts hit: ${foodName}`);
+    }
+
+    // Step 3: Gemini 완전 실패 → DB 데이터 폴백
     if (!geminiResult.success) {
       if (dbResult && foodName) {
         return NextResponse.json({
@@ -523,6 +523,7 @@ export async function POST(request: Request) {
     });
 
   } catch (error: any) {
-    return NextResponse.json({ error: '서버 오류', details: error.message }, { status: 500 });
+    console.error('[analyze-food POST]', error?.message);
+    return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
   }
 }
