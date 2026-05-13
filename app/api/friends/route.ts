@@ -162,7 +162,10 @@ export async function POST(request: Request) {
     status: 'pending',
   });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error('[friends POST]', error.message);
+    return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
+  }
   return NextResponse.json({ success: true, message: `${target.nickname}님에게 이웃 요청을 보냈습니다.` });
 }
 
@@ -213,6 +216,9 @@ export async function DELETE(request: Request) {
     .eq('id', friendshipId)
     .or(`requester_id.eq.${user.id},receiver_id.eq.${user.id}`);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error('[friends DELETE]', error.message);
+    return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
+  }
   return NextResponse.json({ success: true });
 }

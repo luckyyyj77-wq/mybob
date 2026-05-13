@@ -38,13 +38,17 @@ export async function GET(request: Request) {
       .range(offset, offset + limit - 1);
 
     if (category && category !== 'all') query = query.eq('category', category);
-    if (search) query = query.ilike('food_name', `%${search}%`);
+    if (search) {
+      const escaped = search.replace(/[\\%_]/g, '\\$&');
+      query = query.ilike('food_name', `%${escaped}%`);
+    }
 
     const { data, count, error } = await query;
     if (error) throw error;
 
     return NextResponse.json({ success: true, data: data ?? [], total: count ?? 0 });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('[admin/meals GET]', error?.message);
+    return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
   }
 }

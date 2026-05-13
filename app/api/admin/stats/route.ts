@@ -94,6 +94,7 @@ export async function GET(request: Request) {
       data: { totalMeals, todayMeals, weekMeals, totalUsers, recentUsers, categoryStats, dailyStats },
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('[admin/stats GET]', error?.message);
+    return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
   }
 }

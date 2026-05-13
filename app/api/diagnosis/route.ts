@@ -1,10 +1,27 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+async function getUser(request: Request) {
+  const authHeader = request.headers.get('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) return null;
+  const token = authHeader.split(' ')[1];
+  const supabase = createClient(supabaseUrl, supabaseAnonKey);
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) return null;
+  return user;
+}
 
 export async function POST(request: Request) {
   try {
+    const user = await getUser(request);
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
     const { meals, goal, targetCalories } = await request.json();
     const apiKey = process.env.GEMINI_API_KEY?.trim();
-    if (!apiKey) return NextResponse.json({ error: 'API 키 없음' }, { status: 500 });
+    if (!apiKey) return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
     if (!meals || meals.length === 0) return NextResponse.json({ error: 'NO_DATA' }, { status: 422 });
 
     // 최근 30일 기준 통계 계산
@@ -111,6 +128,7 @@ JSON 외 텍스트 절대 금지.`;
     }
     return NextResponse.json({ error: '모든 모델 한도 초과' }, { status: 429 });
   } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    console.error('[diagnosis POST]', e?.message);
+    return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
   }
 }

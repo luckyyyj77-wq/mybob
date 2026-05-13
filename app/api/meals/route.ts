@@ -42,11 +42,12 @@ export async function GET(request: Request) {
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
-    if (error) throw new Error(error.message);
+    if (error) throw error;
     return NextResponse.json({ success: true, data });
 
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('[meals GET]', error?.message);
+    return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
   }
 }
 
@@ -62,10 +63,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'mealData and imageBase64 are required.' }, { status: 400 });
     }
 
-    // 이미지 확장자 추출 및 허용된 타입만 허용
+    // 이미지 형식 검증 (MIME 타입 + 크기 제한 5MB)
     const match = imageBase64.match(/^data:image\/(jpeg|jpg|png|webp);base64,/);
     if (!match) {
       return NextResponse.json({ error: '지원하지 않는 이미지 형식입니다.' }, { status: 400 });
+    }
+    const base64Data = imageBase64.split(';base64,')[1] ?? '';
+    const estimatedBytes = Math.ceil(base64Data.length * 0.75);
+    if (estimatedBytes > 5 * 1024 * 1024) {
+      return NextResponse.json({ error: '이미지 크기는 5MB를 초과할 수 없습니다.' }, { status: 400 });
     }
     const fileExtension = match[1] === 'jpg' ? 'jpeg' : match[1];
 
@@ -138,7 +144,7 @@ export async function POST(request: Request) {
       .insert([dataToInsert])
       .select();
 
-    if (error) throw new Error(error.message);
+    if (error) throw error;
 
     // 저장 성공 후 카운트 증가
     await incrementUploadCount(adminSupabase, user.id);
@@ -150,7 +156,8 @@ export async function POST(request: Request) {
     });
 
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('[meals POST]', error?.message);
+    return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
   }
 }
 
@@ -215,11 +222,12 @@ export async function PATCH(request: Request) {
       .select()
       .single();
 
-    if (error) throw new Error(error.message);
+    if (error) throw error;
     return NextResponse.json({ success: true, data });
 
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('[meals PATCH]', error?.message);
+    return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
   }
 }
 

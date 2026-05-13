@@ -1,10 +1,27 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+async function getUser(request: Request) {
+  const authHeader = request.headers.get('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) return null;
+  const token = authHeader.split(' ')[1];
+  const supabase = createClient(supabaseUrl, supabaseAnonKey);
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) return null;
+  return user;
+}
 
 export async function POST(request: Request) {
   try {
+    const user = await getUser(request);
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
     const { today, weekly, goal } = await request.json();
     const apiKey = process.env.GEMINI_API_KEY?.trim();
-    if (!apiKey) return NextResponse.json({ error: 'API 키가 없습니다.' }, { status: 500 });
+    if (!apiKey) return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
 
     // 목표별 권장 칼로리 및 PFC 비율
     const goalGuide: Record<string, { kcal: number; carbPct: number; proteinPct: number; fatPct: number }> = {
@@ -72,10 +89,12 @@ ${weeklyNote}
       const aiText = result.candidates[0].content.parts[0].text;
       return NextResponse.json({ success: true, data: JSON.parse(aiText) });
     } else {
-      return NextResponse.json({ error: 'AI 피드백 생성 실패', details: result.error?.message }, { status: 500 });
+      console.error('[recommendation] Gemini error:', result.error?.message);
+      return NextResponse.json({ error: 'AI 피드백 생성에 실패했습니다.' }, { status: 500 });
     }
 
   } catch (error: any) {
-    return NextResponse.json({ error: '서버 오류 발생', details: error.message }, { status: 500 });
+    console.error('[recommendation]', error?.message);
+    return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
   }
 }
