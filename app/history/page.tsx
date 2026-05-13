@@ -418,7 +418,7 @@ export default function HistoryPage() {
               >
                 {visibleFiltered.map(meal => (
                   <div key={meal.id} onClick={() => router.push(`/history/${meal.id}`)}
-                    style={{ width: '100%', aspectRatio: '1/1', backgroundColor: '#f3f4f6', cursor: 'pointer', overflow: 'hidden' }}
+                    style={{ position: 'relative', width: '100%', aspectRatio: '1/1', backgroundColor: '#f3f4f6', cursor: 'pointer', overflow: 'hidden' }}
                   >
                     {meal.photo_url && <MealPhoto photoUrl={meal.photo_url} alt={meal.food_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
                   </div>
