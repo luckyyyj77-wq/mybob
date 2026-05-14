@@ -2,11 +2,186 @@
 
 import Link from 'next/link';
 import { FaArrowLeft } from 'react-icons/fa';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { getStorageMode, type StorageMode } from '@/lib/storage-mode';
 import { getCloudDeleteSchedule, cancelCloudDeleteSchedule, requestServerDataDeletion } from '@/lib/storage-migration';
 import { StorageModeModal } from '@/components/StorageModeModal';
+
+// ── WebAuthn / PIN 인증 훅 ──────────────────────────────────────
+function isWebAuthnAvailable(): boolean {
+  return typeof window !== 'undefined' && !!window.PublicKeyCredential;
+}
+
+async function requestBiometric(): Promise<boolean> {
+  try {
+    const challenge = new Uint8Array(32);
+    crypto.getRandomValues(challenge);
+    await navigator.credentials.get({
+      publicKey: {
+        challenge,
+        timeout: 60000,
+        userVerification: 'required',
+        rpId: window.location.hostname,
+      },
+    } as CredentialRequestOptions);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// PIN 해시 저장 키
+const PIN_KEY = 'mybob_security_pin';
+
+function hashPin(pin: string): string {
+  // 단순 해시 (보안등급 적정 — PIN은 추가 잠금 목적, 계정 인증 아님)
+  let hash = 0;
+  for (let i = 0; i < pin.length; i++) {
+    hash = ((hash << 5) - hash) + pin.charCodeAt(i);
+    hash |= 0;
+  }
+  return String(hash);
+}
+
+function getPinHash(): string | null {
+  return localStorage.getItem(PIN_KEY);
+}
+
+function savePin(pin: string) {
+  localStorage.setItem(PIN_KEY, hashPin(pin));
+}
+
+function verifyPin(pin: string): boolean {
+  const stored = getPinHash();
+  return stored !== null && stored === hashPin(pin);
+}
+
+// PIN 입력 모달 컴포넌트
+function PinModal({
+  mode,
+  onSuccess,
+  onCancel,
+}: {
+  mode: 'set' | 'verify';
+  onSuccess: (pin?: string) => void;
+  onCancel: () => void;
+}) {
+  const [pin, setPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
+  const [step, setStep] = useState<'enter' | 'confirm'>('enter');
+  const [error, setError] = useState('');
+
+  const handleDigit = (d: string) => {
+    if (mode === 'verify') {
+      const next = (pin + d).slice(0, 4);
+      setPin(next);
+      setError('');
+      if (next.length === 4) {
+        if (verifyPin(next)) {
+          onSuccess();
+        } else {
+          setError('PIN이 올바르지 않습니다');
+          setTimeout(() => setPin(''), 600);
+        }
+      }
+    } else {
+      if (step === 'enter') {
+        const next = (pin + d).slice(0, 4);
+        setPin(next);
+        if (next.length === 4) setStep('confirm');
+      } else {
+        const next = (confirmPin + d).slice(0, 4);
+        setConfirmPin(next);
+        if (next.length === 4) {
+          if (pin === next) {
+            onSuccess(pin);
+          } else {
+            setError('PIN이 일치하지 않습니다');
+            setTimeout(() => { setConfirmPin(''); setStep('enter'); setPin(''); setError(''); }, 800);
+          }
+        }
+      }
+    }
+  };
+
+  const handleBack = () => {
+    if (step === 'enter' || mode === 'verify') {
+      setPin(p => p.slice(0, -1));
+    } else {
+      setConfirmPin(p => p.slice(0, -1));
+    }
+    setError('');
+  };
+
+  const current = (mode === 'set' && step === 'confirm') ? confirmPin : pin;
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ backgroundColor: 'white', width: '280px', padding: '32px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px' }}>
+        <div style={{ textAlign: 'center' }}>
+          <p style={{ fontSize: '18px', marginBottom: '6px' }}>🔐</p>
+          <p style={{ fontSize: '15px', color: 'black', marginBottom: '4px' }}>
+            {mode === 'verify' ? 'PIN 입력' : step === 'enter' ? 'PIN 설정' : 'PIN 확인'}
+          </p>
+          <p style={{ fontSize: '11px', color: '#9ca3af' }}>
+            {mode === 'verify' ? '4자리 PIN을 입력하세요' : step === 'enter' ? '사용할 4자리 PIN을 입력하세요' : '한 번 더 입력하세요'}
+          </p>
+        </div>
+
+        {/* 점 표시 */}
+        <div style={{ display: 'flex', gap: '16px' }}>
+          {[0, 1, 2, 3].map(i => (
+            <div key={i} style={{
+              width: '14px', height: '14px', borderRadius: '50%',
+              backgroundColor: i < current.length ? 'black' : '#e5e7eb',
+              transition: 'background-color 0.1s',
+            }} />
+          ))}
+        </div>
+
+        {error && <p style={{ fontSize: '11px', color: '#ef4444', marginTop: '-12px' }}>{error}</p>}
+
+        {/* 키패드 */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', width: '100%' }}>
+          {['1','2','3','4','5','6','7','8','9','','0','⌫'].map((d, i) => (
+            <button
+              key={i}
+              onClick={() => d === '⌫' ? handleBack() : d ? handleDigit(d) : undefined}
+              disabled={!d}
+              style={{
+                padding: '16px', fontSize: d === '⌫' ? '18px' : '20px',
+                border: '1px solid #e5e7eb', backgroundColor: d ? 'white' : 'transparent',
+                cursor: d ? 'pointer' : 'default', borderColor: d ? '#e5e7eb' : 'transparent',
+                color: 'black', fontWeight: 400,
+              }}
+            >
+              {d}
+            </button>
+          ))}
+        </div>
+
+        <button
+          onClick={onCancel}
+          style={{ fontSize: '12px', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
+        >
+          취소
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// 인증 실행 함수
+async function authenticate(): Promise<'biometric' | 'need-pin' | 'cancelled'> {
+  if (isWebAuthnAvailable()) {
+    const ok = await requestBiometric();
+    if (ok) return 'biometric';
+    // 사용자가 취소하지 않았고 단순 실패면 PIN으로
+    return 'need-pin';
+  }
+  return 'need-pin';
+}
 
 type Meal = {
   id: string;
@@ -154,11 +329,17 @@ async function shareOrDownload(meals: Meal[], type: 'json' | 'csv') {
   URL.revokeObjectURL(url);
 }
 
-function GoalSettings() {
+function GoalSettings({
+  onRequestAuth,
+}: {
+  onRequestAuth: () => Promise<boolean>;
+}) {
+  const [unlocked, setUnlocked] = useState(false);
   const [height, setHeight] = useState('');
   const [weight, setWeight] = useState('');
   const [goal, setGoal] = useState('유지');
   const [saved, setSaved] = useState(false);
+  const [authing, setAuthing] = useState(false);
 
   useEffect(() => {
     const raw = localStorage.getItem('mybob_goal');
@@ -169,6 +350,13 @@ function GoalSettings() {
       setGoal(g.goal || '유지');
     }
   }, []);
+
+  const handleUnlock = async () => {
+    setAuthing(true);
+    const ok = await onRequestAuth();
+    setAuthing(false);
+    if (ok) setUnlocked(true);
+  };
 
   const save = () => {
     localStorage.setItem('mybob_goal', JSON.stringify({ height, weight, goal }));
@@ -181,10 +369,45 @@ function GoalSettings() {
     fontSize: '14px', backgroundColor: 'white', outline: 'none', boxSizing: 'border-box',
   };
 
+  if (!unlocked) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: '#e5e7eb', marginBottom: '28px' }}>
+        <div style={{ padding: '20px 16px', backgroundColor: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+          <span style={{ fontSize: '28px' }}>🔒</span>
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ fontSize: '13px', color: 'black', marginBottom: '4px' }}>신체정보가 잠겨 있습니다</p>
+            <p style={{ fontSize: '11px', color: '#9ca3af' }}>생체인증으로 잠금을 해제하세요</p>
+          </div>
+          <button
+            onClick={handleUnlock}
+            disabled={authing}
+            style={{
+              padding: '10px 24px', border: '1px solid black',
+              backgroundColor: authing ? '#f3f4f6' : 'black',
+              color: authing ? '#9ca3af' : 'white',
+              fontSize: '12px', cursor: authing ? 'not-allowed' : 'pointer',
+              letterSpacing: '1px', transition: 'all 0.2s',
+            }}
+          >
+            {authing ? '인증 중...' : '잠금 해제'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: '#e5e7eb', marginBottom: '28px' }}>
       <div style={{ padding: '14px 16px', backgroundColor: 'white' }}>
-        <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px' }}>신체 정보</p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+          <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase' }}>신체 정보</p>
+          <button
+            onClick={() => setUnlocked(false)}
+            style={{ fontSize: '11px', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}
+          >
+            🔓 잠금
+          </button>
+        </div>
         <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
           <div style={{ flex: 1 }}>
             <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '4px' }}>키 (cm)</p>
@@ -253,6 +476,45 @@ export default function SettingsPage() {
   const [nicknameSaved, setNicknameSaved] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  // ── 보안 인증 상태 ──────────────────────────────────────────
+  const [pinModal, setPinModal] = useState<{ mode: 'set' | 'verify'; resolve: (ok: boolean) => void } | null>(null);
+  const [hasPinSet, setHasPinSet] = useState(false);
+
+  useEffect(() => {
+    setHasPinSet(!!getPinHash());
+  }, []);
+
+  // 인증 요청 — 생체인증 → 실패 시 PIN 폴백
+  const requestAuth = useCallback((): Promise<boolean> => {
+    return new Promise(async (resolve) => {
+      if (isWebAuthnAvailable()) {
+        const result = await authenticate();
+        if (result === 'biometric') { resolve(true); return; }
+      }
+      // PIN 폴백
+      if (!hasPinSet) {
+        // PIN 미설정: 먼저 PIN 설정 모달
+        setPinModal({ mode: 'set', resolve: (ok) => { setPinModal(null); resolve(ok); } });
+      } else {
+        setPinModal({ mode: 'verify', resolve: (ok) => { setPinModal(null); resolve(ok); } });
+      }
+    });
+  }, [hasPinSet]);
+
+  // 위험구역 잠금 해제 with 인증
+  const handleDangerUnlock = async () => {
+    if (dangerUnlocked) {
+      setDangerUnlocked(false);
+      setConfirmDelete(false);
+      setConfirmWithdraw(false);
+      return;
+    }
+    const ok = await requestAuth();
+    if (ok) {
+      setDangerUnlocked(true);
+    }
+  };
 
   useEffect(() => {
     const raw = localStorage.getItem('mybob_meals');
@@ -351,6 +613,24 @@ export default function SettingsPage() {
 
   return (
     <div style={{ height: 'calc(100svh - 65px)', display: 'flex', flexDirection: 'column', backgroundColor: 'white', overflow: 'hidden' }}>
+
+      {/* PIN 모달 */}
+      {pinModal && (
+        <PinModal
+          mode={pinModal.mode}
+          onSuccess={(pin) => {
+            if (pinModal.mode === 'set' && pin) {
+              savePin(pin);
+              setHasPinSet(true);
+            }
+            pinModal.resolve(true);
+          }}
+          onCancel={() => {
+            pinModal.resolve(false);
+            setPinModal(null);
+          }}
+        />
+      )}
       {/* Header */}
       <div style={{ flexShrink: 0, padding: '24px 24px 16px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
@@ -804,7 +1084,7 @@ export default function SettingsPage() {
 
         {/* 목표 설정 */}
         <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>목표 설정</p>
-        <GoalSettings />
+        <GoalSettings onRequestAuth={requestAuth} />
 
         {/* 개인 정보 */}
         <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>개인 정보</p>
@@ -830,9 +1110,9 @@ export default function SettingsPage() {
         {/* 위험 구역 */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
           <p style={{ fontSize: '10px', color: '#ef4444', letterSpacing: '2px', textTransform: 'uppercase' }}>위험 구역</p>
-          {/* 자물쇠 토글 */}
+          {/* 자물쇠 토글 — 잠금 해제 시 생체인증 */}
           <button
-            onClick={() => { setDangerUnlocked(v => !v); setConfirmDelete(false); setConfirmWithdraw(false); }}
+            onClick={handleDangerUnlock}
             style={{
               display: 'flex', alignItems: 'center', gap: '6px',
               padding: '5px 10px', border: `1px solid ${dangerUnlocked ? '#ef4444' : '#e5e7eb'}`,
