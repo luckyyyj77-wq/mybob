@@ -8,6 +8,63 @@ import { getStorageMode, type StorageMode } from '@/lib/storage-mode';
 import { getCloudDeleteSchedule, cancelCloudDeleteSchedule, requestServerDataDeletion } from '@/lib/storage-migration';
 import { StorageModeModal } from '@/components/StorageModeModal';
 
+// ── AES-256-GCM 암호화 (Web Crypto API) ──────────────────────
+const BODY_ENC_KEY = 'mybob_body_enc';
+const BODY_SALT_KEY = 'mybob_body_salt';
+
+async function deriveKey(pin: string, salt: Uint8Array): Promise<CryptoKey> {
+  const enc = new TextEncoder();
+  const baseKey = await crypto.subtle.importKey('raw', enc.encode(pin).buffer as ArrayBuffer, 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: salt.buffer as ArrayBuffer, iterations: 100000, hash: 'SHA-256' },
+    baseKey,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt'],
+  );
+}
+
+async function encryptBody(data: object, pin: string): Promise<void> {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await deriveKey(pin, salt);
+  const encoded = new TextEncoder().encode(JSON.stringify(data));
+  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded);
+  const blob = {
+    salt: Array.from(salt),
+    iv: Array.from(iv),
+    ct: Array.from(new Uint8Array(ciphertext)),
+  };
+  localStorage.setItem(BODY_ENC_KEY, JSON.stringify(blob));
+  localStorage.setItem(BODY_SALT_KEY, JSON.stringify(Array.from(salt)));
+  // 구버전 평문 키 제거
+  localStorage.removeItem('mybob_goal');
+}
+
+async function decryptBody(pin: string): Promise<BodyInfo | null> {
+  const raw = localStorage.getItem(BODY_ENC_KEY);
+  if (!raw) return null;
+  try {
+    const { salt, iv, ct } = JSON.parse(raw);
+    const key = await deriveKey(pin, new Uint8Array(salt));
+    const plaintext = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: new Uint8Array(iv) },
+      key,
+      new Uint8Array(ct),
+    );
+    return JSON.parse(new TextDecoder().decode(plaintext));
+  } catch {
+    return null;
+  }
+}
+
+// 구버전 평문 데이터 읽기 (마이그레이션용)
+function readLegacyGoal(): Partial<BodyInfo> | null {
+  const raw = localStorage.getItem('mybob_goal');
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch { return null; }
+}
+
 // ── PIN 인증 ──────────────────────────────────────────────────
 const PIN_KEY = 'mybob_security_pin';
 
@@ -41,7 +98,7 @@ function PinModal({
   onCancel,
 }: {
   mode: 'set' | 'verify';
-  onSuccess: (pin?: string) => void;
+  onSuccess: (pin: string) => void;
   onCancel: () => void;
 }) {
   const [pin, setPin] = useState('');
@@ -56,7 +113,7 @@ function PinModal({
       setError('');
       if (next.length === 4) {
         if (verifyPin(next)) {
-          onSuccess();
+          onSuccess(next);
         } else {
           setError('PIN이 올바르지 않습니다');
           setTimeout(() => setPin(''), 600);
@@ -149,6 +206,222 @@ function PinModal({
   );
 }
 
+
+// ── 신체정보 타입 ─────────────────────────────────────────────
+type BodyInfo = {
+  gender: 'male' | 'female' | '';
+  age: string;
+  height: string;
+  weight: string;
+  targetWeight: string;
+  activity: 'sedentary' | 'light' | 'moderate' | 'active' | '';
+  goal: '다이어트' | '유지' | '증량';
+};
+
+const EMPTY_BODY: BodyInfo = {
+  gender: '', age: '', height: '', weight: '',
+  targetWeight: '', activity: '', goal: '유지',
+};
+
+const ACTIVITY_LABEL: Record<string, string> = {
+  sedentary: '좌식 (거의 운동 안 함)',
+  light: '가벼운 활동 (주 1~2회)',
+  moderate: '보통 활동 (주 3~5회)',
+  active: '활동적 (매일 운동)',
+};
+
+// ── GoalSettings 컴포넌트 ─────────────────────────────────────
+function GoalSettings({ onRequestAuth }: { onRequestAuth: (cb: (pin: string) => void) => void }) {
+  const [unlocked, setUnlocked] = useState(false);
+  const [body, setBody] = useState<BodyInfo>(EMPTY_BODY);
+  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [authing, setAuthing] = useState(false);
+  const [decryptErr, setDecryptErr] = useState(false);
+  const currentPin = useRef('');
+
+  const handleUnlock = () => {
+    setAuthing(true);
+    onRequestAuth(async (pin) => {
+      currentPin.current = pin;
+      // 암호화된 데이터 복호화 시도
+      const enc = localStorage.getItem(BODY_ENC_KEY);
+      if (enc) {
+        const data = await decryptBody(pin);
+        if (data) {
+          setBody(data);
+          setDecryptErr(false);
+          setUnlocked(true);
+        } else {
+          setDecryptErr(true);
+        }
+      } else {
+        // 최초 or 구버전 마이그레이션
+        const legacy = readLegacyGoal();
+        if (legacy) {
+          setBody({ ...EMPTY_BODY, height: legacy.height || '', weight: legacy.weight || '', goal: (legacy.goal as BodyInfo['goal']) || '유지' });
+        } else {
+          setBody(EMPTY_BODY);
+        }
+        setDecryptErr(false);
+        setUnlocked(true);
+      }
+      setAuthing(false);
+    });
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    await encryptBody(body, currentPin.current);
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 1500);
+  };
+
+  const set = (field: keyof BodyInfo) => (val: string) =>
+    setBody(prev => ({ ...prev, [field]: val }));
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '10px 12px', border: '1px solid #e5e7eb',
+    fontSize: '14px', backgroundColor: 'white', outline: 'none', boxSizing: 'border-box',
+  };
+
+  const chipStyle = (active: boolean): React.CSSProperties => ({
+    flex: 1, padding: '10px 6px', border: '1px solid', fontSize: '12px', cursor: 'pointer',
+    borderColor: active ? 'black' : '#e5e7eb',
+    backgroundColor: active ? 'black' : 'white',
+    color: active ? 'white' : 'black',
+    textAlign: 'center',
+  });
+
+  if (!unlocked) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: '#e5e7eb', marginBottom: '28px' }}>
+        <div style={{ padding: '20px 16px', backgroundColor: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+          <span style={{ fontSize: '28px' }}>🔒</span>
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ fontSize: '13px', color: 'black', marginBottom: '4px' }}>신체정보가 잠겨 있습니다</p>
+            <p style={{ fontSize: '11px', color: '#9ca3af' }}>PIN을 입력해 잠금을 해제하세요</p>
+            {decryptErr && <p style={{ fontSize: '11px', color: '#ef4444', marginTop: '4px' }}>PIN이 올바르지 않습니다</p>}
+          </div>
+          <button
+            onClick={handleUnlock}
+            disabled={authing}
+            style={{
+              padding: '10px 24px', border: '1px solid black',
+              backgroundColor: authing ? '#f3f4f6' : 'black',
+              color: authing ? '#9ca3af' : 'white',
+              fontSize: '12px', cursor: authing ? 'not-allowed' : 'pointer',
+              letterSpacing: '1px', transition: 'all 0.2s',
+            }}
+          >
+            {authing ? '확인 중...' : '잠금 해제'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: '#e5e7eb', marginBottom: '28px' }}>
+      <div style={{ padding: '14px 16px', backgroundColor: 'white' }}>
+
+        {/* 헤더 */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+          <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase' }}>신체 정보</p>
+          <button
+            onClick={() => { setUnlocked(false); currentPin.current = ''; }}
+            style={{ fontSize: '11px', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}
+          >
+            🔓 잠금
+          </button>
+        </div>
+
+        {/* 성별 */}
+        <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '6px' }}>성별</p>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
+          {[['male', '남성'], ['female', '여성']].map(([val, label]) => (
+            <button key={val} onClick={() => set('gender')(val)} style={chipStyle(body.gender === val)}>{label}</button>
+          ))}
+        </div>
+
+        {/* 나이 */}
+        <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '6px' }}>나이</p>
+        <input
+          type="number" inputMode="numeric" value={body.age}
+          onChange={e => set('age')(e.target.value)}
+          placeholder="25" style={{ ...inputStyle, marginBottom: '14px' }}
+        />
+
+        {/* 키 / 몸무게 */}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
+          <div style={{ flex: 1 }}>
+            <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '6px' }}>키 (cm)</p>
+            <input type="number" inputMode="decimal" value={body.height} onChange={e => set('height')(e.target.value)} placeholder="170" style={inputStyle} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '6px' }}>몸무게 (kg)</p>
+            <input type="number" inputMode="decimal" value={body.weight} onChange={e => set('weight')(e.target.value)} placeholder="65" style={inputStyle} />
+          </div>
+        </div>
+
+        {/* 목표 체중 */}
+        <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '6px' }}>목표 체중 (kg)</p>
+        <input
+          type="number" inputMode="decimal" value={body.targetWeight}
+          onChange={e => set('targetWeight')(e.target.value)}
+          placeholder="60" style={{ ...inputStyle, marginBottom: '14px' }}
+        />
+
+        {/* 활동량 */}
+        <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '6px' }}>활동량</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
+          {(['sedentary', 'light', 'moderate', 'active'] as const).map(val => (
+            <button
+              key={val}
+              onClick={() => set('activity')(val)}
+              style={{
+                padding: '10px 12px', border: '1px solid', fontSize: '12px', cursor: 'pointer', textAlign: 'left',
+                borderColor: body.activity === val ? 'black' : '#e5e7eb',
+                backgroundColor: body.activity === val ? 'black' : 'white',
+                color: body.activity === val ? 'white' : 'black',
+              }}
+            >
+              {ACTIVITY_LABEL[val]}
+            </button>
+          ))}
+        </div>
+
+        {/* 목표 */}
+        <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '6px' }}>목표</p>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+          {(['다이어트', '유지', '증량'] as const).map(g => (
+            <button key={g} onClick={() => set('goal')(g)} style={chipStyle(body.goal === g)}>{g}</button>
+          ))}
+        </div>
+
+        {/* 저장 */}
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          style={{
+            width: '100%', padding: '12px', border: '1px solid black',
+            backgroundColor: saved ? 'black' : saving ? '#f3f4f6' : 'white',
+            color: saved ? 'white' : saving ? '#9ca3af' : 'black',
+            fontSize: '12px', cursor: saving ? 'not-allowed' : 'pointer',
+            letterSpacing: '1px', transition: 'all 0.2s',
+          }}
+        >
+          {saved ? '저장됨 ✓' : saving ? '암호화 중...' : '저장'}
+        </button>
+
+        <p style={{ fontSize: '10px', color: '#d1d5db', marginTop: '8px', textAlign: 'center' }}>
+          🔐 AES-256 암호화 · 이 기기에만 저장
+        </p>
+      </div>
+    </div>
+  );
+}
 
 type Meal = {
   id: string;
@@ -296,123 +569,6 @@ async function shareOrDownload(meals: Meal[], type: 'json' | 'csv') {
   URL.revokeObjectURL(url);
 }
 
-function GoalSettings({
-  onRequestAuth,
-}: {
-  onRequestAuth: () => Promise<boolean>;
-}) {
-  const [unlocked, setUnlocked] = useState(false);
-  const [height, setHeight] = useState('');
-  const [weight, setWeight] = useState('');
-  const [goal, setGoal] = useState('유지');
-  const [saved, setSaved] = useState(false);
-  const [authing, setAuthing] = useState(false);
-
-  useEffect(() => {
-    const raw = localStorage.getItem('mybob_goal');
-    if (raw) {
-      const g = JSON.parse(raw);
-      setHeight(g.height || '');
-      setWeight(g.weight || '');
-      setGoal(g.goal || '유지');
-    }
-  }, []);
-
-  const handleUnlock = async () => {
-    setAuthing(true);
-    const ok = await onRequestAuth();
-    setAuthing(false);
-    if (ok) setUnlocked(true);
-  };
-
-  const save = () => {
-    localStorage.setItem('mybob_goal', JSON.stringify({ height, weight, goal }));
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1500);
-  };
-
-  const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '10px 12px', border: '1px solid #e5e7eb',
-    fontSize: '14px', backgroundColor: 'white', outline: 'none', boxSizing: 'border-box',
-  };
-
-  if (!unlocked) {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: '#e5e7eb', marginBottom: '28px' }}>
-        <div style={{ padding: '20px 16px', backgroundColor: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-          <span style={{ fontSize: '28px' }}>🔒</span>
-          <div style={{ textAlign: 'center' }}>
-            <p style={{ fontSize: '13px', color: 'black', marginBottom: '4px' }}>신체정보가 잠겨 있습니다</p>
-            <p style={{ fontSize: '11px', color: '#9ca3af' }}>생체인증으로 잠금을 해제하세요</p>
-          </div>
-          <button
-            onClick={handleUnlock}
-            disabled={authing}
-            style={{
-              padding: '10px 24px', border: '1px solid black',
-              backgroundColor: authing ? '#f3f4f6' : 'black',
-              color: authing ? '#9ca3af' : 'white',
-              fontSize: '12px', cursor: authing ? 'not-allowed' : 'pointer',
-              letterSpacing: '1px', transition: 'all 0.2s',
-            }}
-          >
-            {authing ? '인증 중...' : '잠금 해제'}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: '#e5e7eb', marginBottom: '28px' }}>
-      <div style={{ padding: '14px 16px', backgroundColor: 'white' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-          <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase' }}>신체 정보</p>
-          <button
-            onClick={() => setUnlocked(false)}
-            style={{ fontSize: '11px', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}
-          >
-            🔓 잠금
-          </button>
-        </div>
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-          <div style={{ flex: 1 }}>
-            <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '4px' }}>키 (cm)</p>
-            <input type="number" value={height} onChange={e => setHeight(e.target.value)} placeholder="170" style={inputStyle} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '4px' }}>몸무게 (kg)</p>
-            <input type="number" value={weight} onChange={e => setWeight(e.target.value)} placeholder="65" style={inputStyle} />
-          </div>
-        </div>
-        <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px', marginTop: '12px' }}>목표</p>
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-          {['다이어트', '유지', '증량'].map(g => (
-            <button
-              key={g}
-              onClick={() => setGoal(g)}
-              style={{
-                flex: 1, padding: '10px', border: '1px solid', fontSize: '13px', cursor: 'pointer',
-                borderColor: goal === g ? 'black' : '#e5e7eb',
-                backgroundColor: goal === g ? 'black' : 'white',
-                color: goal === g ? 'white' : 'black',
-              }}
-            >
-              {g}
-            </button>
-          ))}
-        </div>
-        <button
-          onClick={save}
-          style={{ width: '100%', padding: '12px', border: '1px solid black', backgroundColor: saved ? 'black' : 'white', color: saved ? 'white' : 'black', fontSize: '12px', cursor: 'pointer', letterSpacing: '1px', transition: 'all 0.2s' }}
-        >
-          {saved ? '저장됨' : '저장'}
-        </button>
-      </div>
-    </div>
-  );
-}
-
 type PlanStatus = {
   plan: 'free' | 'pro' | 'lifetime';
   upload: { used: number; limit: number; remaining: number };
@@ -445,14 +601,14 @@ export default function SettingsPage() {
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
   // ── 보안 인증 상태 ──────────────────────────────────────────
-  const [pinModal, setPinModal] = useState<{ mode: 'set' | 'verify'; resolve: (ok: boolean) => void } | null>(null);
+  const [pinModal, setPinModal] = useState<{ mode: 'set' | 'verify'; resolve: (ok: boolean, pin?: string) => void } | null>(null);
   const [hasPinSet, setHasPinSet] = useState(false);
 
   useEffect(() => {
     setHasPinSet(!!getPinHash());
   }, []);
 
-  // PIN 인증 요청
+  // PIN 인증 요청 — boolean 반환 (위험구역용)
   const requestAuth = useCallback((): Promise<boolean> => {
     return new Promise((resolve) => {
       if (!hasPinSet) {
@@ -461,6 +617,27 @@ export default function SettingsPage() {
         setPinModal({ mode: 'verify', resolve: (ok) => { setPinModal(null); resolve(ok); } });
       }
     });
+  }, [hasPinSet]);
+
+  // PIN 인증 요청 — PIN 문자열을 콜백으로 전달 (신체정보 복호화용)
+  const requestAuthWithPin = useCallback((cb: (pin: string) => void) => {
+    if (!hasPinSet) {
+      setPinModal({
+        mode: 'set',
+        resolve: (ok, pin) => {
+          setPinModal(null);
+          if (ok && pin) cb(pin);
+        },
+      });
+    } else {
+      setPinModal({
+        mode: 'verify',
+        resolve: (ok, pin) => {
+          setPinModal(null);
+          if (ok && pin) cb(pin);
+        },
+      });
+    }
   }, [hasPinSet]);
 
   // 위험구역 잠금 해제 with 인증
@@ -472,9 +649,7 @@ export default function SettingsPage() {
       return;
     }
     const ok = await requestAuth();
-    if (ok) {
-      setDangerUnlocked(true);
-    }
+    if (ok) setDangerUnlocked(true);
   };
 
   useEffect(() => {
@@ -580,11 +755,11 @@ export default function SettingsPage() {
         <PinModal
           mode={pinModal.mode}
           onSuccess={(pin) => {
-            if (pinModal.mode === 'set' && pin) {
+            if (pinModal.mode === 'set') {
               savePin(pin);
               setHasPinSet(true);
             }
-            pinModal.resolve(true);
+            pinModal.resolve(true, pin);
           }}
           onCancel={() => {
             pinModal.resolve(false);
@@ -1045,7 +1220,7 @@ export default function SettingsPage() {
 
         {/* 목표 설정 */}
         <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>목표 설정</p>
-        <GoalSettings onRequestAuth={requestAuth} />
+        <GoalSettings onRequestAuth={requestAuthWithPin} />
 
         {/* 개인 정보 */}
         <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>개인 정보</p>
