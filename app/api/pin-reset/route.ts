@@ -43,7 +43,7 @@ export async function POST(request: Request) {
 
   // Resend로 이메일 발송
   const { error: mailError } = await resend.emails.send({
-    from: 'MyBob <noreply@mybob.app>',
+    from: 'MyBob <onboarding@resend.dev>',
     to: user.email,
     subject: '[MyBob] 위험구역 PIN 초기화 인증 코드',
     html: `
