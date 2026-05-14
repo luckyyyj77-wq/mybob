@@ -254,6 +254,10 @@ function GoalSettings({ onRequestAuth }: { onRequestAuth: (cb: (pin: string) => 
           setDecryptErr(false);
           setUnlocked(true);
         } else {
+          // iterations 변경 등으로 복호화 실패 시 기존 데이터 제거 후 재입력 유도
+          localStorage.removeItem(BODY_ENC_KEY);
+          localStorage.removeItem(BODY_SALT_KEY);
+          setBody(EMPTY_BODY);
           setDecryptErr(true);
         }
       } else {
@@ -303,7 +307,11 @@ function GoalSettings({ onRequestAuth }: { onRequestAuth: (cb: (pin: string) => 
           <div style={{ textAlign: 'center' }}>
             <p style={{ fontSize: '13px', color: 'black', marginBottom: '4px' }}>신체정보가 잠겨 있습니다</p>
             <p style={{ fontSize: '11px', color: '#9ca3af' }}>PIN을 입력해 잠금을 해제하세요</p>
-            {decryptErr && <p style={{ fontSize: '11px', color: '#ef4444', marginTop: '4px' }}>PIN이 올바르지 않습니다</p>}
+            {decryptErr && (
+              <p style={{ fontSize: '11px', color: '#ef4444', marginTop: '4px', lineHeight: 1.5 }}>
+                저장된 데이터를 불러올 수 없어 초기화했습니다.<br />다시 잠금 해제 후 정보를 입력해 주세요.
+              </p>
+            )}
           </div>
           <button
             onClick={handleUnlock}
