@@ -113,7 +113,8 @@ function PinModal({
       setError('');
       if (next.length === 4) {
         if (verifyPin(next)) {
-          onSuccess(next);
+          // 점 4개 채워진 화면 렌더링 후 무거운 복호화 실행
+          requestAnimationFrame(() => setTimeout(() => onSuccess(next), 80));
         } else {
           setError('PIN이 올바르지 않습니다');
           setTimeout(() => setPin(''), 600);
@@ -129,7 +130,7 @@ function PinModal({
         setConfirmPin(next);
         if (next.length === 4) {
           if (pin === next) {
-            onSuccess(pin);
+            requestAnimationFrame(() => setTimeout(() => onSuccess(pin), 80));
           } else {
             setError('PIN이 일치하지 않습니다');
             setTimeout(() => { setConfirmPin(''); setStep('enter'); setPin(''); setError(''); }, 800);
@@ -241,9 +242,9 @@ function GoalSettings({ onRequestAuth }: { onRequestAuth: (cb: (pin: string) => 
   const currentPin = useRef('');
 
   const handleUnlock = () => {
-    setAuthing(true);
     onRequestAuth(async (pin) => {
       currentPin.current = pin;
+      setAuthing(true);
       // 암호화된 데이터 복호화 시도
       const enc = localStorage.getItem(BODY_ENC_KEY);
       if (enc) {
