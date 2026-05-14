@@ -68,7 +68,8 @@ function readLegacyGoal(): Partial<BodyInfo> | null {
 // ── PIN 인증 ──────────────────────────────────────────────────
 const PIN_KEY = 'mybob_security_pin';
 const BODY_ATTEMPT_KEY = 'mybob_body_pin_attempts'; // 신체정보 오류 횟수
-const BODY_MAX_ATTEMPTS = 5;
+const BODY_WARN_AT = 5;   // 5회: 경고
+const BODY_MAX_ATTEMPTS = 10; // 10회: 초기화
 
 function hashPin(pin: string): string {
   let hash = 0;
@@ -127,6 +128,7 @@ function PinModal({
   const [attempts, setAttempts] = useState(context === 'body' ? getBodyAttempts() : 0);
 
   const remaining = BODY_MAX_ATTEMPTS - attempts;
+  const warned = context === 'body' && attempts >= BODY_WARN_AT && remaining > 0;
   const nearLimit = context === 'body' && remaining <= 2 && remaining > 0;
   const isLocked = context === 'body' && remaining <= 0;
 
@@ -146,15 +148,18 @@ function PinModal({
             setAttempts(count);
             const left = BODY_MAX_ATTEMPTS - count;
             if (left <= 0) {
-              setError('5회 오류 — 신체정보가 초기화됩니다');
+              setError('10회 오류 — 신체정보가 초기화됩니다');
               setTimeout(() => {
                 localStorage.removeItem(BODY_ENC_KEY);
                 localStorage.removeItem(BODY_SALT_KEY);
                 resetBodyAttempts();
                 onCancel();
               }, 1500);
+            } else if (count >= BODY_WARN_AT) {
+              setError(`PIN이 올바르지 않습니다 · ${left}회 남으면 초기화됩니다`);
+              setTimeout(() => setPin(''), 600);
             } else {
-              setError(`PIN이 올바르지 않습니다 (${left}회 남음)`);
+              setError('PIN이 올바르지 않습니다');
               setTimeout(() => setPin(''), 600);
             }
           } else {
@@ -212,14 +217,14 @@ function PinModal({
           {[0, 1, 2, 3].map(i => (
             <div key={i} style={{
               width: '14px', height: '14px', borderRadius: '50%',
-              backgroundColor: i < current.length ? (nearLimit || isLocked ? '#ef4444' : 'black') : '#e5e7eb',
+              backgroundColor: i < current.length ? (warned || isLocked ? '#ef4444' : 'black') : '#e5e7eb',
               transition: 'background-color 0.1s',
             }} />
           ))}
         </div>
 
         {/* 경고/오류 메시지 */}
-        {nearLimit && !error && (
+        {warned && !error && (
           <p style={{ fontSize: '11px', color: '#ef4444', marginTop: '-12px', textAlign: 'center', lineHeight: 1.5 }}>
             {remaining}회 더 틀리면 신체정보가 초기화됩니다
           </p>
