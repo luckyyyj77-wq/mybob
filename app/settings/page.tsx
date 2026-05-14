@@ -67,9 +67,10 @@ function readLegacyGoal(): Partial<BodyInfo> | null {
 
 // ── PIN 인증 ──────────────────────────────────────────────────
 const PIN_KEY = 'mybob_security_pin';
+const BODY_ATTEMPT_KEY = 'mybob_body_pin_attempts'; // 신체정보 오류 횟수
+const BODY_MAX_ATTEMPTS = 5;
 
 function hashPin(pin: string): string {
-  // 단순 해시 (보안등급 적정 — PIN은 추가 잠금 목적, 계정 인증 아님)
   let hash = 0;
   for (let i = 0; i < pin.length; i++) {
     hash = ((hash << 5) - hash) + pin.charCodeAt(i);
@@ -91,33 +92,75 @@ function verifyPin(pin: string): boolean {
   return stored !== null && stored === hashPin(pin);
 }
 
+function getBodyAttempts(): number {
+  return parseInt(localStorage.getItem(BODY_ATTEMPT_KEY) || '0', 10);
+}
+
+function incrementBodyAttempts(): number {
+  const next = getBodyAttempts() + 1;
+  localStorage.setItem(BODY_ATTEMPT_KEY, String(next));
+  return next;
+}
+
+function resetBodyAttempts() {
+  localStorage.removeItem(BODY_ATTEMPT_KEY);
+}
+
 // PIN 입력 모달 컴포넌트
 function PinModal({
   mode,
+  context,
   onSuccess,
   onCancel,
+  onForgot,
 }: {
   mode: 'set' | 'verify';
+  context: 'body' | 'danger';
   onSuccess: (pin: string) => void;
   onCancel: () => void;
+  onForgot?: () => void;
 }) {
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
   const [step, setStep] = useState<'enter' | 'confirm'>('enter');
   const [error, setError] = useState('');
+  const [attempts, setAttempts] = useState(context === 'body' ? getBodyAttempts() : 0);
+
+  const remaining = BODY_MAX_ATTEMPTS - attempts;
+  const nearLimit = context === 'body' && remaining <= 2 && remaining > 0;
+  const isLocked = context === 'body' && remaining <= 0;
 
   const handleDigit = (d: string) => {
+    if (isLocked) return;
     if (mode === 'verify') {
       const next = (pin + d).slice(0, 4);
       setPin(next);
       setError('');
       if (next.length === 4) {
         if (verifyPin(next)) {
-          // 점 4개 채워진 화면 렌더링 후 무거운 복호화 실행
+          if (context === 'body') resetBodyAttempts();
           requestAnimationFrame(() => setTimeout(() => onSuccess(next), 80));
         } else {
-          setError('PIN이 올바르지 않습니다');
-          setTimeout(() => setPin(''), 600);
+          if (context === 'body') {
+            const count = incrementBodyAttempts();
+            setAttempts(count);
+            const left = BODY_MAX_ATTEMPTS - count;
+            if (left <= 0) {
+              setError('5회 오류 — 신체정보가 초기화됩니다');
+              setTimeout(() => {
+                localStorage.removeItem(BODY_ENC_KEY);
+                localStorage.removeItem(BODY_SALT_KEY);
+                resetBodyAttempts();
+                onCancel();
+              }, 1500);
+            } else {
+              setError(`PIN이 올바르지 않습니다 (${left}회 남음)`);
+              setTimeout(() => setPin(''), 600);
+            }
+          } else {
+            setError('PIN이 올바르지 않습니다');
+            setTimeout(() => setPin(''), 600);
+          }
         }
       }
     } else {
@@ -155,7 +198,7 @@ function PinModal({
     <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ backgroundColor: 'white', width: '280px', padding: '32px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px' }}>
         <div style={{ textAlign: 'center' }}>
-          <p style={{ fontSize: '18px', marginBottom: '6px' }}>🔐</p>
+          <p style={{ fontSize: '18px', marginBottom: '6px' }}>{isLocked ? '⚠️' : '🔐'}</p>
           <p style={{ fontSize: '15px', color: 'black', marginBottom: '4px' }}>
             {mode === 'verify' ? 'PIN 입력' : step === 'enter' ? 'PIN 설정' : 'PIN 확인'}
           </p>
@@ -169,13 +212,23 @@ function PinModal({
           {[0, 1, 2, 3].map(i => (
             <div key={i} style={{
               width: '14px', height: '14px', borderRadius: '50%',
-              backgroundColor: i < current.length ? 'black' : '#e5e7eb',
+              backgroundColor: i < current.length ? (nearLimit || isLocked ? '#ef4444' : 'black') : '#e5e7eb',
               transition: 'background-color 0.1s',
             }} />
           ))}
         </div>
 
-        {error && <p style={{ fontSize: '11px', color: '#ef4444', marginTop: '-12px' }}>{error}</p>}
+        {/* 경고/오류 메시지 */}
+        {nearLimit && !error && (
+          <p style={{ fontSize: '11px', color: '#ef4444', marginTop: '-12px', textAlign: 'center', lineHeight: 1.5 }}>
+            {remaining}회 더 틀리면 신체정보가 초기화됩니다
+          </p>
+        )}
+        {error && (
+          <p style={{ fontSize: '11px', color: '#ef4444', marginTop: '-12px', textAlign: 'center', lineHeight: 1.5 }}>
+            {error}
+          </p>
+        )}
 
         {/* 키패드 */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', width: '100%' }}>
@@ -183,12 +236,12 @@ function PinModal({
             <button
               key={i}
               onClick={() => d === '⌫' ? handleBack() : d ? handleDigit(d) : undefined}
-              disabled={!d}
+              disabled={!d || isLocked}
               style={{
                 padding: '16px', fontSize: d === '⌫' ? '18px' : '20px',
                 border: '1px solid #e5e7eb', backgroundColor: d ? 'white' : 'transparent',
-                cursor: d ? 'pointer' : 'default', borderColor: d ? '#e5e7eb' : 'transparent',
-                color: 'black', fontWeight: 400,
+                cursor: (d && !isLocked) ? 'pointer' : 'default', borderColor: d ? '#e5e7eb' : 'transparent',
+                color: isLocked ? '#d1d5db' : 'black', fontWeight: 400,
               }}
             >
               {d}
@@ -196,12 +249,160 @@ function PinModal({
           ))}
         </div>
 
-        <button
-          onClick={onCancel}
-          style={{ fontSize: '12px', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
-        >
-          취소
-        </button>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+          <button
+            onClick={onCancel}
+            style={{ fontSize: '12px', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
+          >
+            취소
+          </button>
+          {mode === 'verify' && context === 'danger' && onForgot && (
+            <button
+              onClick={onForgot}
+              style={{ fontSize: '11px', color: '#6B21A8', background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
+            >
+              PIN을 잊으셨나요?
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// 위험구역 PIN 분실 — 이메일 OTP 인증 모달
+function DangerPinResetModal({
+  onSuccess,
+  onCancel,
+}: {
+  onSuccess: () => void;
+  onCancel: () => void;
+}) {
+  const [step, setStep] = useState<'send' | 'verify'>('send');
+  const [otp, setOtp] = useState('');
+  const [sending, setSending] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [email, setEmail] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSend = async () => {
+    setSending(true);
+    setError('');
+    const { data: { session } } = await (await import('@/lib/supabase/client')).supabase.auth.getSession();
+    if (!session) { setError('로그인이 필요합니다'); setSending(false); return; }
+    const res = await fetch('/api/pin-reset', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    });
+    const result = await res.json();
+    if (result.ok) {
+      setEmail(result.email);
+      setStep('verify');
+    } else {
+      setError('이메일 발송에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+    }
+    setSending(false);
+  };
+
+  const handleVerify = async () => {
+    if (otp.length !== 6) return;
+    setVerifying(true);
+    setError('');
+    const { data: { session } } = await (await import('@/lib/supabase/client')).supabase.auth.getSession();
+    if (!session) { setError('로그인이 필요합니다'); setVerifying(false); return; }
+    const res = await fetch('/api/pin-reset', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify({ otp }),
+    });
+    const result = await res.json();
+    if (result.ok) {
+      onSuccess();
+    } else {
+      const msg: Record<string, string> = {
+        WRONG_OTP: '인증 코드가 올바르지 않습니다',
+        OTP_EXPIRED: '인증 코드가 만료됐습니다. 다시 발송해 주세요',
+      };
+      setError(msg[result.error] || '인증에 실패했습니다');
+    }
+    setVerifying(false);
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ backgroundColor: 'white', width: '300px', padding: '28px 24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div style={{ textAlign: 'center' }}>
+          <p style={{ fontSize: '20px', marginBottom: '8px' }}>📧</p>
+          <p style={{ fontSize: '15px', color: 'black', marginBottom: '4px' }}>
+            {step === 'send' ? '이메일로 인증' : '인증 코드 입력'}
+          </p>
+          <p style={{ fontSize: '11px', color: '#9ca3af', lineHeight: 1.5 }}>
+            {step === 'send'
+              ? '가입한 이메일로 6자리 인증 코드를 보내드립니다. 인증 후 위험구역 PIN이 초기화됩니다.'
+              : `${email}으로 발송된 6자리 코드를 입력하세요.`}
+          </p>
+        </div>
+
+        {step === 'verify' && (
+          <input
+            type="number"
+            inputMode="numeric"
+            maxLength={6}
+            value={otp}
+            onChange={e => setOtp(e.target.value.slice(0, 6))}
+            placeholder="000000"
+            style={{
+              padding: '12px', border: '1px solid #e5e7eb', fontSize: '20px',
+              textAlign: 'center', letterSpacing: '8px', outline: 'none',
+            }}
+          />
+        )}
+
+        {error && <p style={{ fontSize: '11px', color: '#ef4444', textAlign: 'center' }}>{error}</p>}
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {step === 'send' ? (
+            <button
+              onClick={handleSend}
+              disabled={sending}
+              style={{
+                padding: '12px', border: 'none',
+                backgroundColor: sending ? '#f3f4f6' : 'black',
+                color: sending ? '#9ca3af' : 'white',
+                fontSize: '13px', cursor: sending ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {sending ? '발송 중...' : '인증 코드 발송'}
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={handleVerify}
+                disabled={verifying || otp.length !== 6}
+                style={{
+                  padding: '12px', border: 'none',
+                  backgroundColor: (verifying || otp.length !== 6) ? '#f3f4f6' : 'black',
+                  color: (verifying || otp.length !== 6) ? '#9ca3af' : 'white',
+                  fontSize: '13px', cursor: (verifying || otp.length !== 6) ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {verifying ? '확인 중...' : '확인'}
+              </button>
+              <button
+                onClick={() => { setStep('send'); setOtp(''); setError(''); }}
+                style={{ padding: '8px', border: '1px solid #e5e7eb', backgroundColor: 'white', fontSize: '12px', color: '#6b7280', cursor: 'pointer' }}
+              >
+                코드 재발송
+              </button>
+            </>
+          )}
+          <button
+            onClick={onCancel}
+            style={{ padding: '8px', background: 'none', border: 'none', fontSize: '12px', color: '#9ca3af', cursor: 'pointer' }}
+          >
+            취소
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -610,7 +811,8 @@ export default function SettingsPage() {
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
   // ── 보안 인증 상태 ──────────────────────────────────────────
-  const [pinModal, setPinModal] = useState<{ mode: 'set' | 'verify'; resolve: (ok: boolean, pin?: string) => void } | null>(null);
+  const [pinModal, setPinModal] = useState<{ mode: 'set' | 'verify'; context: 'body' | 'danger'; resolve: (ok: boolean, pin?: string) => void } | null>(null);
+  const [showPinReset, setShowPinReset] = useState(false);
   const [hasPinSet, setHasPinSet] = useState(false);
 
   useEffect(() => {
@@ -621,9 +823,9 @@ export default function SettingsPage() {
   const requestAuth = useCallback((): Promise<boolean> => {
     return new Promise((resolve) => {
       if (!hasPinSet) {
-        setPinModal({ mode: 'set', resolve: (ok) => { setPinModal(null); resolve(ok); } });
+        setPinModal({ mode: 'set', context: 'danger', resolve: (ok) => { setPinModal(null); resolve(ok); } });
       } else {
-        setPinModal({ mode: 'verify', resolve: (ok) => { setPinModal(null); resolve(ok); } });
+        setPinModal({ mode: 'verify', context: 'danger', resolve: (ok) => { setPinModal(null); resolve(ok); } });
       }
     });
   }, [hasPinSet]);
@@ -632,19 +834,13 @@ export default function SettingsPage() {
   const requestAuthWithPin = useCallback((cb: (pin: string) => void) => {
     if (!hasPinSet) {
       setPinModal({
-        mode: 'set',
-        resolve: (ok, pin) => {
-          setPinModal(null);
-          if (ok && pin) cb(pin);
-        },
+        mode: 'set', context: 'body',
+        resolve: (ok, pin) => { setPinModal(null); if (ok && pin) cb(pin); },
       });
     } else {
       setPinModal({
-        mode: 'verify',
-        resolve: (ok, pin) => {
-          setPinModal(null);
-          if (ok && pin) cb(pin);
-        },
+        mode: 'verify', context: 'body',
+        resolve: (ok, pin) => { setPinModal(null); if (ok && pin) cb(pin); },
       });
     }
   }, [hasPinSet]);
@@ -763,6 +959,7 @@ export default function SettingsPage() {
       {pinModal && (
         <PinModal
           mode={pinModal.mode}
+          context={pinModal.context}
           onSuccess={(pin) => {
             if (pinModal.mode === 'set') {
               savePin(pin);
@@ -774,6 +971,23 @@ export default function SettingsPage() {
             pinModal.resolve(false);
             setPinModal(null);
           }}
+          onForgot={pinModal.context === 'danger' ? () => {
+            setPinModal(null);
+            setShowPinReset(true);
+          } : undefined}
+        />
+      )}
+
+      {showPinReset && (
+        <DangerPinResetModal
+          onSuccess={() => {
+            // PIN 초기화 — 새 PIN 설정 모달로 연결
+            localStorage.removeItem(PIN_KEY);
+            setHasPinSet(false);
+            setShowPinReset(false);
+            setDangerUnlocked(true);
+          }}
+          onCancel={() => setShowPinReset(false)}
         />
       )}
       {/* Header */}
