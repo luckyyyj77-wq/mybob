@@ -8,30 +8,7 @@ import { getStorageMode, type StorageMode } from '@/lib/storage-mode';
 import { getCloudDeleteSchedule, cancelCloudDeleteSchedule, requestServerDataDeletion } from '@/lib/storage-migration';
 import { StorageModeModal } from '@/components/StorageModeModal';
 
-// ── WebAuthn / PIN 인증 훅 ──────────────────────────────────────
-function isWebAuthnAvailable(): boolean {
-  return typeof window !== 'undefined' && !!window.PublicKeyCredential;
-}
-
-async function requestBiometric(): Promise<boolean> {
-  try {
-    const challenge = new Uint8Array(32);
-    crypto.getRandomValues(challenge);
-    await navigator.credentials.get({
-      publicKey: {
-        challenge,
-        timeout: 60000,
-        userVerification: 'required',
-        rpId: window.location.hostname,
-      },
-    } as CredentialRequestOptions);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-// PIN 해시 저장 키
+// ── PIN 인증 ──────────────────────────────────────────────────
 const PIN_KEY = 'mybob_security_pin';
 
 function hashPin(pin: string): string {
@@ -172,16 +149,6 @@ function PinModal({
   );
 }
 
-// 인증 실행 함수
-async function authenticate(): Promise<'biometric' | 'need-pin' | 'cancelled'> {
-  if (isWebAuthnAvailable()) {
-    const ok = await requestBiometric();
-    if (ok) return 'biometric';
-    // 사용자가 취소하지 않았고 단순 실패면 PIN으로
-    return 'need-pin';
-  }
-  return 'need-pin';
-}
 
 type Meal = {
   id: string;
@@ -485,16 +452,10 @@ export default function SettingsPage() {
     setHasPinSet(!!getPinHash());
   }, []);
 
-  // 인증 요청 — 생체인증 → 실패 시 PIN 폴백
+  // PIN 인증 요청
   const requestAuth = useCallback((): Promise<boolean> => {
-    return new Promise(async (resolve) => {
-      if (isWebAuthnAvailable()) {
-        const result = await authenticate();
-        if (result === 'biometric') { resolve(true); return; }
-      }
-      // PIN 폴백
+    return new Promise((resolve) => {
       if (!hasPinSet) {
-        // PIN 미설정: 먼저 PIN 설정 모달
         setPinModal({ mode: 'set', resolve: (ok) => { setPinModal(null); resolve(ok); } });
       } else {
         setPinModal({ mode: 'verify', resolve: (ok) => { setPinModal(null); resolve(ok); } });
