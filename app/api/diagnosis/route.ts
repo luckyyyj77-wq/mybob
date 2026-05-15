@@ -44,7 +44,7 @@ export async function POST(request: Request) {
     // KST 기준 날짜별 집계
     const daySet = new Set(meals.map((m: any) => toKSTDate(m.created_at)));
     const days = daySet.size;
-    const datesSorted = [...daySet].sort();
+    const datesSorted = Array.from(daySet).sort();
     const periodStart = datesSorted[0];
     const periodEnd = datesSorted[datesSorted.length - 1];
 
