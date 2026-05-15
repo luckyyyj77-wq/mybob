@@ -70,23 +70,24 @@ export default function CommunityLayout({ children }: { children: React.ReactNod
         <nav style={{ display: 'flex' }}>
           {[
             { label: '추천', href: '/community/recommendation', proOnly: false },
+            { label: '마이페이지', href: '/community/mypage', proOnly: false },
             { label: '이웃', href: '/community/neighbors', proOnly: false },
             { label: '챌린지', href: '/community/challenge', proOnly: true },
           ].map((tab, i) => {
-            const active = pathname === tab.href;
+            const active = pathname === tab.href || (tab.href === '/community/mypage' && pathname?.startsWith('/community/mypage'));
             const locked = tab.proOnly && !isPro;
             return (
               <Link
                 key={tab.href}
                 href={locked ? '#' : tab.href}
                 style={{
-                  flex: 1, padding: '10px 0', fontSize: '12px', textAlign: 'center',
+                  flex: 1, padding: '10px 0', fontSize: '11px', textAlign: 'center',
                   color: active ? 'white' : locked ? '#d1d5db' : 'black',
                   backgroundColor: active ? 'black' : 'white',
                   textDecoration: 'none',
                   borderLeft: i === 0 ? '1px solid #e5e7eb' : 'none',
                   borderRight: '1px solid #e5e7eb',
-                  letterSpacing: '1px', textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
                   cursor: locked ? 'default' : 'pointer',
                 }}
               >
