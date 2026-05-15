@@ -23,8 +23,13 @@ type AIFeedback = {
 };
 
 function computeTodayStats(meals: Meal[]) {
-  const todayStr = new Date().toLocaleDateString();
-  const todayMeals = meals.filter(m => new Date(m.created_at).toLocaleDateString() === todayStr);
+  const toKSTDate = (iso: string) => {
+    const d = new Date(iso);
+    const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+    return kst.toISOString().slice(0, 10);
+  };
+  const todayKST = toKSTDate(new Date().toISOString());
+  const todayMeals = meals.filter(m => toKSTDate(m.created_at) === todayKST);
   const totalCalories = todayMeals.reduce((s, m) => s + (Number(m.calories) || 0), 0);
   const nutrients = todayMeals.reduce(
     (acc, m) => {
@@ -39,12 +44,17 @@ function computeTodayStats(meals: Meal[]) {
 }
 
 function buildWeekly(meals: Meal[]): DayStat[] {
+  const toKSTDate = (iso: string) => {
+    const d = new Date(iso);
+    const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+    return kst.toISOString().slice(0, 10);
+  };
   const weekly: DayStat[] = [];
   for (let i = 6; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    const dateStr = d.toLocaleDateString();
-    const dayMeals = meals.filter(m => new Date(m.created_at).toLocaleDateString() === dateStr);
+    const d = new Date(new Date().getTime() + 9 * 60 * 60 * 1000);
+    d.setUTCDate(d.getUTCDate() - i);
+    const dateStr = d.toISOString().slice(0, 10);
+    const dayMeals = meals.filter(m => toKSTDate(m.created_at) === dateStr);
     weekly.push({
       date: dateStr,
       calories: dayMeals.reduce((s, m) => s + (Number(m.calories) || 0), 0),
@@ -236,7 +246,7 @@ export default function Home() {
               ) : aiFeedback ? (
                 <p style={{ fontSize: '13px', color: '#374151', lineHeight: 1.6 }}>"{aiFeedback.feedback}"</p>
               ) : (
-                <p style={{ fontSize: '12px', color: '#9ca3af' }}>식단 5개 이상 기록하면 코칭이 시작됩니다.</p>
+                <p style={{ fontSize: '12px', color: '#9ca3af' }}>기록이 쌓이면 코칭이 시작됩니다.</p>
               )}
             </div>
           </li>
