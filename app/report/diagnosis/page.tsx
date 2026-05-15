@@ -98,10 +98,10 @@ function loadBodyInfo() {
   } catch { return null; }
 }
 
-// 진단 히스토리: localStorage "mybob_diagnosis_history" (최대 12개)
+// 진단 히스토리: localStorage "mybob_diagnosis_history_v2" (최대 12개)
 function loadHistory(): DiagnosisRecord[] {
   try {
-    return JSON.parse(localStorage.getItem('mybob_diagnosis_history') || '[]');
+    return JSON.parse(localStorage.getItem('mybob_diagnosis_history_v2') || '[]');
   } catch { return []; }
 }
 
@@ -111,9 +111,9 @@ function saveHistory(record: DiagnosisRecord) {
   const today = todayKST();
   const filtered = history.filter(r => toKSTDate(r.analyzedAt) !== today);
   const next = [record, ...filtered].slice(0, 12);
-  localStorage.setItem('mybob_diagnosis_history', JSON.stringify(next));
+  localStorage.setItem('mybob_diagnosis_history_v2', JSON.stringify(next));
   // 현재 캐시도 갱신
-  localStorage.setItem('mybob_diagnosis_cache', JSON.stringify(record));
+  localStorage.setItem('mybob_diagnosis_v2', JSON.stringify(record));
 }
 
 export default function DiagnosisPage() {
@@ -128,31 +128,10 @@ export default function DiagnosisPage() {
   const [refreshBanner, setRefreshBanner] = useState<string | null>(null); // 배너 메시지
 
   useEffect(() => {
-    // 캐시 복원 (구버전 { result, analyzedAt, plan } 형식 호환)
-    const cached = localStorage.getItem('mybob_diagnosis_cache');
+    // 캐시 복원
+    const cached = localStorage.getItem('mybob_diagnosis_v2');
     if (cached) {
-      try {
-        const parsed = JSON.parse(cached);
-        if (parsed.diagnosis && parsed.analyzedAt) {
-          // 신버전 형식
-          setCurrent(parsed);
-        } else if (parsed.result?.diagnosis && parsed.analyzedAt) {
-          // 구버전 형식 → 신버전으로 변환
-          const legacy: DiagnosisRecord = {
-            diagnosis: parsed.result.diagnosis,
-            stats: parsed.result.stats ?? { avgCal: 0, days: 0, meals: 0, periodStart: '', periodEnd: '', targetCalories: 2000 },
-            analyzedAt: new Date(parsed.analyzedAt).toISOString().includes('T')
-              ? new Date(parsed.analyzedAt).toISOString()
-              : new Date().toISOString(),
-            analyzedAtLabel: parsed.analyzedAt,
-            plan: parsed.plan ?? 'pro',
-            mealCountAtAnalysis: parsed.result.stats?.meals ?? 0,
-          };
-          setCurrent(legacy);
-          // 신버전 형식으로 덮어씀
-          localStorage.setItem('mybob_diagnosis_cache', JSON.stringify(legacy));
-        }
-      } catch { }
+      try { setCurrent(JSON.parse(cached)); } catch { }
     }
     const hist = loadHistory();
     setHistory(hist);
