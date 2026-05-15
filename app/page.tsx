@@ -103,6 +103,7 @@ export default function Home() {
             const serverIds = new Set(result.data.map((m: Meal) => m.id));
             const uniqueLocal = localMeals.filter(m => !serverIds.has(m.id));
             merged = [...result.data, ...uniqueLocal];
+            localStorage.setItem('mybob_meals', JSON.stringify(merged));
             setTodayStats(computeTodayStats(merged));
           }
         }
