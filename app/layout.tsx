@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
 import './globals.css';
 import { Session } from '@supabase/supabase-js';
-import { FaCamera, FaHistory, FaHome, FaChartPie, FaTable, FaCog, FaHandshake, FaSignInAlt, FaSignOutAlt, FaDownload, FaWeight } from 'react-icons/fa';
+import { FaCamera, FaHistory, FaHome, FaChartPie, FaUsers, FaCog, FaHandshake, FaSignInAlt, FaSignOutAlt, FaDownload } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -25,7 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const isAuthRoute = pathname?.startsWith('/auth') || false;
   const isCaptureRoute = pathname === '/capture';
   const isAdminRoute = pathname?.startsWith('/admin') || false;
-  const isProtectedRoute = pathname === '/' || ['/capture', '/report', '/history', '/community', '/mytable', '/body', '/settings'].some(r => pathname?.startsWith(r));
+  const isProtectedRoute = pathname === '/' || ['/capture', '/report', '/history', '/community', '/settings'].some(r => pathname?.startsWith(r));
 
   // 라우트 보호 체크 — pathname은 ref로 추적해 클로저 최신값 유지
   const pathnameRef = useRef(pathname);
@@ -51,7 +51,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     const redirect = (s: typeof session) => {
       const p = pathnameRef.current ?? '';
       const isAuth = p.startsWith('/auth');
-      const isProtected = p === '/' || ['/capture', '/report', '/history', '/community', '/mytable', '/body', '/settings'].some(r => p.startsWith(r));
+      const isProtected = p === '/' || ['/capture', '/report', '/history', '/community', '/settings'].some(r => p.startsWith(r));
       if (!s && isProtected && !isAuth) router.push('/auth/login');
       else if (s && isAuth) router.push('/');
     };
@@ -172,12 +172,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const showNav = !isAuthRoute && !isCaptureRoute;
 
   const menuItems = [
-    { icon: FaHome,      label: '홈',      href: '/' },
-    { icon: FaChartPie,  label: '리포트',  href: '/report/daily' },
-    { icon: FaTable,     label: '마이테이블', href: '/mytable' },
-    { icon: FaWeight,    label: '체중 기록', href: '/body' },
-    { icon: FaCog,       label: '설정',    href: '/settings' },
-    { icon: FaHandshake, label: '제휴문의', href: '/partnership' },
+    { icon: FaHome,     label: '홈',     href: '/' },
+    { icon: FaChartPie, label: '리포트', href: '/report/daily' },
+    { icon: FaUsers,    label: '커뮤니티', href: '/community/recommendation' },
+    { icon: FaCog,      label: '설정',   href: '/settings' },
+    { icon: FaHandshake,label: '제휴문의', href: '/partnership' },
   ];
 
   return (
@@ -339,11 +338,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Link href="/history" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', textDecoration: 'none', color: 'black', width: '42px' }}>
                 <FaHistory size={20} />
                 <span style={{ fontSize: '9px', letterSpacing: '1px', color: '#6B21A8', textTransform: 'uppercase' }}>TIMELINE</span>
-              </Link>
-
-              <Link href="/mytable" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', textDecoration: 'none', color: 'black', width: '42px' }}>
-                <FaTable size={20} />
-                <span style={{ fontSize: '9px', letterSpacing: '1px', color: '#6B21A8', textTransform: 'uppercase' }}>TABLE</span>
               </Link>
             </nav>
           </div>
