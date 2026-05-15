@@ -128,10 +128,31 @@ export default function DiagnosisPage() {
   const [refreshBanner, setRefreshBanner] = useState<string | null>(null); // 배너 메시지
 
   useEffect(() => {
-    // 캐시 복원
+    // 캐시 복원 (구버전 { result, analyzedAt, plan } 형식 호환)
     const cached = localStorage.getItem('mybob_diagnosis_cache');
     if (cached) {
-      try { setCurrent(JSON.parse(cached)); } catch { }
+      try {
+        const parsed = JSON.parse(cached);
+        if (parsed.diagnosis && parsed.analyzedAt) {
+          // 신버전 형식
+          setCurrent(parsed);
+        } else if (parsed.result?.diagnosis && parsed.analyzedAt) {
+          // 구버전 형식 → 신버전으로 변환
+          const legacy: DiagnosisRecord = {
+            diagnosis: parsed.result.diagnosis,
+            stats: parsed.result.stats ?? { avgCal: 0, days: 0, meals: 0, periodStart: '', periodEnd: '', targetCalories: 2000 },
+            analyzedAt: new Date(parsed.analyzedAt).toISOString().includes('T')
+              ? new Date(parsed.analyzedAt).toISOString()
+              : new Date().toISOString(),
+            analyzedAtLabel: parsed.analyzedAt,
+            plan: parsed.plan ?? 'pro',
+            mealCountAtAnalysis: parsed.result.stats?.meals ?? 0,
+          };
+          setCurrent(legacy);
+          // 신버전 형식으로 덮어씀
+          localStorage.setItem('mybob_diagnosis_cache', JSON.stringify(legacy));
+        }
+      } catch { }
     }
     const hist = loadHistory();
     setHistory(hist);
