@@ -24,11 +24,6 @@ type AIFeedback = {
   recommendation: { menu: string; reason: string };
 };
 
-const PERSONA_EMOJI: Record<Persona, string> = {
-  robot: '🤖',
-  cat: '🐱',
-  dog: '🐶',
-};
 
 function computeTodayStats(meals: Meal[]) {
   const toKSTDate = (iso: string) => {
@@ -287,7 +282,7 @@ export default function Home() {
         style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '20px 28px', overflow: 'hidden' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px' }}>
-          <span style={{ fontSize: '16px' }}>{PERSONA_EMOJI[persona]}</span>
+          <span style={{ fontSize: '16px' }}>💡</span>
           <h2 style={{ fontSize: '16px', fontWeight: 400, color: 'black', letterSpacing: '0.5px' }}>AI COACH</h2>
         </div>
 
@@ -317,9 +312,7 @@ export default function Home() {
           <li style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
             <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#d1d5db', flexShrink: 0, marginTop: '5px' }} />
             <div style={{ flex: 1 }}>
-              <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '4px' }}>
-                코치 코멘트 <span style={{ fontSize: '10px' }}>{PERSONA_EMOJI[persona]}</span>
-              </p>
+              <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '4px' }}>코치 코멘트</p>
               {loadingFeedback ? (
                 <div style={{ width: '14px', height: '14px', border: '1.5px solid black', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
               ) : displayComment ? (

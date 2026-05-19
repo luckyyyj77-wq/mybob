@@ -1139,10 +1139,9 @@ export default function SettingsPage() {
             return (
               <button
                 key={opt.id}
-                onClick={() => {
+                onPointerDown={() => {
                   setCoachPersona(opt.id);
                   localStorage.setItem('mybob_coach_persona', opt.id);
-                  // 오늘 코치 캐시 전부 무효화
                   const keys = Object.keys(localStorage);
                   keys.forEach(k => {
                     if (k.startsWith('mybob_coach_')) {
@@ -1153,7 +1152,8 @@ export default function SettingsPage() {
                 style={{
                   flex: 1,
                   padding: '14px 8px',
-                  border: `1px solid ${isSelected ? '#6B21A8' : '#e5e7eb'}`,
+                  border: `2px solid ${isSelected ? '#6B21A8' : '#e5e7eb'}`,
+                  borderRadius: '8px',
                   backgroundColor: isSelected ? '#f3e8ff' : 'white',
                   cursor: 'pointer',
                   display: 'flex',
@@ -1161,6 +1161,8 @@ export default function SettingsPage() {
                   alignItems: 'center',
                   gap: '6px',
                   transition: 'all 0.15s',
+                  touchAction: 'manipulation',
+                  WebkitTapHighlightColor: 'transparent',
                 }}
               >
                 <span style={{ fontSize: '26px', lineHeight: 1 }}>{opt.emoji}</span>
