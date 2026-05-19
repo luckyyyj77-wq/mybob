@@ -3,6 +3,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { motion } from 'framer-motion';
+import { analyzeCoach, getCoachMessage } from '@/lib/coach';
+import type { Persona } from '@/lib/coach';
 
 type Meal = {
   id: string;
@@ -20,6 +22,12 @@ type AIFeedback = {
   improvement: string;
   weeklyInsight?: string;
   recommendation: { menu: string; reason: string };
+};
+
+const PERSONA_EMOJI: Record<Persona, string> = {
+  robot: '🤖',
+  cat: '🐱',
+  dog: '🐶',
 };
 
 function computeTodayStats(meals: Meal[]) {
@@ -40,7 +48,7 @@ function computeTodayStats(meals: Meal[]) {
     },
     { carbs: 0, protein: 0, fat: 0 }
   );
-  return { totalCalories, mealNames: todayMeals.map(m => m.food_name), count: todayMeals.length, nutrients };
+  return { totalCalories, mealNames: todayMeals.map(m => m.food_name), count: todayMeals.length, nutrients, todayMeals };
 }
 
 function buildWeekly(meals: Meal[]): DayStat[] {
@@ -72,22 +80,47 @@ export default function Home() {
     mealNames: [] as string[],
     count: 0,
     nutrients: { carbs: 0, protein: 0, fat: 0 },
+    todayMeals: [] as Meal[],
   });
   const [aiFeedback, setAiFeedback] = useState<AIFeedback | null>(null);
+  const [coachComment, setCoachComment] = useState<string>('');
   const [loadingFeedback, setLoadingFeedback] = useState(false);
+  const [persona, setPersona] = useState<Persona>('dog');
   const aiFetchedRef = useRef(false);
 
   useEffect(() => {
-    // 1단계: 로컬 데이터 즉시 렌더링 (블로킹 없음)
+    const savedPersona = (localStorage.getItem('mybob_coach_persona') as Persona) || 'dog';
+    setPersona(savedPersona);
+
     const localRaw = localStorage.getItem('mybob_meals');
     const localMeals: Meal[] = localRaw ? JSON.parse(localRaw) : [];
     setTodayStats(computeTodayStats(localMeals));
 
-    // 2단계: 서버 동기화 완료 후 최종 데이터로 AI 1회만 호출
-    syncFromServer(localMeals);
+    syncFromServer(localMeals, savedPersona);
   }, []);
 
-  const syncFromServer = async (localMeals: Meal[]) => {
+  const getKSTDate = () => {
+    const now = new Date();
+    const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+    return kst.toISOString().slice(0, 10).replace(/-/g, '');
+  };
+
+  const getGoalParams = () => {
+    const goalRaw = localStorage.getItem('mybob_goal');
+    let weight = 65;
+    let goalCalories = 2000;
+    if (goalRaw) {
+      try {
+        const goalData = JSON.parse(goalRaw);
+        if (goalData.weight) weight = Number(goalData.weight) || 65;
+        if (goalData.calories) goalCalories = Number(goalData.calories) || 2000;
+      } catch { }
+    }
+    // Harris-Benedict 기준 — weight만 있을 때 기본값 2000
+    return { goalCalories, goalProtein: weight * 1.5 };
+  };
+
+  const syncFromServer = async (localMeals: Meal[], currentPersona: Persona) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
 
@@ -109,33 +142,70 @@ export default function Home() {
         }
       }
 
-      // 서버 동기화 완료 후 AI 1회만 호출 (중복 방지)
       if (!aiFetchedRef.current) {
+        aiFetchedRef.current = true;
         const finalStats = computeTodayStats(merged);
-        if (finalStats.count >= 5) {
-          aiFetchedRef.current = true;
-          const weekly = buildWeekly(merged);
-          const goalData = JSON.parse(localStorage.getItem('mybob_goal') || '{"goal":"유지"}');
-          fetchAI(finalStats, weekly, goalData);
+        const weekly = buildWeekly(merged);
+        const goalData = JSON.parse(localStorage.getItem('mybob_goal') || '{"goal":"유지"}');
+        const { goalCalories, goalProtein } = getGoalParams();
+        const kstDate = getKSTDate();
+
+        // 코치 시스템 분석
+        const result = analyzeCoach({
+          todayMeals: finalStats.todayMeals as any,
+          allMeals: merged as any,
+          goalCalories,
+          goalProtein,
+          persona: currentPersona,
+        });
+
+        if (!result.useGemini) {
+          // 로컬 멘트 테이블에서 메시지 선택
+          const cacheKey = `mybob_coach_${currentPersona}_${kstDate}`;
+          const cached = localStorage.getItem(cacheKey);
+          if (cached) {
+            try {
+              const parsed = JSON.parse(cached);
+              if (parsed.type === 'local') {
+                setCoachComment(parsed.message);
+                return;
+              }
+            } catch { }
+          }
+          const seed = parseInt(kstDate, 10);
+          const message = getCoachMessage(result, seed);
+          if (message) {
+            setCoachComment(message);
+            localStorage.setItem(cacheKey, JSON.stringify({ type: 'local', message }));
+          }
+        } else {
+          // Gemini 위임
+          fetchAI(finalStats, weekly, goalData, currentPersona);
         }
       }
-    } catch { /* 서버 실패 시 로컬 데이터 유지 */ }
+    } catch { }
   };
 
-  const fetchAI = async (stats: ReturnType<typeof computeTodayStats>, weekly: DayStat[], goalData: any) => {
-    const kstDate = new Date(new Date().getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
-    const todayKey = `mybob_coach_${kstDate}`;
+  const fetchAI = async (
+    stats: ReturnType<typeof computeTodayStats>,
+    weekly: DayStat[],
+    goalData: any,
+    currentPersona: Persona,
+  ) => {
+    const kstDate = getKSTDate();
+    const todayKey = `mybob_coach_${currentPersona}_${kstDate}`;
 
-    // 1) 오늘치 일반 캐시 확인
     const cached = localStorage.getItem(todayKey);
     if (cached) {
       try {
-        setAiFeedback(JSON.parse(cached));
-        return;
+        const parsed = JSON.parse(cached);
+        if (parsed.type === 'gemini') {
+          setAiFeedback(parsed.data);
+          return;
+        }
       } catch { }
     }
 
-    // 2) PRO 진단 캐시 확인
     const diagRaw = localStorage.getItem('mybob_diagnosis_cache');
     if (diagRaw) {
       try {
@@ -156,7 +226,6 @@ export default function Home() {
       } catch { }
     }
 
-    // 3) API 호출 (캐시 없을 때)
     setLoadingFeedback(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -181,12 +250,14 @@ export default function Home() {
       const r = await res.json();
       if (r.success) {
         setAiFeedback(r.data);
-        localStorage.setItem(todayKey, JSON.stringify(r.data));
+        localStorage.setItem(todayKey, JSON.stringify({ type: 'gemini', data: r.data }));
       }
     } catch { } finally {
       setLoadingFeedback(false);
     }
   };
+
+  const displayComment = coachComment || (aiFeedback?.feedback ?? '');
 
   return (
     <div style={{ height: 'calc(100svh - 65px)', display: 'flex', flexDirection: 'column', backgroundColor: 'white', overflow: 'hidden' }}>
@@ -216,7 +287,7 @@ export default function Home() {
         style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '20px 28px', overflow: 'hidden' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px' }}>
-          <span style={{ fontSize: '16px' }}>💡</span>
+          <span style={{ fontSize: '16px' }}>{PERSONA_EMOJI[persona]}</span>
           <h2 style={{ fontSize: '16px', fontWeight: 400, color: 'black', letterSpacing: '0.5px' }}>AI COACH</h2>
         </div>
 
@@ -246,11 +317,13 @@ export default function Home() {
           <li style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
             <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#d1d5db', flexShrink: 0, marginTop: '5px' }} />
             <div style={{ flex: 1 }}>
-              <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '4px' }}>코치 코멘트</p>
+              <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '4px' }}>
+                코치 코멘트 <span style={{ fontSize: '10px' }}>{PERSONA_EMOJI[persona]}</span>
+              </p>
               {loadingFeedback ? (
                 <div style={{ width: '14px', height: '14px', border: '1.5px solid black', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-              ) : aiFeedback ? (
-                <p style={{ fontSize: '13px', color: '#374151', lineHeight: 1.6 }}>"{aiFeedback.feedback}"</p>
+              ) : displayComment ? (
+                <p style={{ fontSize: '13px', color: '#374151', lineHeight: 1.6 }}>"{displayComment}"</p>
               ) : (
                 <p style={{ fontSize: '12px', color: '#9ca3af' }}>기록이 쌓이면 코칭이 시작됩니다.</p>
               )}

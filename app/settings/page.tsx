@@ -793,6 +793,14 @@ type PlanStatus = {
 const PLAN_LABEL: Record<string, string> = { free: '무료', pro: '구독 PRO', lifetime: '평생 이용권' };
 const PLAN_COLOR: Record<string, string> = { free: '#9ca3af', pro: '#6B21A8', lifetime: '#d97706' };
 
+type CoachPersona = 'robot' | 'cat' | 'dog';
+
+const COACH_OPTIONS: { id: CoachPersona; emoji: string; name: string; desc: string }[] = [
+  { id: 'robot', emoji: '🤖', name: '분석형', desc: '수치와 데이터로 말합니다' },
+  { id: 'cat',   emoji: '🐱', name: '직관형', desc: '예상 못한 한마디를 던집니다' },
+  { id: 'dog',   emoji: '🐶', name: '응원형', desc: '무조건 당신 편이에요' },
+];
+
 export default function SettingsPage() {
   const [aiAlert, setAiAlert] = useState(true);
   const [notifFreq, setNotifFreq] = useState('1시간 후');
@@ -814,6 +822,7 @@ export default function SettingsPage() {
   const [nicknameSaved, setNicknameSaved] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [coachPersona, setCoachPersona] = useState<CoachPersona>('dog');
 
   // ── 보안 인증 상태 ──────────────────────────────────────────
   const [pinModal, setPinModal] = useState<{ mode: 'set' | 'verify'; context: 'body' | 'danger'; resolve: (ok: boolean, pin?: string) => void } | null>(null);
@@ -863,6 +872,9 @@ export default function SettingsPage() {
   };
 
   useEffect(() => {
+    const savedPersona = (localStorage.getItem('mybob_coach_persona') as CoachPersona) || 'dog';
+    setCoachPersona(savedPersona);
+
     const raw = localStorage.getItem('mybob_meals');
     const parsed: Meal[] = raw ? JSON.parse(raw) : [];
     setMeals(parsed);
@@ -1117,6 +1129,46 @@ export default function SettingsPage() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* 코치 선택 */}
+        <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>코치 스타일</p>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '28px' }}>
+          {COACH_OPTIONS.map(opt => {
+            const isSelected = coachPersona === opt.id;
+            return (
+              <button
+                key={opt.id}
+                onClick={() => {
+                  setCoachPersona(opt.id);
+                  localStorage.setItem('mybob_coach_persona', opt.id);
+                  // 오늘 코치 캐시 전부 무효화
+                  const keys = Object.keys(localStorage);
+                  keys.forEach(k => {
+                    if (k.startsWith('mybob_coach_')) {
+                      localStorage.removeItem(k);
+                    }
+                  });
+                }}
+                style={{
+                  flex: 1,
+                  padding: '14px 8px',
+                  border: `1px solid ${isSelected ? '#6B21A8' : '#e5e7eb'}`,
+                  backgroundColor: isSelected ? '#f3e8ff' : 'white',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: 'all 0.15s',
+                }}
+              >
+                <span style={{ fontSize: '26px', lineHeight: 1 }}>{opt.emoji}</span>
+                <span style={{ fontSize: '12px', color: isSelected ? '#6B21A8' : 'black', fontWeight: isSelected ? 500 : 400 }}>{opt.name}</span>
+                <span style={{ fontSize: '10px', color: '#9ca3af', lineHeight: 1.4, textAlign: 'center' }}>{opt.desc}</span>
+              </button>
+            );
+          })}
         </div>
 
         {/* 플랜 현황 */}
