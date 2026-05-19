@@ -123,7 +123,8 @@ export default function Home() {
   };
 
   const fetchAI = async (stats: ReturnType<typeof computeTodayStats>, weekly: DayStat[], goalData: any) => {
-    const todayKey = `mybob_coach_${new Date().toISOString().slice(0, 10)}`;
+    const kstDate = new Date(new Date().getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const todayKey = `mybob_coach_${kstDate}`;
 
     // 1) 오늘치 일반 캐시 확인
     const cached = localStorage.getItem(todayKey);
@@ -159,13 +160,17 @@ export default function Home() {
     setLoadingFeedback(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) return;
+      const token = session?.access_token;
+      if (!token) {
+        setLoadingFeedback(false);
+        return;
+      }
 
       const res = await fetch('/api/recommendation', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           today: { calories: stats.totalCalories, ...stats.nutrients },
