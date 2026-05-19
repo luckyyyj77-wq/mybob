@@ -1133,22 +1133,13 @@ export default function SettingsPage() {
 
         {/* 코치 선택 */}
         <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>코치 스타일</p>
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '28px' }}>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
           {COACH_OPTIONS.map(opt => {
             const isSelected = coachPersona === opt.id;
             return (
-              <button
+              <div
                 key={opt.id}
-                onPointerDown={() => {
-                  setCoachPersona(opt.id);
-                  localStorage.setItem('mybob_coach_persona', opt.id);
-                  const keys = Object.keys(localStorage);
-                  keys.forEach(k => {
-                    if (k.startsWith('mybob_coach_')) {
-                      localStorage.removeItem(k);
-                    }
-                  });
-                }}
+                onClick={() => setCoachPersona(opt.id)}
                 style={{
                   flex: 1,
                   padding: '14px 8px',
@@ -1160,18 +1151,41 @@ export default function SettingsPage() {
                   flexDirection: 'column',
                   alignItems: 'center',
                   gap: '6px',
-                  transition: 'all 0.15s',
-                  touchAction: 'manipulation',
+                  userSelect: 'none',
                   WebkitTapHighlightColor: 'transparent',
                 }}
               >
                 <span style={{ fontSize: '26px', lineHeight: 1 }}>{opt.emoji}</span>
-                <span style={{ fontSize: '12px', color: isSelected ? '#6B21A8' : 'black', fontWeight: isSelected ? 500 : 400 }}>{opt.name}</span>
+                <span style={{ fontSize: '12px', color: isSelected ? '#6B21A8' : 'black', fontWeight: isSelected ? 600 : 400 }}>{opt.name}</span>
                 <span style={{ fontSize: '10px', color: '#9ca3af', lineHeight: 1.4, textAlign: 'center' }}>{opt.desc}</span>
-              </button>
+              </div>
             );
           })}
         </div>
+        <button
+          onClick={() => {
+            localStorage.setItem('mybob_coach_persona', coachPersona);
+            const keys = Object.keys(localStorage);
+            keys.forEach(k => { if (k.startsWith('mybob_coach_')) localStorage.removeItem(k); });
+            alert(`${COACH_OPTIONS.find(o => o.id === coachPersona)?.emoji} 코치가 변경되었습니다.`);
+          }}
+          style={{
+            width: '100%',
+            padding: '14px',
+            backgroundColor: '#6B21A8',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: 500,
+            cursor: 'pointer',
+            marginBottom: '28px',
+            touchAction: 'manipulation',
+            WebkitTapHighlightColor: 'transparent',
+          }}
+        >
+          적용
+        </button>
 
         {/* 플랜 현황 */}
         <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>이용 플랜</p>

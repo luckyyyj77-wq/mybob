@@ -316,7 +316,9 @@ export default function Home() {
               {loadingFeedback ? (
                 <div style={{ width: '14px', height: '14px', border: '1.5px solid black', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
               ) : displayComment ? (
-                <p style={{ fontSize: '13px', color: '#374151', lineHeight: 1.6 }}>"{displayComment}"</p>
+                <p style={{ fontSize: '13px', color: '#374151', lineHeight: 1.6 }}>
+                  {persona === 'robot' ? '🤖' : persona === 'cat' ? '🐱' : '🐶'} "{displayComment}"
+                </p>
               ) : (
                 <p style={{ fontSize: '12px', color: '#9ca3af' }}>기록이 쌓이면 코칭이 시작됩니다.</p>
               )}
