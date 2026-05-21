@@ -102,8 +102,10 @@ async function searchOpenFoodFacts(foodName: string) {
 }
 
 // ── Gemini 비전 분석 ──────────────────────────────────────────────────────────
-async function analyzeWithGemini(base64Data: string, apiKey: string, dbNutrients: any | null, dbSource: string | null, estimatedPortion: number) {
-  const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite'];
+async function analyzeWithGemini(base64Data: string, apiKey: string, dbNutrients: any | null, dbSource: string | null, estimatedPortion: number, isPro = false) {
+  const modelsToTry = isPro
+    ? ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash']
+    : ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite'];
 
   const nutritionContext = dbNutrients
     ? `[DB 기초 데이터 — 출처: ${dbSource}, 추정 1인분: ${estimatedPortion}g]
@@ -453,13 +455,15 @@ export async function POST(request: Request) {
     }
 
     // OpenFoodFacts(한식DB 미스일 때)와 Gemini를 병렬 실행
+    const isPro = ((request as any)._plan ?? 'free') !== 'free';
     const [offHit, geminiResult] = await Promise.all([
       (!koreanHit && foodName) ? searchOpenFoodFacts(foodName) : Promise.resolve(null),
       analyzeWithGemini(
         base64Data, apiKey,
         koreanHit?.nutrients ?? null,
         koreanHit?.source ?? null,
-        koreanHit?.portion ?? 250
+        koreanHit?.portion ?? 250,
+        isPro
       ),
     ]);
 
