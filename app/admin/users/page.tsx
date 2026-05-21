@@ -72,7 +72,7 @@ export default function AdminUsersPage() {
   );
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '960px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
       {/* 헤더 */}
       <div>
@@ -87,10 +87,10 @@ export default function AdminUsersPage() {
             key={p}
             onClick={() => setPlanFilter(p)}
             style={{
-              flex: 1, padding: '10px 8px', border: 'none', cursor: 'pointer', fontSize: '12px',
+              flex: 1, padding: '10px 4px', border: 'none', cursor: 'pointer', fontSize: '11px',
               backgroundColor: planFilter === p ? '#0f0f0f' : 'white',
               color: planFilter === p ? 'white' : '#9ca3af',
-              letterSpacing: '0.5px',
+              letterSpacing: '0.3px',
             }}
           >
             {p === 'all' ? '전체' : PLAN_LABEL[p]} ({planCounts[p]})
@@ -112,12 +112,6 @@ export default function AdminUsersPage() {
 
       {/* 목록 */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: '#e5e7eb', border: '1px solid #e5e7eb' }}>
-        {/* 헤더 행 */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 70px 70px 60px', gap: '0', backgroundColor: '#f9fafb', padding: '8px 14px' }}>
-          {['이메일', '가입일', '최근 로그인', '식단', '오늘분석'].map(h => (
-            <p key={h} style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1px', textTransform: 'uppercase' }}>{h}</p>
-          ))}
-        </div>
 
         {filtered.length === 0 ? (
           <div style={{ padding: '40px', textAlign: 'center', backgroundColor: 'white' }}>
@@ -125,31 +119,25 @@ export default function AdminUsersPage() {
           </div>
         ) : (
           filtered.map(u => (
-            <div
-              key={u.id}
-              style={{
-                display: 'grid', gridTemplateColumns: '1fr 80px 70px 70px 60px',
-                padding: '12px 14px', backgroundColor: 'white', alignItems: 'center',
-              }}
-            >
-              {/* 이메일 + 플랜 배지 */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+            <div key={u.id} className="user-row" style={{ backgroundColor: 'white', padding: '12px 14px' }}>
+              {/* 모바일: 카드형 레이아웃 */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
                 <span style={{
                   fontSize: '9px', letterSpacing: '1px', color: 'white',
                   backgroundColor: PLAN_COLOR[u.plan], padding: '2px 5px', flexShrink: 0,
                 }}>
                   {PLAN_LABEL[u.plan]}
                 </span>
-                <span style={{ fontSize: '12px', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span style={{ fontSize: '12px', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                   {u.email}
                 </span>
               </div>
-              <p style={{ fontSize: '11px', color: '#9ca3af' }}>{fmtDate(u.created_at)}</p>
-              <p style={{ fontSize: '11px', color: '#9ca3af' }}>{fmtRelative(u.last_sign_in_at)}</p>
-              <p style={{ fontSize: '12px', color: '#374151' }}>{u.meal_count}건</p>
-              <p style={{ fontSize: '12px', color: u.analyses_today > 0 ? '#6B21A8' : '#9ca3af' }}>
-                {u.analyses_today}회
-              </p>
+              <div style={{ display: 'flex', gap: '16px' }}>
+                <span style={{ fontSize: '11px', color: '#9ca3af' }}>가입 {fmtDate(u.created_at)}</span>
+                <span style={{ fontSize: '11px', color: '#9ca3af' }}>접속 {fmtRelative(u.last_sign_in_at)}</span>
+                <span style={{ fontSize: '11px', color: '#374151' }}>식단 {u.meal_count}건</span>
+                <span style={{ fontSize: '11px', color: u.analyses_today > 0 ? '#6B21A8' : '#9ca3af' }}>오늘 {u.analyses_today}회</span>
+              </div>
             </div>
           ))
         )}

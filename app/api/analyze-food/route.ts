@@ -236,7 +236,7 @@ async function searchOpenFoodFacts(foodName: string) {
 }
 
 // ── Gemini 비전 분석 ──────────────────────────────────────────────────────────
-async function analyzeWithGemini(base64Data: string, apiKey: string, dbNutrients: any | null, dbSource: string | null, estimatedPortion: number, isPro = false) {
+async function analyzeWithGemini(base64Data: string, apiKey: string, dbNutrients: any | null, dbSource: string | null, estimatedPortion: number, isPro = false): Promise<{ success: boolean; food?: any; modelUsed?: string; tokensIn?: number; tokensOut?: number; error?: string }> {
   const modelsToTry = isPro
     ? ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash']
     : ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite'];
@@ -294,7 +294,9 @@ ${nutritionContext}
       });
       const result = await res.json();
       if (res.ok && result.candidates?.[0]?.content?.parts?.[0]?.text) {
-        return { success: true, food: JSON.parse(result.candidates[0].content.parts[0].text), modelUsed: model };
+        const tokensIn  = result.usageMetadata?.promptTokenCount     ?? undefined;
+        const tokensOut = result.usageMetadata?.candidatesTokenCount ?? undefined;
+        return { success: true, food: JSON.parse(result.candidates[0].content.parts[0].text), modelUsed: model, tokensIn, tokensOut };
       }
       const errMsg = result.error?.message || '';
       if (errMsg.includes('quota') || errMsg.includes('RESOURCE_EXHAUSTED') || errMsg.includes('overloaded')) {
@@ -308,6 +310,25 @@ ${nutritionContext}
     }
   }
   return { success: false, error: '모든 모델 한도 초과. 잠시 후 다시 시도해주세요.' };
+}
+
+async function recordGeminiUsage(
+  adminSupabase: any,
+  userId: string,
+  plan: string,
+  model: string,
+  tokensIn: number | undefined,
+  tokensOut: number | undefined,
+  mode: string,
+) {
+  try {
+    await adminSupabase.from('gemini_usage').insert({
+      user_id: userId, plan, model,
+      tokens_in: tokensIn ?? null, tokens_out: tokensOut ?? null, mode,
+    });
+  } catch (e: any) {
+    console.warn('[gemini_usage insert]', e.message);
+  }
 }
 
 // ── Open Food Facts 바코드 조회 ───────────────────────────────────────────────
@@ -426,7 +447,9 @@ async function analyzeNutritionLabel(base64Data: string, apiKey: string) {
       const result = await res.json();
       if (res.ok && result.candidates?.[0]?.content?.parts?.[0]?.text) {
         const parsed = JSON.parse(result.candidates[0].content.parts[0].text);
-        return { success: true, data: parsed, modelUsed: model };
+        const tokensIn  = result.usageMetadata?.promptTokenCount     ?? undefined;
+        const tokensOut = result.usageMetadata?.candidatesTokenCount ?? undefined;
+        return { success: true, data: parsed, modelUsed: model, tokensIn, tokensOut };
       }
       const errMsg = result.error?.message || '';
       if (errMsg.includes('quota') || errMsg.includes('RESOURCE_EXHAUSTED')) continue;
@@ -513,13 +536,18 @@ export async function POST(request: Request) {
         }
       }
 
-      // 분석 카운트 증가
+      // 분석 카운트 증가 + 토큰 사용량 기록
       const userId = (request as any)._userId;
       const adminSupabase = (request as any)._adminSupabase;
       const analysisUsed = (request as any)._analysisUsed ?? 0;
       const analysisLimit = (request as any)._analysisLimit ?? 10;
       const plan = (request as any)._plan ?? 'free';
-      if (userId && adminSupabase) await incrementAnalysisCount(adminSupabase, userId);
+      if (userId && adminSupabase) {
+        await incrementAnalysisCount(adminSupabase, userId);
+        if (ocrResult.modelUsed) {
+          await recordGeminiUsage(adminSupabase, userId, plan, ocrResult.modelUsed, ocrResult.tokensIn, ocrResult.tokensOut, 'ocr');
+        }
+      }
 
       return NextResponse.json({
         success: true,
@@ -642,7 +670,7 @@ export async function POST(request: Request) {
       ? (dbResult.source === 'korean_db' ? 'korean_db+gemini' : 'openfoodfacts+gemini')
       : 'gemini_only';
 
-    // 분석 성공 시 카운트 증가
+    // 분석 성공 시 카운트 증가 + 토큰 사용량 기록
     const userId = (request as any)._userId;
     const adminSupabase = (request as any)._adminSupabase;
     const analysisUsed = (request as any)._analysisUsed ?? 0;
@@ -650,6 +678,9 @@ export async function POST(request: Request) {
     const plan = (request as any)._plan ?? 'free';
     if (userId && adminSupabase) {
       await incrementAnalysisCount(adminSupabase, userId);
+      if (geminiResult.modelUsed) {
+        await recordGeminiUsage(adminSupabase, userId, plan, geminiResult.modelUsed, geminiResult.tokensIn, geminiResult.tokensOut, 'vision');
+      }
     }
 
     return NextResponse.json({

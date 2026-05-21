@@ -67,7 +67,7 @@ export default function AdminMealsPage() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '960px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
       {/* 헤더 */}
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
@@ -78,21 +78,23 @@ export default function AdminMealsPage() {
         <p style={{ fontSize: '12px', color: '#9ca3af' }}>총 {total.toLocaleString()}건</p>
       </div>
 
-      {/* 카테고리 필터 */}
-      <div style={{ display: 'flex', gap: '1px', backgroundColor: '#e5e7eb', border: '1px solid #e5e7eb', flexWrap: 'wrap' }}>
-        {CATEGORIES.map(cat => (
-          <button
-            key={cat}
-            onClick={() => handleCategory(cat)}
-            style={{
-              padding: '8px 12px', border: 'none', cursor: 'pointer', fontSize: '12px',
-              backgroundColor: category === cat ? '#0f0f0f' : 'white',
-              color: category === cat ? 'white' : '#9ca3af',
-            }}
-          >
-            {cat === 'all' ? '전체' : cat}
-          </button>
-        ))}
+      {/* 카테고리 필터 — 가로 스크롤 */}
+      <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <div style={{ display: 'flex', gap: '1px', backgroundColor: '#e5e7eb', border: '1px solid #e5e7eb', width: 'max-content', minWidth: '100%' }}>
+          {CATEGORIES.map(cat => (
+            <button
+              key={cat}
+              onClick={() => handleCategory(cat)}
+              style={{
+                padding: '9px 14px', border: 'none', cursor: 'pointer', fontSize: '12px', whiteSpace: 'nowrap',
+                backgroundColor: category === cat ? '#0f0f0f' : 'white',
+                color: category === cat ? 'white' : '#9ca3af',
+              }}
+            >
+              {cat === 'all' ? '전체' : cat}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* 검색 */}
@@ -110,20 +112,14 @@ export default function AdminMealsPage() {
         />
         <button
           onClick={handleSearch}
-          style={{ padding: '10px 20px', backgroundColor: '#0f0f0f', color: 'white', border: 'none', fontSize: '12px', cursor: 'pointer', letterSpacing: '1px' }}
+          style={{ padding: '10px 16px', backgroundColor: '#0f0f0f', color: 'white', border: 'none', fontSize: '12px', cursor: 'pointer', letterSpacing: '1px', flexShrink: 0 }}
         >
           검색
         </button>
       </div>
 
-      {/* 테이블 */}
+      {/* 목록 */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: '#e5e7eb', border: '1px solid #e5e7eb' }}>
-        {/* 헤더 */}
-        <div style={{ display: 'grid', gridTemplateColumns: '48px 1fr 70px 60px 130px', padding: '8px 14px', backgroundColor: '#f9fafb' }}>
-          {['사진', '음식명', '카테고리', '칼로리', '기록 시각'].map(h => (
-            <p key={h} style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1px', textTransform: 'uppercase' }}>{h}</p>
-          ))}
-        </div>
 
         {loading ? (
           <div style={{ padding: '40px', textAlign: 'center', backgroundColor: 'white' }}>
@@ -135,22 +131,24 @@ export default function AdminMealsPage() {
           </div>
         ) : (
           meals.map(m => (
-            <div
-              key={m.id}
-              style={{ display: 'grid', gridTemplateColumns: '48px 1fr 70px 60px 130px', padding: '10px 14px', backgroundColor: 'white', alignItems: 'center', gap: '0' }}
-            >
+            <div key={m.id} style={{ display: 'flex', gap: '12px', padding: '10px 14px', backgroundColor: 'white', alignItems: 'center' }}>
               {/* 썸네일 */}
-              <div style={{ width: '36px', height: '36px', backgroundColor: '#f3f4f6', overflow: 'hidden', flexShrink: 0 }}>
+              <div style={{ width: '40px', height: '40px', backgroundColor: '#f3f4f6', overflow: 'hidden', flexShrink: 0 }}>
                 {m.photo_url && !m.photo_url.startsWith('local:') ? (
                   <img src={m.photo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
-                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}>🍽️</div>
+                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>🍽️</div>
                 )}
               </div>
-              <p style={{ fontSize: '13px', color: '#374151', paddingRight: '8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.food_name}</p>
-              <p style={{ fontSize: '11px', color: '#9ca3af' }}>{m.category || '기타'}</p>
-              <p style={{ fontSize: '12px', color: '#6B21A8' }}>{m.calories}kcal</p>
-              <p style={{ fontSize: '11px', color: '#9ca3af' }}>{fmtDate(m.created_at)}</p>
+              {/* 내용 */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: '13px', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: '3px' }}>{m.food_name}</p>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '11px', color: '#6B21A8' }}>{m.calories}kcal</span>
+                  <span style={{ fontSize: '11px', color: '#9ca3af' }}>{m.category || '기타'}</span>
+                  <span style={{ fontSize: '11px', color: '#9ca3af' }}>{fmtDate(m.created_at)}</span>
+                </div>
+              </div>
             </div>
           ))
         )}
@@ -161,7 +159,7 @@ export default function AdminMealsPage() {
         <button
           onClick={() => setOffset(Math.max(0, offset - LIMIT))}
           disabled={offset === 0}
-          style={{ padding: '8px 16px', border: '1px solid #e5e7eb', backgroundColor: 'white', fontSize: '12px', cursor: offset === 0 ? 'not-allowed' : 'pointer', color: offset === 0 ? '#d1d5db' : 'black' }}
+          style={{ padding: '9px 18px', border: '1px solid #e5e7eb', backgroundColor: 'white', fontSize: '12px', cursor: offset === 0 ? 'not-allowed' : 'pointer', color: offset === 0 ? '#d1d5db' : 'black' }}
         >
           이전
         </button>
@@ -171,7 +169,7 @@ export default function AdminMealsPage() {
         <button
           onClick={() => setOffset(offset + LIMIT)}
           disabled={offset + LIMIT >= total}
-          style={{ padding: '8px 16px', border: '1px solid #e5e7eb', backgroundColor: 'white', fontSize: '12px', cursor: offset + LIMIT >= total ? 'not-allowed' : 'pointer', color: offset + LIMIT >= total ? '#d1d5db' : 'black' }}
+          style={{ padding: '9px 18px', border: '1px solid #e5e7eb', backgroundColor: 'white', fontSize: '12px', cursor: offset + LIMIT >= total ? 'not-allowed' : 'pointer', color: offset + LIMIT >= total ? '#d1d5db' : 'black' }}
         >
           다음
         </button>

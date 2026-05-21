@@ -78,9 +78,42 @@ export async function GET(request: Request) {
       .slice(0, 8)
       .map(([name, count]) => ({ name, count }));
 
+    // 토큰 사용량 통계 (최근 14일)
+    const since14 = new Date(); since14.setDate(since14.getDate() - 13); since14.setHours(0, 0, 0, 0);
+    const { data: usageData } = await adminSupabase
+      .from('gemini_usage')
+      .select('model, plan, tokens_in, tokens_out, created_at')
+      .gte('created_at', since14.toISOString());
+
+    const modelTotals: Record<string, { calls: number; tokensIn: number; tokensOut: number }> = {};
+    let totalCalls = 0;
+    (usageData ?? []).forEach((r: any) => {
+      const m = r.model ?? 'unknown';
+      if (!modelTotals[m]) modelTotals[m] = { calls: 0, tokensIn: 0, tokensOut: 0 };
+      modelTotals[m].calls++;
+      modelTotals[m].tokensIn  += r.tokens_in  ?? 0;
+      modelTotals[m].tokensOut += r.tokens_out ?? 0;
+      totalCalls++;
+    });
+
+    // 모델별 단가 ($/1M tokens)
+    const PRICE: Record<string, { in: number; out: number }> = {
+      'gemini-2.5-pro':       { in: 1.25,  out: 10.0 },
+      'gemini-2.5-flash':     { in: 0.075, out: 0.30 },
+      'gemini-2.0-flash':     { in: 0.075, out: 0.30 },
+      'gemini-2.0-flash-lite':{ in: 0.075, out: 0.075 },
+    };
+    const tokenStats = Object.entries(modelTotals).map(([model, t]) => {
+      const price = PRICE[model] ?? { in: 0.075, out: 0.30 };
+      const costUsd = (t.tokensIn / 1_000_000) * price.in + (t.tokensOut / 1_000_000) * price.out;
+      return { model, calls: t.calls, tokensIn: t.tokensIn, tokensOut: t.tokensOut, costUsd: Math.round(costUsd * 10000) / 10000 };
+    }).sort((a, b) => b.calls - a.calls);
+
+    const totalCostUsd = tokenStats.reduce((s, t) => s + t.costUsd, 0);
+
     return NextResponse.json({
       success: true,
-      data: { planCount, totalUsers, dailyMeals, activeAnalyzers, categoryStats },
+      data: { planCount, totalUsers, dailyMeals, activeAnalyzers, categoryStats, tokenStats, totalCalls, totalCostUsd: Math.round(totalCostUsd * 10000) / 10000 },
     });
   } catch (error: any) {
     console.error('[admin/reports GET]', error?.message);
