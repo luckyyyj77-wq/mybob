@@ -1552,6 +1552,18 @@ export default function SettingsPage() {
         <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>목표 설정</p>
         <GoalSettings onRequestAuth={requestAuthWithPin} />
 
+        {/* 개인정보 처리방침 */}
+        <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>개인정보</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: '#e5e7eb', marginBottom: '28px' }}>
+          <button
+            onClick={() => setShowPrivacyModal(true)}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', backgroundColor: 'white', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left' }}
+          >
+            <span style={{ fontSize: '14px', color: 'black' }}>개인정보 처리방침</span>
+            <span style={{ fontSize: '16px', color: '#9ca3af' }}>›</span>
+          </button>
+        </div>
+
         {/* 개인 정보 */}
         <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>개인 정보</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: '#e5e7eb', marginBottom: '28px' }}>
@@ -1627,18 +1639,16 @@ export default function SettingsPage() {
             <p style={{ fontSize: '14px', color: 'black' }}>{userEmail || '로그인 필요'}</p>
           </div>
 
-          {/* 개인정보 처리방침 */}
-          <button
-            onClick={() => setShowPrivacyModal(true)}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', backgroundColor: 'white', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left' }}
-          >
-            <span style={{ fontSize: '14px', color: 'black' }}>개인정보 처리방침</span>
-            <span style={{ fontSize: '16px', color: '#9ca3af' }}>›</span>
-          </button>
-
           {/* PIN 재설정 */}
           <button
-            onClick={() => setShowPinReset(true)}
+            onClick={() => setPinModal({
+              mode: 'set',
+              context: 'danger',
+              resolve: (ok, pin) => {
+                setPinModal(null);
+                if (ok && pin) { savePin(pin); setHasPinSet(true); }
+              },
+            })}
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', backgroundColor: 'white', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left' }}
           >
             <span style={{ fontSize: '14px', color: 'black' }}>PIN 재설정</span>
