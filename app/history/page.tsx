@@ -101,6 +101,7 @@ export default function HistoryPage() {
 
   // 무한스크롤 pagination (날짜 그룹 기준)
   const [visibleDays, setVisibleDays] = useState(DAYS_PER_PAGE);
+  const totalGroupsRef = useRef(0);
 
   useEffect(() => {
     const local: Meal[] = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
@@ -138,14 +139,14 @@ export default function HistoryPage() {
         window.innerHeight + window.scrollY >= document.body.scrollHeight - 200;
       if (scrolledToBottom) {
         setVisibleDays(d => {
-          if (d < allGroups.length) return d + DAYS_PER_PAGE;
+          if (d < totalGroupsRef.current) return d + DAYS_PER_PAGE;
           return d;
         });
       }
     };
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
-  }, [allGroups.length]);
+  }, [meals]);
 
   const handleZoom = (delta: number) => {
     setGalleryScale(prev => Math.max(3, Math.min(6, prev + delta)));
@@ -153,6 +154,7 @@ export default function HistoryPage() {
 
   const filtered = applyFilters(meals, query, category, sort);
   const allGroups = groupByDate(filtered);
+  totalGroupsRef.current = allGroups.length;
   const groups = allGroups.slice(0, visibleDays);
   const visibleFiltered = groups.flatMap(g => g.meals);
 
