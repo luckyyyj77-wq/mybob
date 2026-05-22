@@ -1462,17 +1462,6 @@ export default function SettingsPage() {
           />
         )}
 
-        {/* 보안 및 개인정보 */}
-        <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>보안 및 개인정보</p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: '#e5e7eb', marginBottom: '28px' }}>
-          <button
-            onClick={() => setShowPrivacyModal(true)}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', backgroundColor: 'white', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left' }}
-          >
-            <span style={{ fontSize: '14px', color: 'black' }}>개인정보 처리방침</span>
-            <span style={{ fontSize: '16px', color: '#9ca3af' }}>›</span>
-          </button>
-        </div>
 
         {/* 개인정보 팝업 모달 */}
         {showPrivacyModal && (
@@ -1635,6 +1624,24 @@ export default function SettingsPage() {
           {!dangerUnlocked && (
             <div style={{ position: 'absolute', inset: 0, zIndex: 10, cursor: 'not-allowed' }} />
           )}
+
+          {/* 개인정보 처리방침 */}
+          <button
+            onClick={() => setShowPrivacyModal(true)}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', backgroundColor: 'white', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left' }}
+          >
+            <span style={{ fontSize: '14px', color: 'black' }}>개인정보 처리방침</span>
+            <span style={{ fontSize: '16px', color: '#9ca3af' }}>›</span>
+          </button>
+
+          {/* PIN 재설정 */}
+          <button
+            onClick={() => setShowPinReset(true)}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', backgroundColor: 'white', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left' }}
+          >
+            <span style={{ fontSize: '14px', color: 'black' }}>PIN 재설정</span>
+            <span style={{ fontSize: '16px', color: '#9ca3af' }}>›</span>
+          </button>
 
           {/* 로컬 기록 전체 삭제 */}
           <div style={{ padding: '14px 16px', backgroundColor: 'white' }}>
