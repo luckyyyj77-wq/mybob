@@ -99,10 +99,8 @@ export default function HistoryPage() {
   const [sort, setSort] = useState<SortKey>('date_desc');
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // 무한스크롤 pagination (날짜 그룹 기준)
+  // 날짜 그룹 pagination
   const [visibleDays, setVisibleDays] = useState(DAYS_PER_PAGE);
-  const totalGroupsRef = useRef(0);
-  const loadingMoreRef = useRef(false);
 
   // 맨 위로 버튼
   const [showTop, setShowTop] = useState(false);
@@ -136,27 +134,12 @@ export default function HistoryPage() {
     setVisibleDays(DAYS_PER_PAGE);
   }, [query, category, sort, viewMode]);
 
-  // 스크롤 바닥 감지 → +3일 로드 (throttle로 중복 방지) + 맨 위로 버튼
+  // 맨 위로 버튼 표시
   useEffect(() => {
-    const onScroll = () => {
-      const doc = document.documentElement;
-      const scrollTop = doc.scrollTop || document.body.scrollTop;
-      setShowTop(scrollTop > 300);
-
-      if (loadingMoreRef.current) return;
-      const distanceFromBottom = doc.scrollHeight - scrollTop - doc.clientHeight;
-      if (distanceFromBottom < 100 && totalGroupsRef.current > 0) {
-        setVisibleDays(d => {
-          if (d >= totalGroupsRef.current) return d;
-          loadingMoreRef.current = true;
-          setTimeout(() => { loadingMoreRef.current = false; }, 600);
-          return d + DAYS_PER_PAGE;
-        });
-      }
-    };
+    const onScroll = () => setShowTop(window.scrollY > 300);
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
-  }, [meals]);
+  }, []);
 
   const handleZoom = (delta: number) => {
     setGalleryScale(prev => Math.max(3, Math.min(6, prev + delta)));
@@ -164,7 +147,6 @@ export default function HistoryPage() {
 
   const filtered = applyFilters(meals, query, category, sort);
   const allGroups = groupByDate(filtered);
-  totalGroupsRef.current = allGroups.length;
   const groups = allGroups.slice(0, visibleDays);
   const visibleFiltered = groups.flatMap(g => g.meals);
 
@@ -446,9 +428,20 @@ export default function HistoryPage() {
         )}
       </main>
 
-      {/* 무한스크롤 sentinel */}
+      {/* 더 보기 버튼 */}
       {!loading && visibleDays < allGroups.length && (
-        <div style={{ height: '1px' }} />
+        <div style={{ padding: '16px 24px 32px', display: 'flex', justifyContent: 'center' }}>
+          <button
+            onClick={() => setVisibleDays(d => d + DAYS_PER_PAGE)}
+            style={{
+              padding: '10px 28px', fontSize: '12px', letterSpacing: '1.5px',
+              color: '#6B21A8', backgroundColor: 'white',
+              border: '1px solid #e9d5ff', cursor: 'pointer',
+            }}
+          >
+            +3일 더 보기
+          </button>
+        </div>
       )}
 
       {/* 맨 위로 버튼 */}
