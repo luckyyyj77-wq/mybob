@@ -852,6 +852,34 @@ const COACH_OPTIONS: { id: CoachPersona; emoji: string; name: string; desc: stri
   { id: 'dog',   emoji: '🐶', name: '응원형', desc: '무조건 당신 편이에요' },
 ];
 
+const STATUS_TEMPLATES = [
+  '오늘도 기록하면 내일이 달라진다 💪',
+  '먹은 만큼 기록, 기록한 만큼 변화',
+  '다이어트의 적은 망각이다',
+  '살은 입으로 들어오고 의지로 나간다',
+  '오늘 참은 치킨, 내일의 근육이 된다',
+  '칼로리는 거짓말하지 않는다',
+  '위는 작게, 꿈은 크게',
+  '한 입의 기록이 열 끼의 후회를 막는다',
+  '식단 관리 = 미래의 나에게 보내는 선물',
+  '배고픔과 식욕은 다르다. 오늘도 구분 성공',
+  '몸은 내가 먹은 것의 총합이다',
+  '완벽한 식단보다 꾸준한 기록이 낫다',
+  '오늘 폭식했다면? 내일 기록을 더 잘하면 된다',
+  '천천히 씹으면 덜 먹게 되고, 덜 먹으면 덜 후회한다',
+  '다이어트는 마라톤이다. 오늘은 몇 킬로 달렸나요?',
+  '근육은 밥상에서 만들어진다',
+  '물 한 잔이 식욕을 잠재운다, 가끔은',
+  '잘 먹는 것이 잘 사는 것이다',
+  '오늘의 선택이 내일의 몸을 만든다',
+  '기록하지 않으면 먹지 않은 것도 먹은 것이 된다',
+];
+
+function pickRandom3(arr: string[]): string[] {
+  const shuffled = [...arr].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, 3);
+}
+
 export default function SettingsPage() {
   const [aiAlert, setAiAlert] = useState(true);
   const [notifFreq, setNotifFreq] = useState('1시간 후');
@@ -872,10 +900,14 @@ export default function SettingsPage() {
   const [nicknameSaving, setNicknameSaving] = useState(false);
   const [nicknameSaved, setNicknameSaved] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarChangedToday, setAvatarChangedToday] = useState(false);
   const [showEditPopup, setShowEditPopup] = useState(false);
   const [statusMsg, setStatusMsg] = useState('');
+  const [statusInput, setStatusInput] = useState('');
   const [statusSaving, setStatusSaving] = useState(false);
   const [statusSaved, setStatusSaved] = useState(false);
+  const [statusChangedToday, setStatusChangedToday] = useState(false);
+  const [suggestedMsgs, setSuggestedMsgs] = useState<string[]>([]);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [coachPersona, setCoachPersona] = useState<CoachPersona>('dog');
 
@@ -948,7 +980,13 @@ export default function SettingsPage() {
             const p = await profileRes.json();
             setProfile({ nickname: p.nickname, avatar_url: p.avatar_url, nickname_changed: p.nickname_changed ?? false });
             setNicknameInput(p.nickname ?? '');
-            setStatusMsg(localStorage.getItem('mybob_status_msg') ?? '');
+            const today = new Date().toLocaleDateString();
+            const savedStatus = localStorage.getItem('mybob_status_msg') ?? '';
+            setStatusMsg(savedStatus);
+            setStatusInput(savedStatus);
+            setAvatarChangedToday(localStorage.getItem('mybob_avatar_changed_date') === today);
+            setStatusChangedToday(localStorage.getItem('mybob_status_changed_date') === today);
+            setSuggestedMsgs(pickRandom3(STATUS_TEMPLATES));
           }
         } catch { /* 무시 */ }
       }
@@ -992,8 +1030,13 @@ export default function SettingsPage() {
   };
 
   const handleStatusSave = () => {
+    if (statusChangedToday) return;
     setStatusSaving(true);
-    localStorage.setItem('mybob_status_msg', statusMsg.trim());
+    const today = new Date().toLocaleDateString();
+    localStorage.setItem('mybob_status_msg', statusInput.trim());
+    localStorage.setItem('mybob_status_changed_date', today);
+    setStatusMsg(statusInput.trim());
+    setStatusChangedToday(true);
     setStatusSaving(false);
     setStatusSaved(true);
     setTimeout(() => setStatusSaved(false), 1500);
@@ -1001,7 +1044,7 @@ export default function SettingsPage() {
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || avatarChangedToday) return;
     setAvatarUploading(true);
     const reader = new FileReader();
     reader.onloadend = async () => {
@@ -1015,6 +1058,9 @@ export default function SettingsPage() {
       const result = await res.json();
       if (result.success) {
         setProfile(prev => ({ ...prev, avatar_url: result.avatar_url }));
+        const today = new Date().toLocaleDateString();
+        localStorage.setItem('mybob_avatar_changed_date', today);
+        setAvatarChangedToday(true);
       } else {
         alert(result.error || '업로드 실패');
       }
@@ -1140,31 +1186,12 @@ export default function SettingsPage() {
                   )}
                 </div>
 
-                {/* 상태메시지 */}
-                <div>
-                  <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '6px' }}>상태메시지</p>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <input
-                      type="text"
-                      value={statusMsg}
-                      onChange={e => setStatusMsg(e.target.value)}
-                      maxLength={40}
-                      placeholder="상태메시지를 입력하세요 (최대 40자)"
-                      style={{ flex: 1, padding: '10px 12px', border: '1px solid #e5e7eb', fontSize: '13px', outline: 'none', backgroundColor: 'white', color: 'black' }}
-                    />
-                    <button
-                      onClick={handleStatusSave}
-                      disabled={statusSaving}
-                      style={{
-                        padding: '10px 14px', fontSize: '12px', border: 'none', cursor: 'pointer',
-                        backgroundColor: statusSaved ? '#6B21A8' : 'black',
-                        color: 'white', transition: 'all 0.2s', letterSpacing: '0.5px',
-                      }}
-                    >
-                      {statusSaved ? '저장됨' : '저장'}
-                    </button>
-                  </div>
-                </div>
+                {/* 상태메시지 표시 */}
+                {statusMsg && (
+                  <p style={{ fontSize: '12px', color: '#6b7280', fontStyle: 'italic', paddingLeft: '2px' }}>
+                    "{statusMsg}"
+                  </p>
+                )}
 
                 <input ref={avatarInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarUpload} />
               </div>
@@ -1722,7 +1749,7 @@ export default function SettingsPage() {
         >
           <div
             onClick={e => e.stopPropagation()}
-            style={{ backgroundColor: 'white', width: '100%', borderRadius: '16px 16px 0 0', padding: '24px 24px 40px' }}
+            style={{ backgroundColor: 'white', width: '100%', borderRadius: '16px 16px 0 0', padding: '24px 24px 40px', maxHeight: '80vh', overflowY: 'auto' }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <p style={{ fontSize: '15px', color: 'black' }}>프로필 수정</p>
@@ -1730,7 +1757,7 @@ export default function SettingsPage() {
             </div>
 
             {/* 사진 변경 */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '28px' }}>
               <div style={{
                 width: '64px', height: '64px', borderRadius: '50%',
                 backgroundColor: '#f3f4f6', border: '1px solid #e5e7eb',
@@ -1748,45 +1775,100 @@ export default function SettingsPage() {
                 )}
               </div>
               <button
-                onClick={() => avatarInputRef.current?.click()}
-                style={{ fontSize: '13px', color: '#6B21A8', background: 'none', border: '1px solid #e9d5ff', padding: '8px 16px', cursor: 'pointer' }}
+                onClick={() => !avatarChangedToday && avatarInputRef.current?.click()}
+                style={{
+                  fontSize: '13px', background: 'none', padding: '8px 16px', cursor: avatarChangedToday ? 'default' : 'pointer',
+                  border: '1px solid #e9d5ff',
+                  color: avatarChangedToday ? '#d1d5db' : '#6B21A8',
+                }}
               >
-                사진 변경
+                {avatarChangedToday ? '오늘 변경 완료' : '사진 변경'}
               </button>
             </div>
 
             {/* 닉네임 변경 */}
             <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px' }}>닉네임</p>
             {profile.nickname_changed ? (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', border: '1px solid #e5e7eb', backgroundColor: '#fafafa' }}>
+              <div style={{ padding: '12px', border: '1px solid #e5e7eb', backgroundColor: '#fafafa', marginBottom: '24px' }}>
                 <p style={{ fontSize: '14px', color: 'black' }}>{profile.nickname}</p>
-                <span style={{ fontSize: '11px', color: '#9ca3af' }}>변경 완료 (1회 한정)</span>
               </div>
             ) : (
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <input
-                  type="text"
-                  value={nicknameInput}
-                  onChange={e => setNicknameInput(e.target.value)}
-                  maxLength={16}
-                  placeholder="닉네임 (2~16자)"
-                  style={{ flex: 1, padding: '11px 12px', border: '1px solid #e5e7eb', fontSize: '14px', outline: 'none', backgroundColor: 'white', color: 'black' }}
-                />
-                <button
-                  onClick={async () => { await handleNicknameSave(); if (!nicknameSaving) setShowEditPopup(false); }}
-                  disabled={nicknameSaving || nicknameInput.trim() === (profile.nickname ?? '') || nicknameInput.trim().length < 2}
-                  style={{
-                    padding: '11px 16px', fontSize: '12px', border: 'none', cursor: 'pointer',
-                    backgroundColor: (nicknameSaving || nicknameInput.trim() === (profile.nickname ?? '') || nicknameInput.trim().length < 2) ? '#e5e7eb' : 'black',
-                    color: (nicknameSaving || nicknameInput.trim() === (profile.nickname ?? '') || nicknameInput.trim().length < 2) ? '#9ca3af' : 'white',
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  저장
-                </button>
+              <div style={{ marginBottom: '24px' }}>
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}>
+                  <input
+                    type="text"
+                    value={nicknameInput}
+                    onChange={e => setNicknameInput(e.target.value)}
+                    maxLength={16}
+                    placeholder="닉네임 (2~16자)"
+                    style={{ flex: 1, padding: '11px 12px', border: '1px solid #e5e7eb', fontSize: '14px', outline: 'none', backgroundColor: 'white', color: 'black' }}
+                  />
+                  <button
+                    onClick={async () => { await handleNicknameSave(); }}
+                    disabled={nicknameSaving || nicknameInput.trim() === (profile.nickname ?? '') || nicknameInput.trim().length < 2}
+                    style={{
+                      padding: '11px 16px', fontSize: '12px', border: 'none', cursor: 'pointer',
+                      backgroundColor: nicknameSaved ? '#6B21A8' : (nicknameSaving || nicknameInput.trim() === (profile.nickname ?? '') || nicknameInput.trim().length < 2) ? '#e5e7eb' : 'black',
+                      color: (nicknameSaving || (nicknameInput.trim() === (profile.nickname ?? '') || nicknameInput.trim().length < 2) && !nicknameSaved) ? '#9ca3af' : 'white',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    {nicknameSaved ? '저장됨' : '저장'}
+                  </button>
+                </div>
+                <p style={{ fontSize: '11px', color: '#ef4444' }}>저장 후 다시 변경할 수 없습니다</p>
               </div>
             )}
-            <p style={{ fontSize: '11px', color: '#d1d5db', marginTop: '6px' }}>닉네임은 1회만 변경할 수 있습니다.</p>
+
+            {/* 상태메시지 */}
+            <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px' }}>상태메시지</p>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+              <input
+                type="text"
+                value={statusInput}
+                onChange={e => setStatusInput(e.target.value)}
+                maxLength={40}
+                placeholder="상태메시지 (최대 40자)"
+                disabled={statusChangedToday}
+                style={{
+                  flex: 1, padding: '11px 12px', border: '1px solid #e5e7eb',
+                  fontSize: '13px', outline: 'none', backgroundColor: statusChangedToday ? '#fafafa' : 'white',
+                  color: statusChangedToday ? '#9ca3af' : 'black',
+                }}
+              />
+              <button
+                onClick={handleStatusSave}
+                disabled={statusChangedToday || statusSaving || statusInput.trim() === statusMsg}
+                style={{
+                  padding: '11px 14px', fontSize: '12px', border: 'none', cursor: statusChangedToday ? 'default' : 'pointer',
+                  backgroundColor: statusSaved ? '#6B21A8' : statusChangedToday ? '#e5e7eb' : 'black',
+                  color: statusSaved || !statusChangedToday ? 'white' : '#9ca3af',
+                  transition: 'all 0.2s',
+                }}
+              >
+                {statusSaved ? '저장됨' : statusChangedToday ? '완료' : '저장'}
+              </button>
+            </div>
+
+            {/* 추천 메시지 */}
+            {!statusChangedToday && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {suggestedMsgs.map((msg, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setStatusInput(msg)}
+                    style={{
+                      padding: '9px 12px', border: `1px solid ${statusInput === msg ? '#6B21A8' : '#e5e7eb'}`,
+                      backgroundColor: statusInput === msg ? '#f3e8ff' : 'white',
+                      color: statusInput === msg ? '#6B21A8' : '#6b7280',
+                      fontSize: '12px', cursor: 'pointer', textAlign: 'left', lineHeight: 1.4,
+                    }}
+                  >
+                    {msg}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
