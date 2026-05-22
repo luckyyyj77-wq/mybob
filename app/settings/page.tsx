@@ -503,14 +503,15 @@ function GoalSettings({ onRequestAuth }: { onRequestAuth: (cb: (pin: string) => 
   const set = (field: keyof BodyInfo) => (val: string) => {
     setBody(prev => ({ ...prev, [field]: val }));
     if (field in LIMITS) {
-      const key = field as keyof typeof LIMITS;
-      const { min, max, label, unit } = LIMITS[key];
-      const num = parseFloat(val);
-      if (val !== '' && (!isFinite(num) || num < min || num > max)) {
-        setFieldErrors(prev => ({ ...prev, [key]: `${label}는 ${min}~${max}${unit} 사이로 입력해 주세요` }));
-      } else {
-        setFieldErrors(prev => { const next = { ...prev }; delete next[key]; return next; });
-      }
+      setFieldErrors(prev => { const next = { ...prev }; delete next[field as keyof typeof LIMITS]; return next; });
+    }
+  };
+
+  const checkField = (field: keyof typeof LIMITS) => (val: string) => {
+    const { min, max, label, unit } = LIMITS[field];
+    const num = parseFloat(val);
+    if (val !== '' && (!isFinite(num) || num < min || num > max)) {
+      setFieldErrors(prev => ({ ...prev, [field]: `${label}는 ${min}~${max}${unit} 사이로 입력해 주세요` }));
     }
   };
 
@@ -598,6 +599,7 @@ function GoalSettings({ onRequestAuth }: { onRequestAuth: (cb: (pin: string) => 
         <input
           type="number" inputMode="numeric" value={body.age} min={1} max={99}
           onChange={e => set('age')(e.target.value)}
+          onBlur={e => checkField('age')(e.target.value)}
           placeholder="25"
           style={{ ...inputStyle, marginBottom: fieldErrors.age ? '4px' : '14px', borderColor: fieldErrors.age ? '#ef4444' : '#e5e7eb' }}
         />
@@ -608,14 +610,18 @@ function GoalSettings({ onRequestAuth }: { onRequestAuth: (cb: (pin: string) => 
           <div style={{ flex: 1 }}>
             <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '6px' }}>키 (cm)</p>
             <input type="number" inputMode="decimal" value={body.height} min={50} max={250}
-              onChange={e => set('height')(e.target.value)} placeholder="170"
+              onChange={e => set('height')(e.target.value)}
+              onBlur={e => checkField('height')(e.target.value)}
+              placeholder="170"
               style={{ ...inputStyle, borderColor: fieldErrors.height ? '#ef4444' : '#e5e7eb' }} />
             {fieldErrors.height && <p style={{ fontSize: '10px', color: '#ef4444', marginTop: '4px' }}>{fieldErrors.height}</p>}
           </div>
           <div style={{ flex: 1 }}>
             <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '6px' }}>몸무게 (kg)</p>
             <input type="number" inputMode="decimal" value={body.weight} min={20} max={300}
-              onChange={e => set('weight')(e.target.value)} placeholder="65"
+              onChange={e => set('weight')(e.target.value)}
+              onBlur={e => checkField('weight')(e.target.value)}
+              placeholder="65"
               style={{ ...inputStyle, borderColor: fieldErrors.weight ? '#ef4444' : '#e5e7eb' }} />
             {fieldErrors.weight && <p style={{ fontSize: '10px', color: '#ef4444', marginTop: '4px' }}>{fieldErrors.weight}</p>}
           </div>
@@ -627,6 +633,7 @@ function GoalSettings({ onRequestAuth }: { onRequestAuth: (cb: (pin: string) => 
         <input
           type="number" inputMode="decimal" value={body.targetWeight} min={20} max={300}
           onChange={e => set('targetWeight')(e.target.value)}
+          onBlur={e => checkField('targetWeight')(e.target.value)}
           placeholder="60"
           style={{ ...inputStyle, marginBottom: fieldErrors.targetWeight ? '4px' : '14px', borderColor: fieldErrors.targetWeight ? '#ef4444' : '#e5e7eb' }}
         />
