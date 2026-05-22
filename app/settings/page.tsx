@@ -872,6 +872,10 @@ export default function SettingsPage() {
   const [nicknameSaving, setNicknameSaving] = useState(false);
   const [nicknameSaved, setNicknameSaved] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [showEditPopup, setShowEditPopup] = useState(false);
+  const [statusMsg, setStatusMsg] = useState('');
+  const [statusSaving, setStatusSaving] = useState(false);
+  const [statusSaved, setStatusSaved] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [coachPersona, setCoachPersona] = useState<CoachPersona>('dog');
 
@@ -944,6 +948,7 @@ export default function SettingsPage() {
             const p = await profileRes.json();
             setProfile({ nickname: p.nickname, avatar_url: p.avatar_url, nickname_changed: p.nickname_changed ?? false });
             setNicknameInput(p.nickname ?? '');
+            setStatusMsg(localStorage.getItem('mybob_status_msg') ?? '');
           }
         } catch { /* 무시 */ }
       }
@@ -984,6 +989,14 @@ export default function SettingsPage() {
       alert(result.error || '저장 실패');
     }
     setNicknameSaving(false);
+  };
+
+  const handleStatusSave = () => {
+    setStatusSaving(true);
+    localStorage.setItem('mybob_status_msg', statusMsg.trim());
+    setStatusSaving(false);
+    setStatusSaved(true);
+    setTimeout(() => setStatusSaved(false), 1500);
   };
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1083,100 +1096,77 @@ export default function SettingsPage() {
           <div style={{ padding: '16px', backgroundColor: 'white' }}>
 
             {!planLoaded ? (
-              /* 플랜 로딩 중 — 깜빡임 방지 */
-              <div style={{ height: '48px' }} />
-            ) : planStatus?.plan === 'free' || !planStatus ? (
-              /* 무료 — 랜덤 닉네임 표시, 변경은 PRO 안내 */
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div>
-                  <p style={{ fontSize: '11px', color: '#9ca3af', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '6px' }}>내 닉네임</p>
-                  <p style={{ fontSize: '15px', color: 'black', marginBottom: '4px' }}>{profile.nickname || '닉네임 로딩 중...'}</p>
-                  <p style={{ fontSize: '11px', color: '#d1d5db' }}>닉네임 변경은 PRO 플랜에서 가능합니다</p>
-                </div>
-                <span style={{ fontSize: '16px', color: '#d1d5db' }}>🔒</span>
-              </div>
+              <div style={{ height: '72px' }} />
             ) : (
-              /* PRO — 편집 가능 */
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
 
-                {/* 아바타 */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <div
-                    onClick={() => avatarInputRef.current?.click()}
-                    style={{
-                      width: '64px', height: '64px', borderRadius: '50%',
+                {/* 프로필 행 */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                    {/* 아바타 */}
+                    <div style={{
+                      width: '56px', height: '56px', borderRadius: '50%',
                       backgroundColor: '#f3f4f6', border: '1px solid #e5e7eb',
-                      overflow: 'hidden', cursor: 'pointer', flexShrink: 0,
+                      overflow: 'hidden', flexShrink: 0,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       position: 'relative',
-                    }}
-                  >
-                    {profile.avatar_url ? (
-                      <img src={profile.avatar_url} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    ) : (
-                      <span style={{ fontSize: '24px' }}>👤</span>
-                    )}
-                    {avatarUploading && (
-                      <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <div style={{ width: '18px', height: '18px', border: '2px solid white', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <p style={{ fontSize: '13px', color: 'black', marginBottom: '4px' }}>
-                      {profile.nickname || '닉네임 없음'}
-                    </p>
-                    <button
-                      onClick={() => avatarInputRef.current?.click()}
-                      style={{ fontSize: '11px', color: '#6B21A8', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                    >
-                      사진 변경
-                    </button>
-                  </div>
-                  <input ref={avatarInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarUpload} />
-                </div>
-
-                {/* 닉네임 입력 */}
-                <div>
-                  <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '6px' }}>닉네임</p>
-                  {profile.nickname_changed ? (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', border: '1px solid #e5e7eb', backgroundColor: '#fafafa' }}>
-                      <p style={{ fontSize: '14px', color: 'black' }}>{profile.nickname}</p>
-                      <span style={{ fontSize: '11px', color: '#9ca3af' }}>변경 완료 (1회 한정)</span>
+                    }}>
+                      {profile.avatar_url
+                        ? <img src={profile.avatar_url} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        : <span style={{ fontSize: '22px' }}>👤</span>
+                      }
+                      {avatarUploading && (
+                        <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <div style={{ width: '16px', height: '16px', border: '2px solid white', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                        </div>
+                      )}
                     </div>
-                  ) : (
-                    <>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <input
-                          type="text"
-                          value={nicknameInput}
-                          onChange={e => setNicknameInput(e.target.value)}
-                          maxLength={16}
-                          placeholder="닉네임을 입력하세요 (2~16자)"
-                          style={{
-                            flex: 1, padding: '10px 12px', border: '1px solid #e5e7eb',
-                            fontSize: '14px', outline: 'none', backgroundColor: 'white',
-                          }}
-                        />
-                        <button
-                          onClick={handleNicknameSave}
-                          disabled={nicknameSaving || nicknameInput.trim() === (profile.nickname ?? '') || nicknameInput.trim().length < 2}
-                          style={{
-                            padding: '10px 16px', fontSize: '12px', border: 'none',
-                            backgroundColor: nicknameSaved ? '#6B21A8' : (nicknameSaving || nicknameInput.trim() === (profile.nickname ?? '') || nicknameInput.trim().length < 2) ? '#e5e7eb' : 'black',
-                            color: nicknameSaved || (!nicknameSaving && nicknameInput.trim() !== (profile.nickname ?? '') && nicknameInput.trim().length >= 2) ? 'white' : '#9ca3af',
-                            cursor: (nicknameSaving || nicknameInput.trim() === (profile.nickname ?? '') || nicknameInput.trim().length < 2) ? 'not-allowed' : 'pointer',
-                            transition: 'all 0.2s', letterSpacing: '0.5px',
-                          }}
-                        >
-                          {nicknameSaved ? '저장됨' : '저장'}
-                        </button>
-                      </div>
-                      <p style={{ fontSize: '11px', color: '#ef4444', marginTop: '6px' }}>닉네임은 1회만 변경할 수 있습니다.</p>
-                    </>
+                    {/* 닉네임 + 플랜 */}
+                    <div>
+                      <p style={{ fontSize: '15px', color: 'black', marginBottom: '3px' }}>{profile.nickname || '닉네임 없음'}</p>
+                      <p style={{ fontSize: '11px', color: planStatus?.plan === 'free' ? '#9ca3af' : '#6B21A8', letterSpacing: '0.5px' }}>
+                        {planStatus?.plan === 'free' ? 'FREE' : planStatus?.plan === 'lifetime' ? 'LIFETIME' : 'PRO'}
+                      </p>
+                    </div>
+                  </div>
+                  {/* 수정 버튼 — PRO만 */}
+                  {planStatus?.plan !== 'free' && planStatus && (
+                    <button
+                      onClick={() => setShowEditPopup(true)}
+                      style={{ fontSize: '12px', color: '#6B21A8', background: 'none', border: '1px solid #e9d5ff', padding: '6px 12px', cursor: 'pointer', letterSpacing: '0.5px' }}
+                    >
+                      수정
+                    </button>
                   )}
                 </div>
 
+                {/* 상태메시지 */}
+                <div>
+                  <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '6px' }}>상태메시지</p>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      type="text"
+                      value={statusMsg}
+                      onChange={e => setStatusMsg(e.target.value)}
+                      maxLength={40}
+                      placeholder="상태메시지를 입력하세요 (최대 40자)"
+                      style={{ flex: 1, padding: '10px 12px', border: '1px solid #e5e7eb', fontSize: '13px', outline: 'none', backgroundColor: 'white', color: 'black' }}
+                    />
+                    <button
+                      onClick={handleStatusSave}
+                      disabled={statusSaving}
+                      style={{
+                        padding: '10px 14px', fontSize: '12px', border: 'none', cursor: 'pointer',
+                        backgroundColor: statusSaved ? '#6B21A8' : 'black',
+                        color: 'white', transition: 'all 0.2s', letterSpacing: '0.5px',
+                      }}
+                    >
+                      {statusSaved ? '저장됨' : '저장'}
+                    </button>
+                  </div>
+                </div>
+
+                <input ref={avatarInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarUpload} />
               </div>
             )}
           </div>
@@ -1723,6 +1713,85 @@ export default function SettingsPage() {
         </div>
 
       </div>
+
+      {/* 프로필 수정 팝업 */}
+      {showEditPopup && (
+        <div
+          onClick={() => setShowEditPopup(false)}
+          style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9000, display: 'flex', alignItems: 'flex-end' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ backgroundColor: 'white', width: '100%', borderRadius: '16px 16px 0 0', padding: '24px 24px 40px' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <p style={{ fontSize: '15px', color: 'black' }}>프로필 수정</p>
+              <button onClick={() => setShowEditPopup(false)} style={{ background: 'none', border: 'none', fontSize: '20px', color: '#9ca3af', cursor: 'pointer', padding: '4px', lineHeight: 1 }}>×</button>
+            </div>
+
+            {/* 사진 변경 */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
+              <div style={{
+                width: '64px', height: '64px', borderRadius: '50%',
+                backgroundColor: '#f3f4f6', border: '1px solid #e5e7eb',
+                overflow: 'hidden', flexShrink: 0, position: 'relative',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                {profile.avatar_url
+                  ? <img src={profile.avatar_url} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <span style={{ fontSize: '26px' }}>👤</span>
+                }
+                {avatarUploading && (
+                  <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: '18px', height: '18px', border: '2px solid white', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => avatarInputRef.current?.click()}
+                style={{ fontSize: '13px', color: '#6B21A8', background: 'none', border: '1px solid #e9d5ff', padding: '8px 16px', cursor: 'pointer' }}
+              >
+                사진 변경
+              </button>
+            </div>
+
+            {/* 닉네임 변경 */}
+            <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px' }}>닉네임</p>
+            {profile.nickname_changed ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', border: '1px solid #e5e7eb', backgroundColor: '#fafafa' }}>
+                <p style={{ fontSize: '14px', color: 'black' }}>{profile.nickname}</p>
+                <span style={{ fontSize: '11px', color: '#9ca3af' }}>변경 완료 (1회 한정)</span>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type="text"
+                  value={nicknameInput}
+                  onChange={e => setNicknameInput(e.target.value)}
+                  maxLength={16}
+                  placeholder="닉네임 (2~16자)"
+                  style={{ flex: 1, padding: '11px 12px', border: '1px solid #e5e7eb', fontSize: '14px', outline: 'none', backgroundColor: 'white', color: 'black' }}
+                />
+                <button
+                  onClick={async () => { await handleNicknameSave(); if (!nicknameSaving) setShowEditPopup(false); }}
+                  disabled={nicknameSaving || nicknameInput.trim() === (profile.nickname ?? '') || nicknameInput.trim().length < 2}
+                  style={{
+                    padding: '11px 16px', fontSize: '12px', border: 'none', cursor: 'pointer',
+                    backgroundColor: (nicknameSaving || nicknameInput.trim() === (profile.nickname ?? '') || nicknameInput.trim().length < 2) ? '#e5e7eb' : 'black',
+                    color: (nicknameSaving || nicknameInput.trim() === (profile.nickname ?? '') || nicknameInput.trim().length < 2) ? '#9ca3af' : 'white',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  저장
+                </button>
+              </div>
+            )}
+            <p style={{ fontSize: '11px', color: '#d1d5db', marginTop: '6px' }}>닉네임은 1회만 변경할 수 있습니다.</p>
+          </div>
+        </div>
+      )}
+
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }
