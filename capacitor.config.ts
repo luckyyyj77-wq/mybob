@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: '뭐먹었어',
   webDir: 'out',
   server: {
-    url: 'https://mybob.vercel.app',
+    url: 'https://mybob-gamma.vercel.app',
     cleartext: false,
   },
   android: {

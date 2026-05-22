@@ -1,0 +1,17 @@
+-- 무료 계정                                                                                                            SELECT supabase_auth.create_user(
+    email := 'test-free@mybob.com',                                                                                         password := 'Test1234!',                                t
+    email_confirm := true
+  );
+
+  -- 프로 계정
+  SELECT supabase_auth.create_user(
+    email := 'test-pro@mybob.com',
+    password := 'Test1234!',
+    email_confirm := true
+  );
+
+  -- 평생 계정
+  SELECT supabase_auth.create_user(
+    email := 'test-lifetime@mybob.com',
+    password := 'Test1234!',
+    email_confirm := true
