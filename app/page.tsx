@@ -25,12 +25,11 @@ type AIFeedback = {
 };
 
 
+function toKSTDate(iso: string): string {
+  return new Date(new Date(iso).getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
 function computeTodayStats(meals: Meal[]) {
-  const toKSTDate = (iso: string) => {
-    const d = new Date(iso);
-    const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
-    return kst.toISOString().slice(0, 10);
-  };
   const todayKST = toKSTDate(new Date().toISOString());
   const todayMeals = meals.filter(m => toKSTDate(m.created_at) === todayKST);
   const totalCalories = todayMeals.reduce((s, m) => s + (Number(m.calories) || 0), 0);
@@ -47,11 +46,6 @@ function computeTodayStats(meals: Meal[]) {
 }
 
 function buildWeekly(meals: Meal[]): DayStat[] {
-  const toKSTDate = (iso: string) => {
-    const d = new Date(iso);
-    const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
-    return kst.toISOString().slice(0, 10);
-  };
   const weekly: DayStat[] = [];
   for (let i = 6; i >= 0; i--) {
     const d = new Date(new Date().getTime() + 9 * 60 * 60 * 1000);
@@ -91,7 +85,8 @@ export default function Home() {
     const localMeals: Meal[] = localRaw ? JSON.parse(localRaw) : [];
     setTodayStats(computeTodayStats(localMeals));
 
-    syncFromServer(localMeals, savedPersona);
+    const goalRaw = localStorage.getItem('mybob_goal');
+    syncFromServer(localMeals, savedPersona, goalRaw);
   }, []);
 
   const getKSTDate = () => {
@@ -100,22 +95,7 @@ export default function Home() {
     return kst.toISOString().slice(0, 10).replace(/-/g, '');
   };
 
-  const getGoalParams = () => {
-    const goalRaw = localStorage.getItem('mybob_goal');
-    let weight = 65;
-    let goalCalories = 2000;
-    if (goalRaw) {
-      try {
-        const goalData = JSON.parse(goalRaw);
-        if (goalData.weight) weight = Number(goalData.weight) || 65;
-        if (goalData.calories) goalCalories = Number(goalData.calories) || 2000;
-      } catch { }
-    }
-    // Harris-Benedict 기준 — weight만 있을 때 기본값 2000
-    return { goalCalories, goalProtein: weight * 1.5 };
-  };
-
-  const syncFromServer = async (localMeals: Meal[], currentPersona: Persona) => {
+  const syncFromServer = async (localMeals: Meal[], currentPersona: Persona, goalRaw: string | null) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
 
@@ -141,8 +121,17 @@ export default function Home() {
         aiFetchedRef.current = true;
         const finalStats = computeTodayStats(merged);
         const weekly = buildWeekly(merged);
-        const goalData = JSON.parse(localStorage.getItem('mybob_goal') || '{"goal":"유지"}');
-        const { goalCalories, goalProtein } = getGoalParams();
+        const goalData = JSON.parse(goalRaw || '{"goal":"유지"}');
+        let weight = 65;
+        let goalCalories = 2000;
+        if (goalRaw) {
+          try {
+            const gd = JSON.parse(goalRaw);
+            if (gd.weight) weight = Number(gd.weight) || 65;
+            if (gd.calories) goalCalories = Number(gd.calories) || 2000;
+          } catch { }
+        }
+        const goalProtein = weight * 1.5;
         const kstDate = getKSTDate();
 
         // 코치 시스템 분석

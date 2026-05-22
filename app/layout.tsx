@@ -9,6 +9,14 @@ import { Session } from '@supabase/supabase-js';
 import { FaCamera, FaHistory, FaHome, FaChartPie, FaUsers, FaCog, FaHandshake, FaSignInAlt, FaSignOutAlt, FaDownload } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 
+const MENU_ITEMS = [
+  { icon: FaHome,      label: '홈',      href: '/' },
+  { icon: FaChartPie,  label: '리포트',  href: '/report/daily' },
+  { icon: FaUsers,     label: '커뮤니티', href: '/community/recommendation' },
+  { icon: FaCog,       label: '설정',    href: '/settings' },
+  { icon: FaHandshake, label: '제휴문의', href: '/partnership' },
+];
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -26,10 +34,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const isCaptureRoute = pathname === '/capture';
   const isAdminRoute = pathname?.startsWith('/admin') || false;
   const isProtectedRoute = pathname === '/' || ['/capture', '/report', '/history', '/community', '/settings'].some(r => pathname?.startsWith(r));
-
-  // 라우트 보호 체크 — pathname은 ref로 추적해 클로저 최신값 유지
-  const pathnameRef = useRef(pathname);
-  useEffect(() => { pathnameRef.current = pathname; }, [pathname]);
 
   useEffect(() => {
     // 최초 1회만 스플래시 표시
@@ -49,7 +53,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     setIsIOS(ios);
 
     const redirect = (s: typeof session) => {
-      const p = pathnameRef.current ?? '';
+      const p = pathname ?? '';
       const isAuth = p.startsWith('/auth');
       const isProtected = p === '/' || ['/capture', '/report', '/history', '/community', '/settings'].some(r => p.startsWith(r));
       if (!s && isProtected && !isAuth) router.push('/auth/login');
@@ -171,14 +175,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   const showNav = !isAuthRoute && !isCaptureRoute;
 
-  const menuItems = [
-    { icon: FaHome,     label: '홈',     href: '/' },
-    { icon: FaChartPie, label: '리포트', href: '/report/daily' },
-    { icon: FaUsers,    label: '커뮤니티', href: '/community/recommendation' },
-    { icon: FaCog,      label: '설정',   href: '/settings' },
-    { icon: FaHandshake,label: '제휴문의', href: '/partnership' },
-  ];
-
   return (
     <html lang="ko">
       <head>
@@ -257,7 +253,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
               {/* 메뉴 — 스크롤 가능, 하단 nav 높이(65px) + 여유(20px) 만큼 패딩 */}
               <nav style={{ flex: 1, overflowY: 'auto', padding: '0 24px 85px 24px' }}>
-                {menuItems.map((item) => (
+                {MENU_ITEMS.map((item) => (
                   <Link
                     key={item.label} href={item.href} onClick={() => setIsMenuOpen(false)}
                     style={{ display: 'flex', alignItems: 'center', gap: '20px', padding: '20px 16px', textDecoration: 'none', color: 'black', borderBottom: '1px solid #f3f4f6' }}

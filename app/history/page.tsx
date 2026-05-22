@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -145,10 +145,13 @@ export default function HistoryPage() {
     setGalleryScale(prev => Math.max(3, Math.min(6, prev + delta)));
   };
 
-  const filtered = applyFilters(meals, query, category, sort);
-  const allGroups = groupByDate(filtered);
-  const groups = allGroups.slice(0, visibleDays);
-  const visibleFiltered = groups.flatMap(g => g.meals);
+  const filtered = useMemo(
+    () => applyFilters(meals, query, category, sort),
+    [meals, query, category, sort]
+  );
+  const allGroups = useMemo(() => groupByDate(filtered), [filtered]);
+  const groups = useMemo(() => allGroups.slice(0, visibleDays), [allGroups, visibleDays]);
+  const visibleFiltered = useMemo(() => groups.flatMap(g => g.meals), [groups]);
 
   // 검색/필터 활성화 여부
   const isFiltered = query.trim() !== '' || category !== '전체' || sort !== 'date_desc';
