@@ -139,16 +139,17 @@ export default function HistoryPage() {
   // 스크롤 바닥 감지 → +3일 로드 (throttle로 중복 방지) + 맨 위로 버튼
   useEffect(() => {
     const onScroll = () => {
-      setShowTop(window.scrollY > 300);
+      const doc = document.documentElement;
+      const scrollTop = doc.scrollTop || document.body.scrollTop;
+      setShowTop(scrollTop > 300);
 
       if (loadingMoreRef.current) return;
-      const scrolledToBottom =
-        window.innerHeight + window.scrollY >= document.body.scrollHeight - 200;
-      if (scrolledToBottom && totalGroupsRef.current > 0) {
+      const distanceFromBottom = doc.scrollHeight - scrollTop - doc.clientHeight;
+      if (distanceFromBottom < 100 && totalGroupsRef.current > 0) {
         setVisibleDays(d => {
           if (d >= totalGroupsRef.current) return d;
           loadingMoreRef.current = true;
-          setTimeout(() => { loadingMoreRef.current = false; }, 400);
+          setTimeout(() => { loadingMoreRef.current = false; }, 600);
           return d + DAYS_PER_PAGE;
         });
       }
@@ -455,15 +456,17 @@ export default function HistoryPage() {
         <button
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           style={{
-            position: 'fixed', bottom: '88px', left: '20px',
+            position: 'fixed', bottom: '88px', right: '20px',
             width: '40px', height: '40px', borderRadius: '50%',
-            backgroundColor: 'rgba(0,0,0,0.55)', border: 'none',
-            fontSize: '18px', cursor: 'pointer', display: 'flex',
+            backgroundColor: 'rgba(0,0,0,0.6)', border: 'none',
+            cursor: 'pointer', display: 'flex',
             alignItems: 'center', justifyContent: 'center',
-            zIndex: 50, backdropFilter: 'blur(4px)',
+            zIndex: 50, backdropFilter: 'blur(6px)',
           }}
         >
-          ☝️
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M8 12V4M4 8l4-4 4 4" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
         </button>
       )}
 
