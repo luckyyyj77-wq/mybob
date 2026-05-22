@@ -7,12 +7,17 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "cap:sync": "npx cap sync android",
+    "cap:open": "npx cap open android"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@capacitor/android": "^8.3.4",
+    "@capacitor/cli": "^8.3.4",
+    "@capacitor/core": "^8.3.4",
     "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.84.0",
     "@tailwindcss/postcss": "^4.1.17",
