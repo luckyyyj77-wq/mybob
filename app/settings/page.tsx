@@ -1824,36 +1824,38 @@ export default function SettingsPage() {
               </button>
             </div>
 
-            {/* 추천 메시지 */}
-            {!statusChangedToday && (
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase' }}>추천 문구</p>
+            {/* 추천 문구 — 변경 가능/불가 모두 표시 */}
+            <div style={{ paddingBottom: '32px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase' }}>추천 문구</p>
+                {!statusChangedToday && (
                   <button
                     onClick={() => setSuggestedMsgs(pickRandom3(statusInput))}
                     style={{ fontSize: '11px', color: '#6B21A8', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0' }}
                   >
                     다른 메시지 →
                   </button>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingBottom: '16px' }}>
-                  {suggestedMsgs.map(t => (
-                    <button
-                      key={t.id}
-                      onClick={() => setStatusInput(t.text)}
-                      style={{
-                        padding: '10px 12px', border: `1px solid ${statusInput === t.text ? '#6B21A8' : '#e5e7eb'}`,
-                        backgroundColor: statusInput === t.text ? '#f3e8ff' : 'white',
-                        color: statusInput === t.text ? '#6B21A8' : '#6b7280',
-                        fontSize: '12px', cursor: 'pointer', textAlign: 'left', lineHeight: 1.5,
-                      }}
-                    >
-                      {t.text}
-                    </button>
-                  ))}
-                </div>
+                )}
               </div>
-            )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {suggestedMsgs.map(t => (
+                  <button
+                    key={t.id}
+                    onClick={() => !statusChangedToday && setStatusInput(t.text)}
+                    style={{
+                      padding: '11px 12px',
+                      border: `1px solid ${statusInput === t.text ? '#6B21A8' : '#e5e7eb'}`,
+                      backgroundColor: statusInput === t.text ? '#f3e8ff' : 'white',
+                      color: statusChangedToday ? '#9ca3af' : statusInput === t.text ? '#6B21A8' : '#6b7280',
+                      fontSize: '12px', cursor: statusChangedToday ? 'default' : 'pointer',
+                      textAlign: 'left', lineHeight: 1.5,
+                    }}
+                  >
+                    {t.text}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       )}
