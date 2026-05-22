@@ -1555,10 +1555,6 @@ export default function SettingsPage() {
         {/* 개인 정보 */}
         <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>개인 정보</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: '#e5e7eb', marginBottom: '28px' }}>
-          <div style={{ padding: '14px 16px', backgroundColor: 'white' }}>
-            <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '6px' }}>이메일 주소</p>
-            <p style={{ fontSize: '14px', color: 'black' }}>{userEmail || '로그인 필요'}</p>
-          </div>
           {/* 로그아웃 */}
           {!confirmLogout ? (
             <button
@@ -1624,6 +1620,12 @@ export default function SettingsPage() {
           {!dangerUnlocked && (
             <div style={{ position: 'absolute', inset: 0, zIndex: 10, cursor: 'not-allowed' }} />
           )}
+
+          {/* 이메일 주소 */}
+          <div style={{ padding: '14px 16px', backgroundColor: 'white' }}>
+            <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '6px' }}>이메일 주소</p>
+            <p style={{ fontSize: '14px', color: 'black' }}>{userEmail || '로그인 필요'}</p>
+          </div>
 
           {/* 개인정보 처리방침 */}
           <button
