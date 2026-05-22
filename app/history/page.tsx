@@ -8,7 +8,7 @@ import { FaThList, FaThLarge, FaTh, FaPlus, FaMinus, FaSearch, FaTimes } from 'r
 import { supabase } from '@/lib/supabase/client';
 import { MealPhoto } from '@/components/MealPhoto';
 
-const PAGE_SIZE = 20;
+const DAYS_PER_PAGE = 3;
 
 type Meal = {
   id: string;
@@ -99,8 +99,8 @@ export default function HistoryPage() {
   const [sort, setSort] = useState<SortKey>('date_desc');
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // 무한스크롤 pagination
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  // 무한스크롤 pagination (날짜 그룹 기준)
+  const [visibleDays, setVisibleDays] = useState(DAYS_PER_PAGE);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -127,30 +127,31 @@ export default function HistoryPage() {
     if (showSearch) setTimeout(() => searchInputRef.current?.focus(), 80);
   }, [showSearch]);
 
-  // 필터/정렬 변경 시 visibleCount 리셋
+  // 필터/정렬 변경 시 visibleDays 리셋
   useEffect(() => {
-    setVisibleCount(PAGE_SIZE);
+    setVisibleDays(DAYS_PER_PAGE);
   }, [query, category, sort, viewMode]);
 
-  // IntersectionObserver — sentinel 진입 시 더 로드
+  // IntersectionObserver — sentinel 진입 시 +3일 로드 (visibleDays 변화마다 재등록)
   useEffect(() => {
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
     const observer = new IntersectionObserver(
-      entries => { if (entries[0].isIntersecting) setVisibleCount(c => c + PAGE_SIZE); },
+      entries => { if (entries[0].isIntersecting) setVisibleDays(d => d + DAYS_PER_PAGE); },
       { rootMargin: '200px' }
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, []);
+  }, [visibleDays]);
 
   const handleZoom = (delta: number) => {
     setGalleryScale(prev => Math.max(3, Math.min(6, prev + delta)));
   };
 
   const filtered = applyFilters(meals, query, category, sort);
-  const visibleFiltered = filtered.slice(0, visibleCount);
-  const groups = groupByDate(visibleFiltered);
+  const allGroups = groupByDate(filtered);
+  const groups = allGroups.slice(0, visibleDays);
+  const visibleFiltered = groups.flatMap(g => g.meals);
 
   // 검색/필터 활성화 여부
   const isFiltered = query.trim() !== '' || category !== '전체' || sort !== 'date_desc';
@@ -431,7 +432,7 @@ export default function HistoryPage() {
       </main>
 
       {/* 무한스크롤 sentinel */}
-      {!loading && visibleCount < filtered.length && (
+      {!loading && visibleDays < allGroups.length && (
         <div ref={sentinelRef} style={{ height: '40px' }} />
       )}
 
