@@ -102,6 +102,10 @@ export default function HistoryPage() {
   // 무한스크롤 pagination (날짜 그룹 기준)
   const [visibleDays, setVisibleDays] = useState(DAYS_PER_PAGE);
   const totalGroupsRef = useRef(0);
+  const loadingMoreRef = useRef(false);
+
+  // 맨 위로 버튼
+  const [showTop, setShowTop] = useState(false);
 
   useEffect(() => {
     const local: Meal[] = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
@@ -132,15 +136,20 @@ export default function HistoryPage() {
     setVisibleDays(DAYS_PER_PAGE);
   }, [query, category, sort, viewMode]);
 
-  // 스크롤 바닥 감지 → +3일 로드
+  // 스크롤 바닥 감지 → +3일 로드 (throttle로 중복 방지) + 맨 위로 버튼
   useEffect(() => {
     const onScroll = () => {
+      setShowTop(window.scrollY > 300);
+
+      if (loadingMoreRef.current) return;
       const scrolledToBottom =
         window.innerHeight + window.scrollY >= document.body.scrollHeight - 200;
-      if (scrolledToBottom) {
+      if (scrolledToBottom && totalGroupsRef.current > 0) {
         setVisibleDays(d => {
-          if (d < totalGroupsRef.current) return d + DAYS_PER_PAGE;
-          return d;
+          if (d >= totalGroupsRef.current) return d;
+          loadingMoreRef.current = true;
+          setTimeout(() => { loadingMoreRef.current = false; }, 400);
+          return d + DAYS_PER_PAGE;
         });
       }
     };
@@ -439,6 +448,23 @@ export default function HistoryPage() {
       {/* 무한스크롤 sentinel */}
       {!loading && visibleDays < allGroups.length && (
         <div style={{ height: '1px' }} />
+      )}
+
+      {/* 맨 위로 버튼 */}
+      {showTop && (
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          style={{
+            position: 'fixed', bottom: '88px', left: '20px',
+            width: '40px', height: '40px', borderRadius: '50%',
+            backgroundColor: 'rgba(0,0,0,0.55)', border: 'none',
+            fontSize: '18px', cursor: 'pointer', display: 'flex',
+            alignItems: 'center', justifyContent: 'center',
+            zIndex: 50, backdropFilter: 'blur(4px)',
+          }}
+        >
+          ☝️
+        </button>
       )}
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
