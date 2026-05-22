@@ -482,6 +482,8 @@ function GoalSettings({ onRequestAuth }: { onRequestAuth: (cb: (pin: string) => 
   };
 
   const handleSave = async () => {
+    const err = validateBody();
+    if (err) { alert(err); return; }
     setSaving(true);
     await encryptBody(body, currentPin.current);
     setSaving(false);
@@ -489,8 +491,39 @@ function GoalSettings({ onRequestAuth }: { onRequestAuth: (cb: (pin: string) => 
     setTimeout(() => setSaved(false), 1500);
   };
 
-  const set = (field: keyof BodyInfo) => (val: string) =>
+  const LIMITS = {
+    age:          { min: 1,  max: 99,  label: '나이',      unit: '세' },
+    height:       { min: 50, max: 250, label: '키',        unit: 'cm' },
+    weight:       { min: 20, max: 300, label: '몸무게',    unit: 'kg' },
+    targetWeight: { min: 20, max: 300, label: '목표 체중', unit: 'kg' },
+  } as const;
+
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof typeof LIMITS, string>>>({});
+
+  const set = (field: keyof BodyInfo) => (val: string) => {
     setBody(prev => ({ ...prev, [field]: val }));
+    if (field in LIMITS) {
+      const key = field as keyof typeof LIMITS;
+      const { min, max, label, unit } = LIMITS[key];
+      const num = parseFloat(val);
+      if (val !== '' && (!isFinite(num) || num < min || num > max)) {
+        setFieldErrors(prev => ({ ...prev, [key]: `${label}는 ${min}~${max}${unit} 사이로 입력해 주세요` }));
+      } else {
+        setFieldErrors(prev => { const next = { ...prev }; delete next[key]; return next; });
+      }
+    }
+  };
+
+  const validateBody = (): string | null => {
+    for (const [field, { min, max, label, unit }] of Object.entries(LIMITS) as [keyof typeof LIMITS, typeof LIMITS[keyof typeof LIMITS]][]) {
+      const val = body[field];
+      if (val === '') continue;
+      const num = parseFloat(val as string);
+      if (!isFinite(num) || num < min || num > max)
+        return `${label}는 ${min}~${max}${unit} 사이로 입력해 주세요`;
+    }
+    return null;
+  };
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '10px 12px', border: '1px solid #e5e7eb',
@@ -563,30 +596,41 @@ function GoalSettings({ onRequestAuth }: { onRequestAuth: (cb: (pin: string) => 
         {/* 나이 */}
         <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '6px' }}>나이</p>
         <input
-          type="number" inputMode="numeric" value={body.age}
+          type="number" inputMode="numeric" value={body.age} min={1} max={99}
           onChange={e => set('age')(e.target.value)}
-          placeholder="25" style={{ ...inputStyle, marginBottom: '14px' }}
+          placeholder="25"
+          style={{ ...inputStyle, marginBottom: fieldErrors.age ? '4px' : '14px', borderColor: fieldErrors.age ? '#ef4444' : '#e5e7eb' }}
         />
+        {fieldErrors.age && <p style={{ fontSize: '10px', color: '#ef4444', marginBottom: '10px' }}>{fieldErrors.age}</p>}
 
         {/* 키 / 몸무게 */}
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '4px' }}>
           <div style={{ flex: 1 }}>
             <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '6px' }}>키 (cm)</p>
-            <input type="number" inputMode="decimal" value={body.height} onChange={e => set('height')(e.target.value)} placeholder="170" style={inputStyle} />
+            <input type="number" inputMode="decimal" value={body.height} min={50} max={250}
+              onChange={e => set('height')(e.target.value)} placeholder="170"
+              style={{ ...inputStyle, borderColor: fieldErrors.height ? '#ef4444' : '#e5e7eb' }} />
+            {fieldErrors.height && <p style={{ fontSize: '10px', color: '#ef4444', marginTop: '4px' }}>{fieldErrors.height}</p>}
           </div>
           <div style={{ flex: 1 }}>
             <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '6px' }}>몸무게 (kg)</p>
-            <input type="number" inputMode="decimal" value={body.weight} onChange={e => set('weight')(e.target.value)} placeholder="65" style={inputStyle} />
+            <input type="number" inputMode="decimal" value={body.weight} min={20} max={300}
+              onChange={e => set('weight')(e.target.value)} placeholder="65"
+              style={{ ...inputStyle, borderColor: fieldErrors.weight ? '#ef4444' : '#e5e7eb' }} />
+            {fieldErrors.weight && <p style={{ fontSize: '10px', color: '#ef4444', marginTop: '4px' }}>{fieldErrors.weight}</p>}
           </div>
         </div>
+        <div style={{ marginBottom: '14px' }} />
 
         {/* 목표 체중 */}
         <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '6px' }}>목표 체중 (kg)</p>
         <input
-          type="number" inputMode="decimal" value={body.targetWeight}
+          type="number" inputMode="decimal" value={body.targetWeight} min={20} max={300}
           onChange={e => set('targetWeight')(e.target.value)}
-          placeholder="60" style={{ ...inputStyle, marginBottom: '14px' }}
+          placeholder="60"
+          style={{ ...inputStyle, marginBottom: fieldErrors.targetWeight ? '4px' : '14px', borderColor: fieldErrors.targetWeight ? '#ef4444' : '#e5e7eb' }}
         />
+        {fieldErrors.targetWeight && <p style={{ fontSize: '10px', color: '#ef4444', marginBottom: '10px' }}>{fieldErrors.targetWeight}</p>}
 
         {/* 활동량 */}
         <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '6px' }}>활동량</p>
