@@ -101,7 +101,6 @@ export default function HistoryPage() {
 
   // 무한스크롤 pagination (날짜 그룹 기준)
   const [visibleDays, setVisibleDays] = useState(DAYS_PER_PAGE);
-  const sentinelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const local: Meal[] = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
@@ -132,24 +131,21 @@ export default function HistoryPage() {
     setVisibleDays(DAYS_PER_PAGE);
   }, [query, category, sort, viewMode]);
 
-  // IntersectionObserver — sentinel 진입 시 +3일 로드
+  // 스크롤 바닥 감지 → +3일 로드
   useEffect(() => {
-    const sentinel = sentinelRef.current;
-    if (!sentinel) return;
-    let fired = false;
-    const observer = new IntersectionObserver(
-      entries => {
-        if (entries[0].isIntersecting && !fired) {
-          fired = true;
-          setVisibleDays(d => d + DAYS_PER_PAGE);
-        }
-      },
-      { rootMargin: '300px' }
-    );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  // sentinel DOM 존재 여부(visibleDays)가 바뀔 때마다 재등록, meals 로드 후도 재등록
-  }, [visibleDays, meals]);
+    const onScroll = () => {
+      const scrolledToBottom =
+        window.innerHeight + window.scrollY >= document.body.scrollHeight - 200;
+      if (scrolledToBottom) {
+        setVisibleDays(d => {
+          if (d < allGroups.length) return d + DAYS_PER_PAGE;
+          return d;
+        });
+      }
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [allGroups.length]);
 
   const handleZoom = (delta: number) => {
     setGalleryScale(prev => Math.max(3, Math.min(6, prev + delta)));
@@ -440,7 +436,7 @@ export default function HistoryPage() {
 
       {/* 무한스크롤 sentinel */}
       {!loading && visibleDays < allGroups.length && (
-        <div ref={sentinelRef} style={{ height: '40px' }} />
+        <div style={{ height: '1px' }} />
       )}
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
