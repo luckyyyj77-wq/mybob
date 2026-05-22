@@ -1564,43 +1564,6 @@ export default function SettingsPage() {
           </button>
         </div>
 
-        {/* 개인 정보 */}
-        <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>개인 정보</p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: '#e5e7eb', marginBottom: '28px' }}>
-          {/* 로그아웃 */}
-          {!confirmLogout ? (
-            <button
-              onClick={handleLogout}
-              style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '14px 16px', backgroundColor: 'white', border: 'none',
-                cursor: 'pointer', width: '100%', textAlign: 'left',
-              }}
-            >
-              <span style={{ fontSize: '14px', color: 'black' }}>로그아웃</span>
-              <span style={{ fontSize: '12px', color: '#9ca3af' }}>›</span>
-            </button>
-          ) : (
-            <div style={{ padding: '12px 16px', backgroundColor: 'white', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-              <span style={{ fontSize: '13px', color: '#6b7280' }}>정말 로그아웃할까요?</span>
-              <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-                <button
-                  onClick={handleLogout}
-                  style={{ padding: '6px 14px', backgroundColor: 'black', color: 'white', border: 'none', fontSize: '12px', cursor: 'pointer' }}
-                >
-                  확인
-                </button>
-                <button
-                  onClick={() => setConfirmLogout(false)}
-                  style={{ padding: '6px 14px', backgroundColor: 'white', color: '#6b7280', border: '1px solid #e5e7eb', fontSize: '12px', cursor: 'pointer' }}
-                >
-                  취소
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
         {/* 위험 구역 */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
           <p style={{ fontSize: '10px', color: '#ef4444', letterSpacing: '2px', textTransform: 'uppercase' }}>위험 구역</p>
@@ -1638,6 +1601,25 @@ export default function SettingsPage() {
             <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '6px' }}>이메일 주소</p>
             <p style={{ fontSize: '14px', color: 'black' }}>{userEmail || '로그인 필요'}</p>
           </div>
+
+          {/* 로그아웃 */}
+          {!confirmLogout ? (
+            <button
+              onClick={handleLogout}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', backgroundColor: 'white', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left' }}
+            >
+              <span style={{ fontSize: '14px', color: 'black' }}>로그아웃</span>
+              <span style={{ fontSize: '12px', color: '#9ca3af' }}>›</span>
+            </button>
+          ) : (
+            <div style={{ padding: '12px 16px', backgroundColor: 'white', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+              <span style={{ fontSize: '13px', color: '#6b7280' }}>정말 로그아웃할까요?</span>
+              <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                <button onClick={handleLogout} style={{ padding: '6px 14px', backgroundColor: 'black', color: 'white', border: 'none', fontSize: '12px', cursor: 'pointer' }}>확인</button>
+                <button onClick={() => setConfirmLogout(false)} style={{ padding: '6px 14px', backgroundColor: 'white', color: '#6b7280', border: '1px solid #e5e7eb', fontSize: '12px', cursor: 'pointer' }}>취소</button>
+              </div>
+            </div>
+          )}
 
           {/* PIN 재설정 */}
           <button
