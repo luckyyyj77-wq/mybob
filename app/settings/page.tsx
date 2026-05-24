@@ -1,6 +1,7 @@
 "use client";
 
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { FaArrowLeft } from 'react-icons/fa';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase/client';
@@ -9,6 +10,9 @@ import { getStorageMode, type StorageMode } from '@/lib/storage-mode';
 import { getCloudDeleteSchedule, cancelCloudDeleteSchedule, requestServerDataDeletion } from '@/lib/storage-migration';
 import { StorageModeModal } from '@/components/StorageModeModal';
 import { type StatusTemplate, pickRandom3 } from '@/lib/status-templates';
+import dynamic from 'next/dynamic';
+
+const UpgradeModal = dynamic(() => import('@/components/UpgradeModal'), { ssr: false });
 
 // ── AES-256-GCM 암호화 (Web Crypto API) ──────────────────────
 const BODY_ENC_KEY = 'mybob_body_enc';
@@ -856,6 +860,7 @@ const COACH_OPTIONS: { id: CoachPersona; emoji: string; name: string; desc: stri
 
 export default function SettingsPage() {
   const { token, session } = useAuth();
+  const searchParams = useSearchParams();
   const [aiAlert, setAiAlert] = useState(true);
   const [notifFreq, setNotifFreq] = useState('1시간 후');
   const [meals, setMeals] = useState<Meal[]>([]);
@@ -870,6 +875,7 @@ export default function SettingsPage() {
   const [deleteSchedule, setDeleteSchedule] = useState<{ scheduledAt: Date; daysLeft: number } | null>(null);
   const [planStatus, setPlanStatus] = useState<PlanStatus | null>(null);
   const [planLoaded, setPlanLoaded] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [profile, setProfile] = useState<{ nickname: string | null; avatar_url: string | null; nickname_changed: boolean }>({ nickname: null, avatar_url: null, nickname_changed: false });
   const [nicknameInput, setNicknameInput] = useState('');
   const [nicknameSaving, setNicknameSaving] = useState(false);
@@ -969,6 +975,15 @@ export default function SettingsPage() {
     setDeleteSchedule(getCloudDeleteSchedule());
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
+
+  // 결제 완료 후 플랜 새로고침 (?upgraded=1)
+  useEffect(() => {
+    if (searchParams.get('upgraded') !== '1' || !token) return;
+    fetch('/api/upload-status', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setPlanStatus(data); });
+    window.history.replaceState({}, '', '/settings');
+  }, [searchParams, token]);
 
   const handleDeleteAll = () => {
     if (!confirmDelete) { setConfirmDelete(true); return; }
@@ -1243,7 +1258,7 @@ export default function SettingsPage() {
                   {planStatus.plan === 'free' && (
                     <button
                       style={{ padding: '6px 12px', backgroundColor: '#6B21A8', color: 'white', border: 'none', fontSize: '11px', cursor: 'pointer', letterSpacing: '0.5px' }}
-                      onClick={() => alert('결제 기능 준비 중입니다.')}
+                      onClick={() => setShowUpgradeModal(true)}
                     >
                       업그레이드
                     </button>
@@ -1456,6 +1471,14 @@ export default function SettingsPage() {
               setDeleteSchedule(getCloudDeleteSchedule());
               setShowModeModal(false);
             }}
+          />
+        )}
+
+        {showUpgradeModal && (
+          <UpgradeModal
+            userEmail={userEmail}
+            userId={session?.user?.id ?? ''}
+            onClose={() => setShowUpgradeModal(false)}
           />
         )}
 
