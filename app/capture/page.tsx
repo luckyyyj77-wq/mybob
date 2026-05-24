@@ -132,7 +132,7 @@ export default function CameraCapturePage() {
         return;
       }
 
-      // Permissions API로 현재 상태 확인
+      // Permissions API 지원 브라우저에서 현재 상태 확인
       if (navigator.permissions) {
         try {
           const status = await navigator.permissions.query({ name: 'camera' as PermissionName });
@@ -144,7 +144,8 @@ export default function CameraCapturePage() {
             setPermState('denied');
             return;
           }
-          // state === 'prompt' 이거나 불확실한 경우 — 아래에서 getUserMedia로 재확인
+          // 'prompt' — 권한 요청 화면으로
+          // onchange로 이후 변경 감지
           status.onchange = () => {
             if (status.state === 'granted') {
               localStorage.setItem('mybob_camera_granted', '1');
@@ -153,37 +154,25 @@ export default function CameraCapturePage() {
               setPermState('denied');
             }
           };
+          setPermState('prompt');
+          return;
         } catch {
-          // Permissions API 오류 — 아래에서 getUserMedia로 확인
+          // Permissions API 오류 — 아래에서 처리
         }
       }
 
-      // 안드로이드에서 Permissions API가 'prompt'를 잘못 반환하는 경우 대비:
-      // getUserMedia를 조용히 시도해서 이미 권한이 있는지 확인
-      // (이미 허용된 경우 OS 팝업 없이 즉시 성공)
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        stream.getTracks().forEach(t => t.stop());
-        localStorage.setItem('mybob_camera_granted', '1');
-        setPermState('granted');
-      } catch {
-        // 실제로 권한이 없는 경우 — 허용 요청 화면 표시
-        setPermState('prompt');
-      }
+      // Permissions API 미지원 — 권한 요청 화면으로
+      setPermState('prompt');
     };
 
     checkCamera();
   }, []);
 
-  const requestCamera = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-      stream.getTracks().forEach(t => t.stop());
-      localStorage.setItem('mybob_camera_granted', '1');
-      setPermState('granted');
-    } catch {
-      setPermState('denied');
-    }
+  const requestCamera = () => {
+    // Webcam 컴포넌트가 직접 getUserMedia + OS 권한 팝업을 처리하도록
+    // 여기서 별도 스트림을 열지 않음 (안드로이드 이중 스트림 충돌 방지)
+    // localStorage 저장은 onUserMedia 성공 시에만
+    setPermState('granted');
   };
 
   // OCR 모드 전용 카메라 스트림 시작
@@ -632,6 +621,7 @@ export default function CameraCapturePage() {
                 height: { ideal: 1080 },
               }}
               onUserMedia={(stream) => {
+                localStorage.setItem('mybob_camera_granted', '1');
                 setCameraReady(true);
                 const track = stream.getVideoTracks()[0];
                 if (track) {
@@ -641,9 +631,14 @@ export default function CameraCapturePage() {
                   }
                 }
               }}
-              onUserMediaError={() => {
-                localStorage.removeItem('mybob_camera_granted');
-                setPermState('denied');
+              onUserMediaError={(err) => {
+                const name = (err as DOMException)?.name ?? '';
+                // NotAllowedError = 실제 권한 거부 / SecurityError = 브라우저 정책 차단
+                // NotReadableError / AbortError = 장치 일시 점유 등 일시적 오류 — 무시
+                if (name === 'NotAllowedError' || name === 'SecurityError') {
+                  localStorage.removeItem('mybob_camera_granted');
+                  setPermState('denied');
+                }
               }}
               style={{
                 position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
