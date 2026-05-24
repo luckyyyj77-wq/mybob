@@ -11,9 +11,7 @@ type Props = {
 };
 
 const PLANS: { key: PaddlePlan; label: string; badge?: string }[] = [
-  { key: 'pro_monthly', label: 'PRO 월간' },
-  { key: 'pro_yearly',  label: 'PRO 연간', badge: '인기' },
-  { key: 'lifetime',    label: '평생 이용권', badge: '최저가' },
+  { key: 'pro_monthly', label: 'PRO 월간', badge: '월 ₩900' },
 ];
 
 const FEATURES = [
@@ -26,7 +24,7 @@ const FEATURES = [
 
 export default function UpgradeModal({ userEmail, userId, onClose }: Props) {
   const [paddle, setPaddle] = useState<Paddle | null>(null);
-  const [selected, setSelected] = useState<PaddlePlan>('pro_yearly');
+  const [selected, setSelected] = useState<PaddlePlan>('pro_monthly');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {

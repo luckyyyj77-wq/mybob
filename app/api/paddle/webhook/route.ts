@@ -89,8 +89,8 @@ export async function POST(request: Request) {
       .eq('paddle_subscription_id', subscriptionId);
   }
 
-  // 구독 갱신 성공 (pro 유지 확인)
-  if (event_type === 'subscription.renewed') {
+  // 구독 재개/갱신 성공 (pro 유지 확인)
+  if (event_type === 'subscription.resumed' || event_type === 'subscription.renewed') {
     const subscriptionId = data.id;
     await admin.from('profiles')
       .update({ plan: 'pro' })
