@@ -59,6 +59,11 @@ function AppShell({ children }: { children: React.ReactNode }) {
     const ios = /iphone|ipad|ipod/i.test(ua) && !(window as any).MSStream;
     setIsIOS(ios);
 
+    // Service Worker 등록 (PWA 설치 조건 — 안드로이드 크롬 필수)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+
     const onBeforeInstall = (e: Event) => {
       e.preventDefault();
       installPromptRef.current = e;

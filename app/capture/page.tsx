@@ -216,20 +216,18 @@ export default function CameraCapturePage() {
     return () => { stopFoodCamera(); };
   }, [permState, captureMode, imageSrc, startFoodCamera, stopFoodCamera]);
 
-  // 버튼 클릭 → 사용자 제스처 컨텍스트에서 직접 getUserMedia 호출 (안드로이드 필수)
-  const requestCamera = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
-      });
+  // 버튼 클릭 → getUserMedia를 동기 컨텍스트에서 즉시 호출 (안드로이드 user gesture 보장)
+  // async/await 사용 금지: await 이후는 user gesture 체인이 끊겨 안드로이드에서 팝업 차단됨
+  const requestCamera = () => {
+    navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+    }).then((stream) => {
       foodStreamRef.current = stream;
       localStorage.setItem('mybob_camera_granted', '1');
       setPermState('granted');
-      // video 연결은 permState 변경 → useEffect → startFoodCamera 에서 처리되지만
-      // 이미 stream이 있으므로 여기서 직접 연결
       if (foodVideoRef.current) {
         foodVideoRef.current.srcObject = stream;
-        await foodVideoRef.current.play();
+        foodVideoRef.current.play().catch(() => {});
       }
       const track = stream.getVideoTracks()[0];
       if (track) {
@@ -239,13 +237,13 @@ export default function CameraCapturePage() {
         }
       }
       setCameraReady(true);
-    } catch (err) {
+    }).catch((err) => {
       const name = (err as DOMException)?.name ?? '';
       if (name === 'NotAllowedError' || name === 'SecurityError') {
         localStorage.removeItem('mybob_camera_granted');
         setPermState('denied');
       }
-    }
+    });
   };
 
   // OCR 모드 전용 카메라 스트림 시작
