@@ -125,37 +125,54 @@ export default function CameraCapturePage() {
   }, [token]);
 
   useEffect(() => {
-    // 이미 허용된 것으로 캐시된 경우 바로 granted
-    if (localStorage.getItem('mybob_camera_granted') === '1') {
-      setPermState('granted');
-      return;
-    }
-    // Permissions API로 현재 상태 확인 (재요청 없이)
-    if (navigator.permissions) {
-      navigator.permissions.query({ name: 'camera' as PermissionName }).then(status => {
-        if (status.state === 'granted') {
-          localStorage.setItem('mybob_camera_granted', '1');
-          setPermState('granted');
-        } else if (status.state === 'denied') {
-          setPermState('denied');
-        } else {
-          setPermState('prompt');
-        }
-        status.onchange = () => {
+    const checkCamera = async () => {
+      // localStorage 캐시 확인 (빠른 경로)
+      if (localStorage.getItem('mybob_camera_granted') === '1') {
+        setPermState('granted');
+        return;
+      }
+
+      // Permissions API로 현재 상태 확인
+      if (navigator.permissions) {
+        try {
+          const status = await navigator.permissions.query({ name: 'camera' as PermissionName });
           if (status.state === 'granted') {
             localStorage.setItem('mybob_camera_granted', '1');
             setPermState('granted');
+            return;
           } else if (status.state === 'denied') {
             setPermState('denied');
+            return;
           }
-        };
-      }).catch(() => {
-        // Permissions API 미지원 브라우저 — 바로 웹캠 시도
+          // state === 'prompt' 이거나 불확실한 경우 — 아래에서 getUserMedia로 재확인
+          status.onchange = () => {
+            if (status.state === 'granted') {
+              localStorage.setItem('mybob_camera_granted', '1');
+              setPermState('granted');
+            } else if (status.state === 'denied') {
+              setPermState('denied');
+            }
+          };
+        } catch {
+          // Permissions API 오류 — 아래에서 getUserMedia로 확인
+        }
+      }
+
+      // 안드로이드에서 Permissions API가 'prompt'를 잘못 반환하는 경우 대비:
+      // getUserMedia를 조용히 시도해서 이미 권한이 있는지 확인
+      // (이미 허용된 경우 OS 팝업 없이 즉시 성공)
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        stream.getTracks().forEach(t => t.stop());
+        localStorage.setItem('mybob_camera_granted', '1');
+        setPermState('granted');
+      } catch {
+        // 실제로 권한이 없는 경우 — 허용 요청 화면 표시
         setPermState('prompt');
-      });
-    } else {
-      setPermState('prompt');
-    }
+      }
+    };
+
+    checkCamera();
   }, []);
 
   const requestCamera = async () => {
