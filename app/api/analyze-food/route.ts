@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { checkAnalysisLimit, incrementAnalysisCount } from '@/lib/plan';
+import { rateLimit } from '@/lib/rate-limit';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -468,6 +469,13 @@ export async function POST(request: Request) {
     const { image, mode } = await request.json();
     const apiKey = process.env.GEMINI_API_KEY?.trim();
     if (!apiKey) return NextResponse.json({ error: 'API 키가 없습니다.' }, { status: 500 });
+
+    // 분당 10회 전역 rate limit (미인증 포함)
+    const ip = (request.headers.get('x-forwarded-for') ?? 'unknown').split(',')[0].trim();
+    const ipLimit = rateLimit(`analyze-ip:${ip}`, 10, 60 * 1000);
+    if (ipLimit.limited) {
+      return NextResponse.json({ error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' }, { status: 429 });
+    }
 
     // AI 분석 횟수 제한 체크 (로컬/클라우드 무관 — Gemini 호출 비용 제한)
     const authHeader = request.headers.get('Authorization');

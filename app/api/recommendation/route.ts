@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { rateLimit } from '@/lib/rate-limit';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -18,6 +19,12 @@ export async function POST(request: Request) {
   try {
     const user = await getUser(request);
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // 시간당 10회 이하로 Gemini 호출 제한
+    const limit = rateLimit(`gemini-rec:${user.id}`, 10, 60 * 60 * 1000);
+    if (limit.limited) {
+      return NextResponse.json({ error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' }, { status: 429 });
+    }
 
     const { today, weekly, goal } = await request.json();
     const apiKey = process.env.GEMINI_API_KEY?.trim();

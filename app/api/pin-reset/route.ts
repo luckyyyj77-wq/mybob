@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
+import { rateLimit } from '@/lib/rate-limit';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -25,6 +26,12 @@ function generateOtp(): string {
 export async function POST(request: Request) {
   const user = await getUser(request);
   if (!user || !user.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  // 분당 3회 이하로 OTP 발송 제한
+  const sendLimit = rateLimit(`pin-send:${user.id}`, 3, 60 * 1000);
+  if (sendLimit.limited) {
+    return NextResponse.json({ error: 'TOO_MANY_REQUESTS' }, { status: 429 });
+  }
 
   const otp = generateOtp();
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10분
@@ -70,6 +77,12 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   const user = await getUser(request);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  // 10분 안에 5회 이상 OTP 검증 시도 시 잠금
+  const verifyLimit = rateLimit(`pin-verify:${user.id}`, 5, 10 * 60 * 1000);
+  if (verifyLimit.limited) {
+    return NextResponse.json({ error: 'TOO_MANY_ATTEMPTS' }, { status: 429 });
+  }
 
   const { otp } = await request.json();
   if (!otp) return NextResponse.json({ error: 'MISSING_OTP' }, { status: 400 });
