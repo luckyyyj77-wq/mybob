@@ -110,6 +110,7 @@ export default function CameraCapturePage() {
   const [captureMode, setCaptureMode] = useState<CaptureMode>('food');
   const [ocrMeta, setOcrMeta] = useState<{ barcode?: string | null; serving_size?: string; servings_per_container?: number | null } | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
   // TODO: 바코드 재작업 시 복구
   // const [barcodeScanning, setBarcodeScanning] = useState(false);
   // const [barcodeDetected, setBarcodeDetected] = useState<string | null>(null);
@@ -238,7 +239,9 @@ export default function CameraCapturePage() {
       }
       setCameraReady(true);
     }).catch((err) => {
-      const name = (err as DOMException)?.name ?? '';
+      const name = (err as DOMException)?.name ?? 'Unknown';
+      const message = (err as DOMException)?.message ?? '';
+      setCameraError(`${name}: ${message}`);
       if (name === 'NotAllowedError' || name === 'SecurityError') {
         localStorage.removeItem('mybob_camera_granted');
         setPermState('denied');
@@ -559,8 +562,13 @@ export default function CameraCapturePage() {
           브라우저 주소창 왼쪽의 자물쇠 아이콘을 탭한 후<br />
           카메라 권한을 <strong style={{ color: 'white' }}>허용</strong>으로 변경하세요.
         </p>
+        {cameraError && (
+          <p style={{ color: '#ff6b6b', fontSize: '11px', textAlign: 'center', wordBreak: 'break-all', padding: '0 8px' }}>
+            {cameraError}
+          </p>
+        )}
         <button
-          onClick={() => { localStorage.removeItem('mybob_camera_granted'); setPermState('prompt'); }}
+          onClick={() => { localStorage.removeItem('mybob_camera_granted'); setCameraError(null); setPermState('prompt'); }}
           style={{ padding: '12px 28px', backgroundColor: 'white', color: 'black', border: 'none', fontSize: '13px', cursor: 'pointer', letterSpacing: '1px' }}
         >
           다시 시도
@@ -597,6 +605,11 @@ export default function CameraCapturePage() {
         >
           카메라 허용
         </button>
+        {cameraError && (
+          <p style={{ color: '#ff6b6b', fontSize: '11px', textAlign: 'center', wordBreak: 'break-all', padding: '0 8px' }}>
+            {cameraError}
+          </p>
+        )}
         <button
           onClick={() => fileInputRef.current?.click()}
           style={{ padding: '12px 28px', backgroundColor: 'transparent', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.2)', fontSize: '13px', cursor: 'pointer', letterSpacing: '1px' }}
