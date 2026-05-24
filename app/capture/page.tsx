@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useRef, useState, useCallback, useEffect } from 'react';
-import Webcam from 'react-webcam';
 import Link from 'next/link';
 import { FaSpinner, FaUpload, FaArrowLeft, FaCamera, FaHome } from 'react-icons/fa';
 import { useAuth } from '@/lib/auth-context';
@@ -89,7 +88,8 @@ type PermState = 'checking' | 'granted' | 'denied' | 'prompt';
 
 export default function CameraCapturePage() {
   const { token } = useAuth();
-  const webcamRef = useRef<Webcam>(null);
+  const foodVideoRef = useRef<HTMLVideoElement>(null);
+  const foodStreamRef = useRef<MediaStream | null>(null);
   const ocrVideoRef = useRef<HTMLVideoElement>(null);
   const ocrStreamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -124,12 +124,50 @@ export default function CameraCapturePage() {
       .catch(() => {});
   }, [token]);
 
+  // food 카메라 스트림 시작 (직접 video 태그에 연결)
+  const startFoodCamera = useCallback(async () => {
+    if (foodStreamRef.current) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+      });
+      foodStreamRef.current = stream;
+      if (foodVideoRef.current) {
+        foodVideoRef.current.srcObject = stream;
+        await foodVideoRef.current.play();
+      }
+      const track = stream.getVideoTracks()[0];
+      if (track) {
+        const caps = track.getCapabilities() as any;
+        if (caps?.focusMode?.includes('continuous')) {
+          track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as any] }).catch(() => {});
+        }
+      }
+      localStorage.setItem('mybob_camera_granted', '1');
+      setCameraReady(true);
+    } catch (err) {
+      const name = (err as DOMException)?.name ?? '';
+      if (name === 'NotAllowedError' || name === 'SecurityError') {
+        localStorage.removeItem('mybob_camera_granted');
+        setPermState('denied');
+      }
+      // NotReadableError 등 일시적 오류는 무시 (cameraReady = false 유지)
+    }
+  }, []);
+
+  const stopFoodCamera = useCallback(() => {
+    if (foodStreamRef.current) {
+      foodStreamRef.current.getTracks().forEach(t => t.stop());
+      foodStreamRef.current = null;
+    }
+    setCameraReady(false);
+  }, []);
+
   useEffect(() => {
     let permStatus: PermissionStatus | null = null;
 
     const checkCamera = async () => {
-      // Permissions API 우선 시도 — localStorage보다 신뢰성 높음
-      // (PWA vs 브라우저 컨텍스트 간 localStorage 격리 문제 회피)
+      // Permissions API 우선 — PWA/브라우저 컨텍스트 간 localStorage 격리 문제 회피
       if (navigator.permissions) {
         try {
           permStatus = await navigator.permissions.query({ name: 'camera' as PermissionName });
@@ -142,7 +180,6 @@ export default function CameraCapturePage() {
             setPermState('denied');
             return;
           }
-          // 'prompt' 상태 — onchange로 이후 변경 감지 등록
           permStatus.onchange = () => {
             if (permStatus!.state === 'granted') {
               localStorage.setItem('mybob_camera_granted', '1');
@@ -154,12 +191,10 @@ export default function CameraCapturePage() {
           };
           setPermState('prompt');
           return;
-        } catch {
-          // Permissions API 미지원 — 아래 폴백으로
-        }
+        } catch { /* 미지원 */ }
       }
 
-      // Permissions API 미지원 시 localStorage 캐시로 폴백
+      // Permissions API 미지원 시 localStorage 폴백
       if (localStorage.getItem('mybob_camera_granted') === '1') {
         setPermState('granted');
         return;
@@ -168,18 +203,49 @@ export default function CameraCapturePage() {
     };
 
     checkCamera();
-
-    return () => {
-      // onchange 리스너 누수 방지
-      if (permStatus) permStatus.onchange = null;
-    };
+    return () => { if (permStatus) permStatus.onchange = null; };
   }, []);
 
-  const requestCamera = () => {
-    // Webcam 컴포넌트가 직접 getUserMedia + OS 권한 팝업을 처리하도록
-    // 여기서 별도 스트림을 열지 않음 (안드로이드 이중 스트림 충돌 방지)
-    // localStorage 저장은 onUserMedia 성공 시에만
-    setPermState('granted');
+  // permState가 granted로 바뀌면 food 카메라 자동 시작
+  useEffect(() => {
+    if (permState === 'granted' && captureMode === 'food' && !imageSrc) {
+      startFoodCamera();
+    } else if (permState !== 'granted' || captureMode !== 'food') {
+      stopFoodCamera();
+    }
+    return () => { stopFoodCamera(); };
+  }, [permState, captureMode, imageSrc, startFoodCamera, stopFoodCamera]);
+
+  // 버튼 클릭 → 사용자 제스처 컨텍스트에서 직접 getUserMedia 호출 (안드로이드 필수)
+  const requestCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+      });
+      foodStreamRef.current = stream;
+      localStorage.setItem('mybob_camera_granted', '1');
+      setPermState('granted');
+      // video 연결은 permState 변경 → useEffect → startFoodCamera 에서 처리되지만
+      // 이미 stream이 있으므로 여기서 직접 연결
+      if (foodVideoRef.current) {
+        foodVideoRef.current.srcObject = stream;
+        await foodVideoRef.current.play();
+      }
+      const track = stream.getVideoTracks()[0];
+      if (track) {
+        const caps = track.getCapabilities() as any;
+        if (caps?.focusMode?.includes('continuous')) {
+          track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as any] }).catch(() => {});
+        }
+      }
+      setCameraReady(true);
+    } catch (err) {
+      const name = (err as DOMException)?.name ?? '';
+      if (name === 'NotAllowedError' || name === 'SecurityError') {
+        localStorage.removeItem('mybob_camera_granted');
+        setPermState('denied');
+      }
+    }
   };
 
   // OCR 모드 전용 카메라 스트림 시작
@@ -254,8 +320,9 @@ export default function CameraCapturePage() {
 
 
   const capture = useCallback(() => {
-    if (webcamRef.current) {
-      const image = webcamRef.current.getScreenshot();
+    const video = foodVideoRef.current;
+    if (video && video.readyState >= 2) {
+      const image = captureFrameFromVideo(video);
       if (image) {
         setImageSrc(image);
         setAnalysis(null);
@@ -619,43 +686,16 @@ export default function CameraCapturePage() {
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             style={{ position: 'absolute', inset: 0 }}
           >
-            {/* 음식 모드 카메라 — granted 상태에서만 마운트 (checking/prompt/denied 시 getUserMedia 호출 방지) */}
-            {permState === 'granted' && captureMode === 'food' && (
-              <Webcam
-                audio={false}
-                ref={webcamRef}
-                screenshotFormat="image/jpeg"
-                screenshotQuality={0.95}
-                videoConstraints={{
-                  facingMode: { ideal: 'environment' },
-                  width: { ideal: 1920 },
-                  height: { ideal: 1080 },
-                }}
-                onUserMedia={(stream) => {
-                  localStorage.setItem('mybob_camera_granted', '1');
-                  setCameraReady(true);
-                  const track = stream.getVideoTracks()[0];
-                  if (track) {
-                    const caps = track.getCapabilities() as any;
-                    if (caps.focusMode?.includes('continuous')) {
-                      track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as any] }).catch(() => {});
-                    }
-                  }
-                }}
-                onUserMediaError={(err) => {
-                  const name = (err as DOMException)?.name ?? '';
-                  // NotAllowedError/SecurityError = 실제 권한 거부
-                  // NotReadableError/AbortError = 장치 일시 점유 등 일시적 오류 — 무시
-                  if (name === 'NotAllowedError' || name === 'SecurityError') {
-                    localStorage.removeItem('mybob_camera_granted');
-                    setPermState('denied');
-                  }
-                }}
-                style={{
-                  position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
-                }}
-              />
-            )}
+            {/* 음식 모드 카메라 — startFoodCamera/requestCamera에서 stream을 직접 연결 */}
+            <video
+              ref={foodVideoRef}
+              playsInline
+              muted
+              style={{
+                position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
+                display: captureMode === 'food' ? 'block' : 'none',
+              }}
+            />
 
             {/* OCR 모드 카메라 — captureMode === 'ocr'일 때만 마운트 (food 카메라 unmount 후 스트림 해제됨) */}
             {captureMode === 'ocr' && (
