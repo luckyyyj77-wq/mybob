@@ -125,47 +125,54 @@ export default function CameraCapturePage() {
   }, [token]);
 
   useEffect(() => {
-    const checkCamera = async () => {
-      // localStorage 캐시 확인 (빠른 경로)
-      if (localStorage.getItem('mybob_camera_granted') === '1') {
-        setPermState('granted');
-        return;
-      }
+    let permStatus: PermissionStatus | null = null;
 
-      // Permissions API 지원 브라우저에서 현재 상태 확인
+    const checkCamera = async () => {
+      // Permissions API 우선 시도 — localStorage보다 신뢰성 높음
+      // (PWA vs 브라우저 컨텍스트 간 localStorage 격리 문제 회피)
       if (navigator.permissions) {
         try {
-          const status = await navigator.permissions.query({ name: 'camera' as PermissionName });
-          if (status.state === 'granted') {
+          permStatus = await navigator.permissions.query({ name: 'camera' as PermissionName });
+          if (permStatus.state === 'granted') {
             localStorage.setItem('mybob_camera_granted', '1');
             setPermState('granted');
             return;
-          } else if (status.state === 'denied') {
+          } else if (permStatus.state === 'denied') {
+            localStorage.removeItem('mybob_camera_granted');
             setPermState('denied');
             return;
           }
-          // 'prompt' — 권한 요청 화면으로
-          // onchange로 이후 변경 감지
-          status.onchange = () => {
-            if (status.state === 'granted') {
+          // 'prompt' 상태 — onchange로 이후 변경 감지 등록
+          permStatus.onchange = () => {
+            if (permStatus!.state === 'granted') {
               localStorage.setItem('mybob_camera_granted', '1');
               setPermState('granted');
-            } else if (status.state === 'denied') {
+            } else if (permStatus!.state === 'denied') {
+              localStorage.removeItem('mybob_camera_granted');
               setPermState('denied');
             }
           };
           setPermState('prompt');
           return;
         } catch {
-          // Permissions API 오류 — 아래에서 처리
+          // Permissions API 미지원 — 아래 폴백으로
         }
       }
 
-      // Permissions API 미지원 — 권한 요청 화면으로
+      // Permissions API 미지원 시 localStorage 캐시로 폴백
+      if (localStorage.getItem('mybob_camera_granted') === '1') {
+        setPermState('granted');
+        return;
+      }
       setPermState('prompt');
     };
 
     checkCamera();
+
+    return () => {
+      // onchange 리스너 누수 방지
+      if (permStatus) permStatus.onchange = null;
+    };
   }, []);
 
   const requestCamera = () => {
@@ -229,9 +236,12 @@ export default function CameraCapturePage() {
   }, []);
 
   // OCR 모드 진입/해제 시 카메라 전환
+  // captureMode === 'ocr'로 전환되면 Webcam(food)이 unmount되어 스트림이 해제됨
+  // 안드로이드에서 track.stop() 후 하드웨어 해제까지 최대 300ms 소요 → 딜레이 후 OCR 스트림 오픈
   useEffect(() => {
     if (captureMode === 'ocr' && !imageSrc && permState === 'granted') {
-      startOcrCamera();
+      const timer = setTimeout(() => { startOcrCamera(); }, 300);
+      return () => { clearTimeout(timer); stopOcrCamera(); };
     } else {
       stopOcrCamera();
     }
@@ -609,53 +619,55 @@ export default function CameraCapturePage() {
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             style={{ position: 'absolute', inset: 0 }}
           >
-            {/* 음식 모드 카메라 */}
-            <Webcam
-              audio={false}
-              ref={webcamRef}
-              screenshotFormat="image/jpeg"
-              screenshotQuality={0.95}
-              videoConstraints={{
-                facingMode: { ideal: 'environment' },
-                width: { ideal: 1920 },
-                height: { ideal: 1080 },
-              }}
-              onUserMedia={(stream) => {
-                localStorage.setItem('mybob_camera_granted', '1');
-                setCameraReady(true);
-                const track = stream.getVideoTracks()[0];
-                if (track) {
-                  const caps = track.getCapabilities() as any;
-                  if (caps.focusMode?.includes('continuous')) {
-                    track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as any] }).catch(() => {});
+            {/* 음식 모드 카메라 — granted 상태에서만 마운트 (checking/prompt/denied 시 getUserMedia 호출 방지) */}
+            {permState === 'granted' && captureMode === 'food' && (
+              <Webcam
+                audio={false}
+                ref={webcamRef}
+                screenshotFormat="image/jpeg"
+                screenshotQuality={0.95}
+                videoConstraints={{
+                  facingMode: { ideal: 'environment' },
+                  width: { ideal: 1920 },
+                  height: { ideal: 1080 },
+                }}
+                onUserMedia={(stream) => {
+                  localStorage.setItem('mybob_camera_granted', '1');
+                  setCameraReady(true);
+                  const track = stream.getVideoTracks()[0];
+                  if (track) {
+                    const caps = track.getCapabilities() as any;
+                    if (caps.focusMode?.includes('continuous')) {
+                      track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as any] }).catch(() => {});
+                    }
                   }
-                }
-              }}
-              onUserMediaError={(err) => {
-                const name = (err as DOMException)?.name ?? '';
-                // NotAllowedError = 실제 권한 거부 / SecurityError = 브라우저 정책 차단
-                // NotReadableError / AbortError = 장치 일시 점유 등 일시적 오류 — 무시
-                if (name === 'NotAllowedError' || name === 'SecurityError') {
-                  localStorage.removeItem('mybob_camera_granted');
-                  setPermState('denied');
-                }
-              }}
-              style={{
-                position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
-                display: captureMode === 'food' ? 'block' : 'none',
-              }}
-            />
+                }}
+                onUserMediaError={(err) => {
+                  const name = (err as DOMException)?.name ?? '';
+                  // NotAllowedError/SecurityError = 실제 권한 거부
+                  // NotReadableError/AbortError = 장치 일시 점유 등 일시적 오류 — 무시
+                  if (name === 'NotAllowedError' || name === 'SecurityError') {
+                    localStorage.removeItem('mybob_camera_granted');
+                    setPermState('denied');
+                  }
+                }}
+                style={{
+                  position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
+                }}
+              />
+            )}
 
-            {/* OCR 모드 카메라 — 고해상도 직접 스트림 */}
-            <video
-              ref={ocrVideoRef}
-              playsInline
-              muted
-              style={{
-                position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
-                display: captureMode === 'ocr' ? 'block' : 'none',
-              }}
-            />
+            {/* OCR 모드 카메라 — captureMode === 'ocr'일 때만 마운트 (food 카메라 unmount 후 스트림 해제됨) */}
+            {captureMode === 'ocr' && (
+              <video
+                ref={ocrVideoRef}
+                playsInline
+                muted
+                style={{
+                  position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
+                }}
+              />
+            )}
 
             {/* 홈 — 좌상단 */}
             <Link href="/" style={{ position: 'absolute', top: '20px', left: '20px', zIndex: 10, textDecoration: 'none' }}>
