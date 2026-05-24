@@ -15,7 +15,7 @@
 | SUPABASE_SERVICE_ROLE_KEY 서버 전용 확인 | ✅ | NEXT_PUBLIC_ 아님 |
 | GEMINI_API_KEY 서버 전용 확인 | ✅ | NEXT_PUBLIC_ 아님 |
 | RESEND_API_KEY 서버 전용 확인 | ✅ | NEXT_PUBLIC_ 아님 |
-| Vercel Preview 환경에 prod 키 미사용 | ⚠️ | Preview용 별도 키 설정 권장 |
+| Vercel Preview 환경에 prod 키 미사용 | ✅ | Production 환경 전용으로 설정 완료 (2026-05-24) |
 | 커스텀 도메인 HTTPS 강제 적용 | ✅ | Vercel 기본 제공 |
 | HSTS 헤더 설정 | ✅ | next.config.js에 추가됨 (2026-05-24) |
 
@@ -44,7 +44,7 @@
 | meal_photos 버킷 — 인증된 사용자만 업로드 | ✅ | Storage 정책 적용 |
 | avatars 버킷 — 본인만 업로드 | ✅ | Storage 정책 적용 |
 | Supabase 프로젝트 비밀번호 강도 | ✅ | 설정에서 확인됨 |
-| Supabase MFA (2단계 인증) 관리자 계정 | ⚠️ | 활성화 강력 권장 |
+| Supabase MFA (2단계 인증) 관리자 계정 | ✅ | 활성화 확인됨 (2026-05-24) |
 | DB 백업 주기 | ⚠️ | Supabase 무료 플랜 7일 백업 |
 | Service Role Key API 라우트 최소화 | ⚠️ | admin/ 및 일부 라우트 사용 중 — 점진적 제거 권장 |
 
@@ -82,8 +82,8 @@
 | console.log 민감정보 제거 | ⚠️ | 일부 API 라우트에 에러 로그 남음 |
 | XSS 방지 (React 기본 이스케이핑) | ✅ | JSX 자동 이스케이프 |
 | CSRF 방지 (SameSite 쿠키) | ✅ | Supabase 처리 |
-| 의존성 취약점 스캔 | ⚠️ | `npm audit` 정기 실행 권장 |
-| Next.js 버전 최신 유지 | ⚠️ | 정기 업데이트 권장 |
+| 의존성 취약점 스캔 | ✅ | 2026-05-24 실행 — ws 수정 완료, postcss 잔여 (하단 참고) |
+| Next.js 버전 최신 유지 | ⚠️ | v16.2.6 사용 중, postcss 취약점은 v16.3 정식 출시 후 해결 예정 |
 
 ---
 
