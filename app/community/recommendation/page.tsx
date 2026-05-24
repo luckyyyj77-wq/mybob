@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase/client';
+import { useAuth } from '@/lib/auth-context';
 
 interface FeedItem {
   id: string;
@@ -166,21 +166,18 @@ function AdCard({ item }: { item: FeedItem }) {
 }
 
 export default function CommunityRecommendationPage() {
+  const { token } = useAuth();
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isPro, setIsPro] = useState(false);
 
   useEffect(() => {
-    // plan 확인
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const token = session?.access_token;
-      if (token) {
-        fetch('/api/upload-status', { headers: { Authorization: `Bearer ${token}` } })
-          .then(r => r.json())
-          .then(d => setIsPro(d.plan === 'pro' || d.plan === 'lifetime'))
-          .catch(() => {});
-      }
-    });
+    if (token) {
+      fetch('/api/upload-status', { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.json())
+        .then(d => setIsPro(d.plan === 'pro' || d.plan === 'lifetime'))
+        .catch(() => {});
+    }
 
     // 서버 피드 시도, 없으면 더미로 폴백
     fetch('/api/community')
@@ -193,7 +190,7 @@ export default function CommunityRecommendationPage() {
       })
       .catch(() => setFeed(buildFeed(DUMMY_POSTS)))
       .finally(() => setLoading(false));
-  }, []);
+  }, [token]);
 
   if (loading) {
     return (

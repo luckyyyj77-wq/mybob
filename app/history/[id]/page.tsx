@@ -5,7 +5,7 @@ import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { FaArrowLeft, FaChevronLeft, FaChevronRight, FaTh, FaThLarge } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
-import { supabase } from '@/lib/supabase/client';
+import { useAuth } from '@/lib/auth-context';
 import { MealPhoto } from '@/components/MealPhoto';
 
 type Nutrient = {
@@ -51,6 +51,7 @@ function MealDetailContent() {
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
+  const { token } = useAuth();
   const id = params?.id as string;
   const [meal, setMeal] = useState<Meal | null>(null);
   const [allMeals, setAllMeals] = useState<Meal[]>([]);
@@ -87,26 +88,26 @@ function MealDetailContent() {
       const localStr = localStorage.getItem('mybob_meals');
       if (localStr) all = JSON.parse(localStr);
 
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const token = session?.access_token;
-        const res = await fetch('/api/meals', { headers: token ? { Authorization: `Bearer ${token}` } : {} });
-        if (res.ok) {
-          const r = await res.json();
-          if (r.success && Array.isArray(r.data)) {
-            const serverIds = new Set(r.data.map((m: Meal) => m.id));
-            all = [...r.data, ...all.filter((m: Meal) => !serverIds.has(m.id))];
+      if (token) {
+        try {
+          const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+          const [mealsRes, profileRes] = await Promise.all([
+            fetch('/api/meals', { headers }),
+            fetch('/api/profile', { headers }),
+          ]);
+          if (mealsRes.ok) {
+            const r = await mealsRes.json();
+            if (r.success && Array.isArray(r.data)) {
+              const serverIds = new Set(r.data.map((m: Meal) => m.id));
+              all = [...r.data, ...all.filter((m: Meal) => !serverIds.has(m.id))];
+            }
           }
-        }
-        // 플랜 조회
-        if (token) {
-          const profileRes = await fetch('/api/profile', { headers: { Authorization: `Bearer ${token}` } });
-          if (profileRes.ok) {
+          if (profileRes?.ok) {
             const profileData = await profileRes.json();
             setUserPlan(profileData.plan || 'free');
           }
-        }
-      } catch { /* use local only */ }
+        } catch { /* use local only */ }
+      }
 
       const sorted = all.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
       setAllMeals(sorted);
@@ -143,8 +144,6 @@ function MealDetailContent() {
     setSavingRating(true);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
       if (token) {
         await fetch('/api/meals', {
           method: 'PATCH',
@@ -152,12 +151,11 @@ function MealDetailContent() {
           body: JSON.stringify({ mealId: meal.id, updates: { rating: newRating } }),
         });
       }
-      // 로컬 캐시 동기화
       const existing: Meal[] = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
       localStorage.setItem('mybob_meals', JSON.stringify(
         existing.map(m => m.id === meal.id ? { ...m, rating: newRating } : m)
       ));
-    } catch { /* 무시 */ } finally {
+    } catch { } finally {
       setSavingRating(false);
     }
   };
@@ -174,8 +172,6 @@ function MealDetailContent() {
     const newCalories = parseInt(editCalories) || meal.calories;
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
       if (token) {
         const res = await fetch('/api/meals', {
           method: 'PATCH',

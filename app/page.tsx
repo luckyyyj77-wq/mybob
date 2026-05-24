@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState, useRef } from 'react';
-import { supabase } from '@/lib/supabase/client';
 import { motion } from 'framer-motion';
 import { analyzeCoach, getCoachMessage } from '@/lib/coach';
 import type { Persona } from '@/lib/coach';
+import { useAuth } from '@/lib/auth-context';
 
 type Meal = {
   id: string;
@@ -64,6 +64,7 @@ function buildWeekly(meals: Meal[]): DayStat[] {
 }
 
 export default function Home() {
+  const { token } = useAuth();
   const [todayStats, setTodayStats] = useState({
     totalCalories: 0,
     mealNames: [] as string[],
@@ -76,6 +77,7 @@ export default function Home() {
   const [loadingFeedback, setLoadingFeedback] = useState(false);
   const [persona, setPersona] = useState<Persona>('dog');
   const aiFetchedRef = useRef(false);
+  const syncedRef = useRef(false);
 
   useEffect(() => {
     const savedPersona = (localStorage.getItem('mybob_coach_persona') as Persona) || 'dog';
@@ -86,8 +88,28 @@ export default function Home() {
     setTodayStats(computeTodayStats(localMeals));
 
     const goalRaw = localStorage.getItem('mybob_goal');
-    syncFromServer(localMeals, savedPersona, goalRaw);
+    // token이 아직 없으면 token useEffect에서 sync 처리
+    if (token !== null) {
+      syncFromServer(localMeals, savedPersona, goalRaw, token);
+      syncedRef.current = true;
+    } else {
+      // token 로딩 전: 로컬 데이터로만 코치 분석
+      runCoachLocal(localMeals, savedPersona, goalRaw);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // token이 준비되면 서버 동기화 (최초 1회)
+  useEffect(() => {
+    if (token === null || syncedRef.current) return;
+    syncedRef.current = true;
+    const localRaw = localStorage.getItem('mybob_meals');
+    const localMeals: Meal[] = localRaw ? JSON.parse(localRaw) : [];
+    const goalRaw = localStorage.getItem('mybob_goal');
+    const savedPersona = (localStorage.getItem('mybob_coach_persona') as Persona) || 'dog';
+    syncFromServer(localMeals, savedPersona, goalRaw, token);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   const getKSTDate = () => {
     const now = new Date();
@@ -95,15 +117,49 @@ export default function Home() {
     return kst.toISOString().slice(0, 10).replace(/-/g, '');
   };
 
-  const syncFromServer = async (localMeals: Meal[], currentPersona: Persona, goalRaw: string | null) => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
+  const runCoachLocal = (meals: Meal[], currentPersona: Persona, goalRaw: string | null) => {
+    if (aiFetchedRef.current) return;
+    aiFetchedRef.current = true;
+    const finalStats = computeTodayStats(meals);
+    const weekly = buildWeekly(meals);
+    const goalData = JSON.parse(goalRaw || '{"goal":"유지"}');
+    let weight = 65, goalCalories = 2000;
+    if (goalRaw) {
+      try {
+        const gd = JSON.parse(goalRaw);
+        if (gd.weight) weight = Number(gd.weight) || 65;
+        if (gd.calories) goalCalories = Number(gd.calories) || 2000;
+      } catch { }
+    }
+    const goalProtein = weight * 1.5;
+    const kstDate = getKSTDate();
+    const result = analyzeCoach({ todayMeals: finalStats.todayMeals as any, allMeals: meals as any, goalCalories, goalProtein, persona: currentPersona });
+    if (!result.useGemini) {
+      const cacheKey = `mybob_coach_${currentPersona}_${kstDate}`;
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (parsed.type === 'local') { setCoachComment(parsed.message); return; }
+        } catch { }
+      }
+      const message = getCoachMessage(result, parseInt(kstDate, 10));
+      if (message) {
+        setCoachComment(message);
+        localStorage.setItem(cacheKey, JSON.stringify({ type: 'local', message }));
+      }
+    } else {
+      fetchAI(finalStats, weekly, goalData, currentPersona);
+    }
+  };
 
+  const syncFromServer = async (localMeals: Meal[], currentPersona: Persona, goalRaw: string | null, accessToken: string | null) => {
+    try {
       let merged = localMeals;
 
-      if (session?.access_token) {
+      if (accessToken) {
         const res = await fetch('/api/meals', {
-          headers: { Authorization: `Bearer ${session.access_token}` },
+          headers: { Authorization: `Bearer ${accessToken}` },
         });
         if (res.ok) {
           const result = await res.json();
@@ -117,56 +173,7 @@ export default function Home() {
         }
       }
 
-      if (!aiFetchedRef.current) {
-        aiFetchedRef.current = true;
-        const finalStats = computeTodayStats(merged);
-        const weekly = buildWeekly(merged);
-        const goalData = JSON.parse(goalRaw || '{"goal":"유지"}');
-        let weight = 65;
-        let goalCalories = 2000;
-        if (goalRaw) {
-          try {
-            const gd = JSON.parse(goalRaw);
-            if (gd.weight) weight = Number(gd.weight) || 65;
-            if (gd.calories) goalCalories = Number(gd.calories) || 2000;
-          } catch { }
-        }
-        const goalProtein = weight * 1.5;
-        const kstDate = getKSTDate();
-
-        // 코치 시스템 분석
-        const result = analyzeCoach({
-          todayMeals: finalStats.todayMeals as any,
-          allMeals: merged as any,
-          goalCalories,
-          goalProtein,
-          persona: currentPersona,
-        });
-
-        if (!result.useGemini) {
-          // 로컬 멘트 테이블에서 메시지 선택
-          const cacheKey = `mybob_coach_${currentPersona}_${kstDate}`;
-          const cached = localStorage.getItem(cacheKey);
-          if (cached) {
-            try {
-              const parsed = JSON.parse(cached);
-              if (parsed.type === 'local') {
-                setCoachComment(parsed.message);
-                return;
-              }
-            } catch { }
-          }
-          const seed = parseInt(kstDate, 10);
-          const message = getCoachMessage(result, seed);
-          if (message) {
-            setCoachComment(message);
-            localStorage.setItem(cacheKey, JSON.stringify({ type: 'local', message }));
-          }
-        } else {
-          // Gemini 위임
-          fetchAI(finalStats, weekly, goalData, currentPersona);
-        }
-      }
+      runCoachLocal(merged, currentPersona, goalRaw);
     } catch { }
   };
 
@@ -212,8 +219,6 @@ export default function Home() {
 
     setLoadingFeedback(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
       if (!token) {
         setLoadingFeedback(false);
         return;

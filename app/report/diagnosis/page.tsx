@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { FaSpinner } from 'react-icons/fa';
-import { supabase } from '@/lib/supabase/client';
+import { useAuth } from '@/lib/auth-context';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface Meal {
@@ -117,6 +117,7 @@ function saveHistory(record: DiagnosisRecord) {
 }
 
 export default function DiagnosisPage() {
+  const { token } = useAuth();
   const [meals, setMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(false);
   const [current, setCurrent] = useState<DiagnosisRecord | null>(null);
@@ -124,41 +125,35 @@ export default function DiagnosisPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'detail' | 'plan' | 'trend'>('overview');
   const [plan, setPlan] = useState<string | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [refreshBanner, setRefreshBanner] = useState<string | null>(null); // 배너 메시지
+  const [refreshBanner, setRefreshBanner] = useState<string | null>(null);
 
   useEffect(() => {
-    // 캐시 복원
     const cached = localStorage.getItem('mybob_diagnosis_v2');
     if (cached) {
       try { setCurrent(JSON.parse(cached)); } catch { }
     }
-    const hist = loadHistory();
-    setHistory(hist);
+    setHistory(loadHistory());
 
-    // 식단 + 플랜 로드
     const local: Meal[] = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
     setMeals(local);
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const t = session?.access_token ?? null;
-      setToken(t);
-      if (!t) { setPlan('free'); return; }
+    if (token === null) return;
+    if (!token) { setPlan('free'); return; }
 
-      fetch('/api/upload-status', { headers: { Authorization: `Bearer ${t}` } })
-        .then(r => r.json()).then(d => setPlan(d.plan || 'free')).catch(() => setPlan('free'));
-
-      fetch('/api/meals', { headers: { Authorization: `Bearer ${t}` } })
-        .then(r => r.json()).then(result => {
-          if (result.success && Array.isArray(result.data)) {
-            const serverIds = new Set(result.data.map((m: Meal) => m.id));
-            const merged = [...result.data, ...local.filter(m => !serverIds.has(m.id))];
-            setMeals(merged);
-            localStorage.setItem('mybob_meals', JSON.stringify(merged));
-          }
-        }).catch(() => { });
-    });
-  }, []);
+    // 플랜 + 식단 병렬 조회
+    Promise.all([
+      fetch('/api/upload-status', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+      fetch('/api/meals', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+    ]).then(([statusData, mealsData]) => {
+      setPlan(statusData.plan || 'free');
+      if (mealsData.success && Array.isArray(mealsData.data)) {
+        const serverIds = new Set(mealsData.data.map((m: Meal) => m.id));
+        const merged = [...mealsData.data, ...local.filter(m => !serverIds.has(m.id))];
+        setMeals(merged);
+        localStorage.setItem('mybob_meals', JSON.stringify(merged));
+      }
+    }).catch(() => setPlan('free'));
+  }, [token]);
 
   // 갱신 필요 여부 판단 (meals, current 둘 다 준비된 후)
   useEffect(() => {

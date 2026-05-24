@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceLine, Cell, PieChart, Pie } from 'recharts';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
-import { supabase } from '@/lib/supabase/client';
+import { useAuth } from '@/lib/auth-context';
 
 interface Meal {
   id: string;
@@ -34,6 +34,7 @@ function calcTargetCalories(height: number, weight: number, goal: string): numbe
 const PIE_COLORS = ['#000000', '#6B21A8', '#9ca3af'];
 
 export default function MonthlyReportPage() {
+  const { token } = useAuth();
   const [allMeals, setAllMeals] = useState<Meal[]>([]);
   const [monthOffset, setMonthOffset] = useState(0);
   const [targetCalories, setTargetCalories] = useState(2000);
@@ -51,17 +52,16 @@ export default function MonthlyReportPage() {
     setAllMeals(local);
     const goal = JSON.parse(localStorage.getItem('mybob_goal') || '{}');
     setTargetCalories(calcTargetCalories(Number(goal.height) || 0, Number(goal.weight) || 0, goal.goal || '유지'));
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const token = session?.access_token;
-      fetch('/api/meals', { headers: token ? { Authorization: `Bearer ${token}` } : {} })
-        .then(r => r.json()).then(result => {
-          if (result.success && Array.isArray(result.data)) {
-            const serverIds = new Set(result.data.map((m: Meal) => m.id));
-            setAllMeals([...result.data, ...local.filter(m => !serverIds.has(m.id))]);
-          }
-        }).catch(() => {});
-    });
-  }, []);
+
+    if (token === null) return;
+    fetch('/api/meals', { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      .then(r => r.json()).then(result => {
+        if (result.success && Array.isArray(result.data)) {
+          const serverIds = new Set(result.data.map((m: Meal) => m.id));
+          setAllMeals([...result.data, ...local.filter(m => !serverIds.has(m.id))]);
+        }
+      }).catch(() => {});
+  }, [token]);
 
   const monthMeals = useMemo(() =>
     allMeals.filter(m => {

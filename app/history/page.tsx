@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaThList, FaThLarge, FaTh, FaPlus, FaMinus, FaSearch, FaTimes } from 'react-icons/fa';
-import { supabase } from '@/lib/supabase/client';
+import { useAuth } from '@/lib/auth-context';
 import { MealPhoto } from '@/components/MealPhoto';
 
 const DAYS_PER_PAGE = 3;
@@ -86,6 +86,7 @@ function applyFilters(meals: Meal[], query: string, category: string, sort: Sort
 
 export default function HistoryPage() {
   const router = useRouter();
+  const { token } = useAuth();
   const [meals, setMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -111,18 +112,16 @@ export default function HistoryPage() {
     setMeals(sorted(local));
     setLoading(false);
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const token = session?.access_token;
-      fetch('/api/meals', { headers: token ? { Authorization: `Bearer ${token}` } : {} })
-        .then(r => r.json()).then(result => {
-          if (result.success && Array.isArray(result.data)) {
-            const serverIds = new Set(result.data.map((m: Meal) => m.id));
-            const merged = [...result.data, ...local.filter(m => !serverIds.has(m.id))];
-            setMeals(sorted(merged));
-          }
-        }).catch(() => {});
-    });
-  }, []);
+    if (token === null) return;
+    fetch('/api/meals', { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      .then(r => r.json()).then(result => {
+        if (result.success && Array.isArray(result.data)) {
+          const serverIds = new Set(result.data.map((m: Meal) => m.id));
+          const merged = [...result.data, ...local.filter(m => !serverIds.has(m.id))];
+          setMeals(sorted(merged));
+        }
+      }).catch(() => {});
+  }, [token]);
 
   // 검색창 열릴 때 포커스
   useEffect(() => {

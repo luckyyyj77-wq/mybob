@@ -4,7 +4,7 @@ import React, { useRef, useState, useCallback, useEffect } from 'react';
 import Webcam from 'react-webcam';
 import Link from 'next/link';
 import { FaSpinner, FaUpload, FaArrowLeft, FaCamera, FaHome } from 'react-icons/fa';
-import { supabase } from '@/lib/supabase/client';
+import { useAuth } from '@/lib/auth-context';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getStorageMode } from '@/lib/storage-mode';
 import { savePhoto } from '@/lib/indexed-db';
@@ -88,6 +88,7 @@ const CONFIDENCE_COLOR: Record<string, string> = { high: '#16a34a', medium: '#d9
 type PermState = 'checking' | 'granted' | 'denied' | 'prompt';
 
 export default function CameraCapturePage() {
+  const { token } = useAuth();
   const webcamRef = useRef<Webcam>(null);
   const ocrVideoRef = useRef<HTMLVideoElement>(null);
   const ocrStreamRef = useRef<MediaStream | null>(null);
@@ -116,20 +117,12 @@ export default function CameraCapturePage() {
   // const barcodeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    // 업로드/분석 현황 조회
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!session?.access_token) return;
-      try {
-        const res = await fetch('/api/upload-status', {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setUploadStatus({ upload: data.upload, analysis: data.analysis, plan: data.plan });
-        }
-      } catch { /* 무시 */ }
-    });
-  }, []);
+    if (!token) return;
+    fetch('/api/upload-status', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setUploadStatus({ upload: data.upload, analysis: data.analysis, plan: data.plan }); })
+      .catch(() => {});
+  }, [token]);
 
   useEffect(() => {
     // 이미 허용된 것으로 캐시된 경우 바로 granted
@@ -272,9 +265,6 @@ export default function CameraCapturePage() {
     setLoadingAnalysis(true);
     setAnalysisError(null);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-
       const apiMode = captureMode === 'ocr' ? 'ocr' : 'food';
 
       // OCR 모드는 원본 해상도 유지 (리사이즈하면 영양표 글씨가 너무 작아짐)
@@ -366,9 +356,6 @@ export default function CameraCapturePage() {
         localStorage.removeItem(`mybob_coach_${new Date().toISOString().slice(0, 10)}`);
 
       } else {
-        const { data: { session } } = await supabase.auth.getSession();
-        const token = session?.access_token;
-
         if (!token) {
           throw new Error('로그인 세션이 만료되었습니다. 다시 로그인해주세요.');
         }

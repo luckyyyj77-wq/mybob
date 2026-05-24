@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/lib/supabase/client';
+import { useAuth } from '@/lib/auth-context';
 import { FaUserPlus, FaCheck, FaTimes, FaUserMinus, FaUndo } from 'react-icons/fa';
 
 interface Profile { id: string; nickname: string; avatar_url?: string }
@@ -48,6 +48,7 @@ function SkeletonRow() {
 }
 
 export default function NeighborsPage() {
+  const { token } = useAuth();
   const [tab, setTab] = useState<'friends' | 'requests' | 'add'>('friends');
   const [friends, setFriends] = useState<Friend[]>([]);
   const [incoming, setIncoming] = useState<IncomingRequest[]>([]);
@@ -57,17 +58,13 @@ export default function NeighborsPage() {
   const [searchNick, setSearchNick] = useState('');
   const [sendLoading, setSendLoading] = useState(false);
   const [sendResult, setSendResult] = useState<{ ok: boolean; msg: string } | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const t = session?.access_token ?? null;
-      setToken(t);
-      if (t) loadFriends(t);
-      else setLoading(false);
-    });
-  }, []);
+    if (token === null) return;
+    if (token) loadFriends(token);
+    else setLoading(false);
+  }, [token]);
 
   const loadFriends = useCallback(async (t: string) => {
     try {

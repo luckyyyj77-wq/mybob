@@ -4,32 +4,29 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { FaArrowLeft } from 'react-icons/fa';
-import { supabase } from '@/lib/supabase/client';
+import { useAuth } from '@/lib/auth-context';
 
 export default function CommunityLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { token } = useAuth();
   const [plan, setPlan] = useState<'free' | 'pro' | 'lifetime' | null>(null);
   const [nickname, setNickname] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!session?.access_token) { setPlan('free'); return; }
-      try {
-        const res = await fetch('/api/profile', {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
+    if (token === null) return;
+    if (!token) { setPlan('free'); return; }
+    fetch('/api/profile', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data) {
           setPlan(data.plan ?? 'free');
           setNickname(data.nickname ?? null);
         } else {
           setPlan('free');
         }
-      } catch {
-        setPlan('free');
-      }
-    });
-  }, []);
+      })
+      .catch(() => setPlan('free'));
+  }, [token]);
 
   if (plan === null) return (
     <div style={{ height: 'calc(100svh - 65px)', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'white' }}>

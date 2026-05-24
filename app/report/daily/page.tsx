@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase/client';
+import { useAuth } from '@/lib/auth-context';
 
 interface Meal {
   id: string;
@@ -41,31 +41,28 @@ const COLORS = ['#000000', '#6B21A8', '#9ca3af'];
 
 export default function DailyReportPage() {
   const router = useRouter();
+  const { token } = useAuth();
   const [allMeals, setAllMeals] = useState<Meal[]>([]);
   const [targetDate, setTargetDate] = useState(new Date());
   const [targetCalories, setTargetCalories] = useState(2000);
 
   useEffect(() => {
-    // 로컬 + 서버 병합 (홈 페이지와 동일 방식)
     const local: Meal[] = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
     setAllMeals(local);
 
     const goal = JSON.parse(localStorage.getItem('mybob_goal') || '{}');
     setTargetCalories(calcTargetCalories(Number(goal.height) || 0, Number(goal.weight) || 0, goal.goal || '유지'));
 
-    // 서버 동기화 (백그라운드)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const token = session?.access_token;
-      fetch('/api/meals', { headers: token ? { Authorization: `Bearer ${token}` } : {} })
-        .then(r => r.json()).then(result => {
-          if (result.success && Array.isArray(result.data)) {
-            const serverIds = new Set(result.data.map((m: Meal) => m.id));
-            const merged = [...result.data, ...local.filter(m => !serverIds.has(m.id))];
-            setAllMeals(merged);
-          }
-        }).catch(() => {});
-    });
-  }, []);
+    if (token === null) return;
+    fetch('/api/meals', { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      .then(r => r.json()).then(result => {
+        if (result.success && Array.isArray(result.data)) {
+          const serverIds = new Set(result.data.map((m: Meal) => m.id));
+          const merged = [...result.data, ...local.filter(m => !serverIds.has(m.id))];
+          setAllMeals(merged);
+        }
+      }).catch(() => {});
+  }, [token]);
 
   const dateStr = targetDate.toLocaleDateString();
   const meals = allMeals

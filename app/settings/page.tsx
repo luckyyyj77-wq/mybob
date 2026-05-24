@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { FaArrowLeft } from 'react-icons/fa';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase/client';
+import { useAuth } from '@/lib/auth-context';
 import { getStorageMode, type StorageMode } from '@/lib/storage-mode';
 import { getCloudDeleteSchedule, cancelCloudDeleteSchedule, requestServerDataDeletion } from '@/lib/storage-migration';
 import { StorageModeModal } from '@/components/StorageModeModal';
@@ -284,6 +285,7 @@ function DangerPinResetModal({
   onSuccess: () => void;
   onCancel: () => void;
 }) {
+  const { token: authToken } = useAuth();
   const [step, setStep] = useState<'send' | 'verify'>('send');
   const [otp, setOtp] = useState('');
   const [sending, setSending] = useState(false);
@@ -294,11 +296,10 @@ function DangerPinResetModal({
   const handleSend = async () => {
     setSending(true);
     setError('');
-    const { data: { session } } = await (await import('@/lib/supabase/client')).supabase.auth.getSession();
-    if (!session) { setError('로그인이 필요합니다'); setSending(false); return; }
+    if (!authToken) { setError('로그인이 필요합니다'); setSending(false); return; }
     const res = await fetch('/api/pin-reset', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${session.access_token}` },
+      headers: { Authorization: `Bearer ${authToken}` },
     });
     const result = await res.json();
     if (result.ok) {
@@ -314,11 +315,10 @@ function DangerPinResetModal({
     if (otp.length !== 6) return;
     setVerifying(true);
     setError('');
-    const { data: { session } } = await (await import('@/lib/supabase/client')).supabase.auth.getSession();
-    if (!session) { setError('로그인이 필요합니다'); setVerifying(false); return; }
+    if (!authToken) { setError('로그인이 필요합니다'); setVerifying(false); return; }
     const res = await fetch('/api/pin-reset', {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
       body: JSON.stringify({ otp }),
     });
     const result = await res.json();
@@ -855,6 +855,7 @@ const COACH_OPTIONS: { id: CoachPersona; emoji: string; name: string; desc: stri
 
 
 export default function SettingsPage() {
+  const { token, session } = useAuth();
   const [aiAlert, setAiAlert] = useState(true);
   const [notifFreq, setNotifFreq] = useState('1시간 후');
   const [meals, setMeals] = useState<Meal[]>([]);
@@ -941,34 +942,33 @@ export default function SettingsPage() {
     setMeals(parsed);
     setStats(computeStats(parsed));
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user?.email) setUserEmail(session.user.email);
-      if (session?.access_token) {
-        try {
-          const [statusRes, profileRes] = await Promise.all([
-            fetch('/api/upload-status', { headers: { Authorization: `Bearer ${session.access_token}` } }),
-            fetch('/api/profile', { headers: { Authorization: `Bearer ${session.access_token}` } }),
-          ]);
-          if (statusRes.ok) setPlanStatus(await statusRes.json());
-          if (profileRes.ok) {
-            const p = await profileRes.json();
-            setProfile({ nickname: p.nickname, avatar_url: p.avatar_url, nickname_changed: p.nickname_changed ?? false });
-            setNicknameInput(p.nickname ?? '');
-            const today = new Date().toLocaleDateString();
-            const savedStatus = localStorage.getItem('mybob_status_msg') ?? '';
-            setStatusMsg(savedStatus);
-            setStatusInput(savedStatus);
-            setAvatarChangedToday(localStorage.getItem('mybob_avatar_changed_date') === today);
-            setStatusChangedToday(localStorage.getItem('mybob_status_changed_date') === today);
-            setSuggestedMsgs(pickRandom3(savedStatus));
-          }
-        } catch { /* 무시 */ }
-      }
+    if (session?.user?.email) setUserEmail(session.user.email);
+    if (token) {
+      Promise.all([
+        fetch('/api/upload-status', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/profile', { headers: { Authorization: `Bearer ${token}` } }),
+      ]).then(async ([statusRes, profileRes]) => {
+        if (statusRes.ok) setPlanStatus(await statusRes.json());
+        if (profileRes.ok) {
+          const p = await profileRes.json();
+          setProfile({ nickname: p.nickname, avatar_url: p.avatar_url, nickname_changed: p.nickname_changed ?? false });
+          setNicknameInput(p.nickname ?? '');
+          const today = new Date().toLocaleDateString();
+          const savedStatus = localStorage.getItem('mybob_status_msg') ?? '';
+          setStatusMsg(savedStatus);
+          setStatusInput(savedStatus);
+          setAvatarChangedToday(localStorage.getItem('mybob_avatar_changed_date') === today);
+          setStatusChangedToday(localStorage.getItem('mybob_status_changed_date') === today);
+          setSuggestedMsgs(pickRandom3(savedStatus));
+        }
+      }).catch(() => { }).finally(() => setPlanLoaded(true));
+    } else {
       setPlanLoaded(true);
-    });
+    }
     setStorageModeState(getStorageMode());
     setDeleteSchedule(getCloudDeleteSchedule());
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   const handleDeleteAll = () => {
     if (!confirmDelete) { setConfirmDelete(true); return; }
@@ -983,11 +983,10 @@ export default function SettingsPage() {
     const nick = nicknameInput.trim();
     if (nick.length < 2 || nick.length > 16) return alert('닉네임은 2~16자여야 합니다.');
     setNicknameSaving(true);
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
+    if (!token) return;
     const res = await fetch('/api/profile', {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ nickname: nick }),
     });
     const result = await res.json();
@@ -1022,11 +1021,10 @@ export default function SettingsPage() {
     setAvatarUploading(true);
     const reader = new FileReader();
     reader.onloadend = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!token) return;
       const res = await fetch('/api/profile/avatar', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ imageBase64: reader.result }),
       });
       const result = await res.json();
@@ -1424,10 +1422,9 @@ export default function SettingsPage() {
             <div style={{ display: 'flex', gap: '8px' }}>
               <button
                 onClick={async () => {
-                  const { data: { session } } = await supabase.auth.getSession();
-                  if (!session) return;
+                  if (!token) return;
                   if (confirm('지금 즉시 서버 데이터를 삭제하시겠습니까?')) {
-                    await requestServerDataDeletion(session.access_token);
+                    await requestServerDataDeletion(token);
                     setDeleteSchedule(null);
                   }
                 }}
@@ -1691,8 +1688,7 @@ export default function SettingsPage() {
               {confirmWithdraw && (
                 <button
                   onClick={async () => {
-                    const { data: { session } } = await supabase.auth.getSession();
-                    if (session) await requestServerDataDeletion(session.access_token);
+                    if (token) await requestServerDataDeletion(token);
                     await supabase.auth.signOut();
                     localStorage.clear();
                     window.location.href = '/auth/login';

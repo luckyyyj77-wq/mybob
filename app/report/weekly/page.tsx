@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceLine, PieChart, Pie, Cell } from 'recharts';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
-import { supabase } from '@/lib/supabase/client';
+import { useAuth } from '@/lib/auth-context';
 
 interface Meal {
   id: string;
@@ -42,8 +42,9 @@ const COLORS = ['#000000', '#6B21A8', '#9ca3af'];
 const DAY_LABELS = ['월', '화', '수', '목', '금', '토', '일'];
 
 export default function WeeklyReportPage() {
+  const { token } = useAuth();
   const [allMeals, setAllMeals] = useState<Meal[]>([]);
-  const [weekOffset, setWeekOffset] = useState(0); // 0 = 이번 주, -1 = 지난 주
+  const [weekOffset, setWeekOffset] = useState(0);
   const [targetCalories, setTargetCalories] = useState(2000);
 
   useEffect(() => {
@@ -53,18 +54,16 @@ export default function WeeklyReportPage() {
     const goal = JSON.parse(localStorage.getItem('mybob_goal') || '{}');
     setTargetCalories(calcTargetCalories(Number(goal.height) || 0, Number(goal.weight) || 0, goal.goal || '유지'));
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const token = session?.access_token;
-      fetch('/api/meals', { headers: token ? { Authorization: `Bearer ${token}` } : {} })
-        .then(r => r.json()).then(result => {
-          if (result.success && Array.isArray(result.data)) {
-            const serverIds = new Set(result.data.map((m: Meal) => m.id));
-            const merged = [...result.data, ...local.filter(m => !serverIds.has(m.id))];
-            setAllMeals(merged);
-          }
-        }).catch(() => {});
-    });
-  }, []);
+    if (token === null) return;
+    fetch('/api/meals', { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      .then(r => r.json()).then(result => {
+        if (result.success && Array.isArray(result.data)) {
+          const serverIds = new Set(result.data.map((m: Meal) => m.id));
+          const merged = [...result.data, ...local.filter(m => !serverIds.has(m.id))];
+          setAllMeals(merged);
+        }
+      }).catch(() => {});
+  }, [token]);
 
   // 주간 범위 계산
   const monday = getMonday(new Date());
