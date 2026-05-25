@@ -860,6 +860,21 @@ export default function CameraCapturePage() {
             {/* 이미지 — 상단 45% */}
             <div style={{ flex: '0 0 45%', position: 'relative', overflow: 'hidden', backgroundColor: 'black' }}>
               <img src={imageSrc} alt="촬영됨" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+              {/* 뒤로가기 — 분석 중이 아닐 때만 표시 */}
+              {!loadingAnalysis && (
+                <button
+                  onClick={retake}
+                  style={{
+                    position: 'absolute', top: '16px', left: '16px',
+                    width: '38px', height: '38px',
+                    backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: '50%',
+                    border: 'none', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  <FaArrowLeft size={14} color="white" />
+                </button>
+              )}
             </div>
 
             {/* 분석 패널 — 하단 55% */}
