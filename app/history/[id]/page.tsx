@@ -521,11 +521,13 @@ function MealDetailContent() {
                   ? meal.original_nutrition.nutrients
                   : meal.nutrient;
 
-                // 전체 후보 항목 정의
-                const allNutrientFields = [
+                const mainFields = [
                   { key: 'carbohydrates', label: '탄수화물', unit: 'g' },
                   { key: 'protein', label: '단백질', unit: 'g' },
                   { key: 'fat', label: '지방', unit: 'g' },
+                ];
+
+                const subAllFields = [
                   { key: 'fiber', label: '식이섬유', unit: 'g' },
                   { key: 'sugar', label: '당류', unit: 'g' },
                   { key: 'sodium', label: '나트륨', unit: 'mg' },
@@ -538,39 +540,63 @@ function MealDetailContent() {
                   { key: 'potassium', label: '칼륨', unit: 'mg' },
                 ];
 
-                // 값이 있는 항목만 + 편집 중에 추가된 항목 포함
-                const nutrientFields = allNutrientFields.filter(n => {
+                const subFields = subAllFields.filter(n => {
                   const hasOriginalValue = (meal.nutrient as any)?.[n.key] != null;
                   const hasEditValue = isEditing && editNutrient[n.key] !== undefined;
                   return hasOriginalValue || hasEditValue;
                 });
 
-                // 3열 그리드 행·열 정렬을 위해 3의 배수로 빈 셀 패딩
-                const remainder = nutrientFields.length % 3;
-                const padCount = remainder === 0 ? 0 : 3 - remainder;
+                const subRemainder = subFields.length % 3;
+                const subPadCount = subRemainder === 0 ? 0 : 3 - subRemainder;
+
+                const bgMain = isEditing && !showOriginal ? '#fafafa' : 'white';
 
                 return (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1px', backgroundColor: '#e5e7eb', border: '1px solid #e5e7eb' }}>
-                    {nutrientFields.map(n => (
-                      <div key={n.key} style={{ padding: '14px 8px', backgroundColor: isEditing && !showOriginal ? '#fafafa' : 'white', textAlign: 'center' }}>
-                        <p style={{ fontSize: '10px', color: '#9ca3af', marginBottom: '4px' }}>{n.label}</p>
-                        {isEditing && !showOriginal ? (
-                          <input
-                            value={editNutrient[n.key] ?? ''}
-                            onChange={e => handleNumericInput(n.key, e.target.value, v => setEditNutrient(prev => ({ ...prev, [n.key]: v })))}
-                            onFocus={selectAll}
-                            inputMode="decimal"
-                            style={{ fontSize: '14px', border: `1.5px solid ${invalidFields.has(n.key) ? '#ef4444' : '#d1d5db'}`, borderRadius: '3px', width: '58px', textAlign: 'center', padding: '3px 2px', outline: 'none', backgroundColor: 'white', transition: 'border-color 0.2s' }}
-                          />
-                        ) : (
-                          <p style={{ fontSize: '15px' }}>{(displayNutrient as any)?.[n.key]}{n.unit}</p>
-                        )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: '#e5e7eb', border: '1px solid #e5e7eb' }}>
+                    {/* 탄단지 — 큰 셀 */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1px', backgroundColor: '#e5e7eb' }}>
+                      {mainFields.map(n => (
+                        <div key={n.key} style={{ padding: '18px 8px', backgroundColor: bgMain, textAlign: 'center' }}>
+                          <p style={{ fontSize: '10px', color: '#9ca3af', marginBottom: '6px' }}>{n.label}</p>
+                          {isEditing && !showOriginal ? (
+                            <input
+                              value={editNutrient[n.key] ?? ''}
+                              onChange={e => handleNumericInput(n.key, e.target.value, v => setEditNutrient(prev => ({ ...prev, [n.key]: v })))}
+                              onFocus={selectAll}
+                              inputMode="decimal"
+                              style={{ fontSize: '16px', border: `1.5px solid ${invalidFields.has(n.key) ? '#ef4444' : '#d1d5db'}`, borderRadius: '3px', width: '64px', textAlign: 'center', padding: '4px 2px', outline: 'none', backgroundColor: 'white', transition: 'border-color 0.2s' }}
+                            />
+                          ) : (
+                            <p style={{ fontSize: '18px', color: '#111' }}>{(displayNutrient as any)?.[n.key]}{n.unit}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* 나머지 영양성분 — 작은 셀 (값 있는 것만) */}
+                    {subFields.length > 0 && (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1px', backgroundColor: '#e5e7eb' }}>
+                        {subFields.map(n => (
+                          <div key={n.key} style={{ padding: '9px 8px', backgroundColor: bgMain, textAlign: 'center' }}>
+                            <p style={{ fontSize: '9px', color: '#9ca3af', marginBottom: '3px' }}>{n.label}</p>
+                            {isEditing && !showOriginal ? (
+                              <input
+                                value={editNutrient[n.key] ?? ''}
+                                onChange={e => handleNumericInput(n.key, e.target.value, v => setEditNutrient(prev => ({ ...prev, [n.key]: v })))}
+                                onFocus={selectAll}
+                                inputMode="decimal"
+                                style={{ fontSize: '11px', border: `1.5px solid ${invalidFields.has(n.key) ? '#ef4444' : '#d1d5db'}`, borderRadius: '3px', width: '46px', textAlign: 'center', padding: '2px', outline: 'none', backgroundColor: 'white', transition: 'border-color 0.2s' }}
+                              />
+                            ) : (
+                              <p style={{ fontSize: '12px', color: '#374151' }}>{(displayNutrient as any)?.[n.key]}{n.unit}</p>
+                            )}
+                          </div>
+                        ))}
+                        {Array.from({ length: subPadCount }).map((_, i) => (
+                          <div key={`pad_${i}`} style={{ padding: '9px 8px', backgroundColor: bgMain }} />
+                        ))}
                       </div>
-                    ))}
-                    {/* 빈 자리 — 행 정렬 유지 */}
-                    {Array.from({ length: padCount }).map((_, i) => (
-                      <div key={`pad_${i}`} style={{ padding: '14px 8px', backgroundColor: isEditing && !showOriginal ? '#fafafa' : 'white' }} />
-                    ))}
+                    )}
                   </div>
                 );
               })()}
