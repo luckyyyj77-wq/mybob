@@ -9,31 +9,21 @@ import { useAuth } from '@/lib/auth-context';
 export default function CommunityLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { token } = useAuth();
-  const [plan, setPlan] = useState<'free' | 'pro' | 'lifetime' | null>(null);
+  const [plan, setPlan] = useState<'free' | 'pro' | 'lifetime'>('free');
   const [nickname, setNickname] = useState<string | null>(null);
 
   useEffect(() => {
-    if (token === null) return;
-    if (!token) { setPlan('free'); return; }
+    if (!token) return;
     fetch('/api/profile', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (data) {
           setPlan(data.plan ?? 'free');
           setNickname(data.nickname ?? null);
-        } else {
-          setPlan('free');
         }
       })
-      .catch(() => setPlan('free'));
+      .catch(() => {});
   }, [token]);
-
-  if (plan === null) return (
-    <div style={{ height: 'calc(100svh - 65px)', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'white' }}>
-      <div style={{ width: '22px', height: '22px', border: '2px solid #e5e7eb', borderTopColor: 'black', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-    </div>
-  );
 
   const isPro = plan === 'pro' || plan === 'lifetime';
 

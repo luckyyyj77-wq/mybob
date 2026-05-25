@@ -167,40 +167,16 @@ function AdCard({ item }: { item: FeedItem }) {
 
 export default function CommunityRecommendationPage() {
   const { token } = useAuth();
-  const [feed, setFeed] = useState<FeedItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [feed] = useState<FeedItem[]>(() => buildFeed(DUMMY_POSTS));
   const [isPro, setIsPro] = useState(false);
 
   useEffect(() => {
-    if (token) {
-      fetch('/api/upload-status', { headers: { Authorization: `Bearer ${token}` } })
-        .then(r => r.json())
-        .then(d => setIsPro(d.plan === 'pro' || d.plan === 'lifetime'))
-        .catch(() => {});
-    }
-
-    // 서버 피드 시도, 없으면 더미로 폴백
-    fetch('/api/community')
-      .then(r => r.json())
-      .then(result => {
-        const posts: FeedItem[] = result.success && result.data?.length > 0
-          ? result.data.map((m: any) => ({ ...m, type: 'post' as const, user_handle: '@mybob_user' }))
-          : DUMMY_POSTS;
-        setFeed(buildFeed(posts));
-      })
-      .catch(() => setFeed(buildFeed(DUMMY_POSTS)))
-      .finally(() => setLoading(false));
+    if (!token) return;
+    fetch('/api/profile', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setIsPro(d.plan === 'pro' || d.plan === 'lifetime'); })
+      .catch(() => {});
   }, [token]);
-
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: '80px', gap: '12px' }}>
-        <div style={{ width: '24px', height: '24px', border: '2px solid #e5e7eb', borderTopColor: 'black', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-        <p style={{ fontSize: '11px', letterSpacing: '2px', textTransform: 'uppercase', color: '#9ca3af' }}>불러오는 중...</p>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      </div>
-    );
-  }
 
   return (
     <div style={{ paddingBottom: '24px' }}>

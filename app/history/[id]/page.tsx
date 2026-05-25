@@ -72,6 +72,23 @@ function MealDetailContent() {
   const [editPortion, setEditPortion] = useState<number>(1);
   const [editRating, setEditRating] = useState<number | null>(null);
   const [invalidFields, setInvalidFields] = useState<Set<string>>(new Set());
+  const [showAddNutrient, setShowAddNutrient] = useState(false);
+
+  const STANDARD_NUTRIENTS = [
+    { key: 'carbohydrates', label: '탄수화물', unit: 'g' },
+    { key: 'protein', label: '단백질', unit: 'g' },
+    { key: 'fat', label: '지방', unit: 'g' },
+    { key: 'fiber', label: '식이섬유', unit: 'g' },
+    { key: 'sugar', label: '당류', unit: 'g' },
+    { key: 'sodium', label: '나트륨', unit: 'mg' },
+    { key: 'caffeine', label: '카페인', unit: 'mg' },
+    { key: 'vitaminA', label: '비타민A', unit: 'μg' },
+    { key: 'vitaminC', label: '비타민C', unit: 'mg' },
+    { key: 'vitaminD', label: '비타민D', unit: 'μg' },
+    { key: 'calcium', label: '칼슘', unit: 'mg' },
+    { key: 'iron', label: '철분', unit: 'mg' },
+    { key: 'potassium', label: '칼륨', unit: 'mg' },
+  ];
 
   const handleNumericInput = (key: string, raw: string, setter: (v: string) => void) => {
     const cleaned = raw.replace(/[^\d.]/g, '');
@@ -81,6 +98,8 @@ function MealDetailContent() {
       setTimeout(() => setInvalidFields(prev => { const s = new Set(prev); s.delete(key); return s; }), 800);
     }
   };
+
+  const selectAll = (e: React.FocusEvent<HTMLInputElement>) => e.target.select();
 
   useEffect(() => {
     const loadData = async () => {
@@ -226,6 +245,7 @@ function MealDetailContent() {
     setEditRating(meal.rating ?? null);
     setIsEditing(true);
     setShowOriginal(false);
+    setShowAddNutrient(false);
   };
 
   if (loading) return null;
@@ -408,7 +428,7 @@ function MealDetailContent() {
                 {isEditing ? (
                   <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
                     <button
-                      onClick={() => setIsEditing(false)}
+                      onClick={() => { setIsEditing(false); setShowAddNutrient(false); }}
                       title="취소"
                       style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', padding: '2px', lineHeight: 1 }}
                     >
@@ -450,6 +470,7 @@ function MealDetailContent() {
                   <input
                     value={editFoodName}
                     onChange={e => setEditFoodName(e.target.value)}
+                    onFocus={selectAll}
                     style={{ fontSize: '22px', fontWeight: 400, border: '2px solid #e5e7eb', borderRadius: '4px', padding: '4px 8px', width: '100%', outline: 'none', backgroundColor: '#fafafa' }}
                   />
                 ) : (
@@ -465,6 +486,7 @@ function MealDetailContent() {
                   <input
                     value={editCalories}
                     onChange={e => handleNumericInput('calories', e.target.value, setEditCalories)}
+                    onFocus={selectAll}
                     inputMode="decimal"
                     style={{ fontSize: '24px', color: '#6B21A8', border: `2px solid ${invalidFields.has('calories') ? '#ef4444' : '#e5e7eb'}`, borderRadius: '4px', padding: '2px 6px', width: '80px', textAlign: 'right', outline: 'none', backgroundColor: '#fafafa', transition: 'border-color 0.2s' }}
                   />
@@ -505,7 +527,7 @@ function MealDetailContent() {
                   { key: 'fiber', label: '식이섬유', unit: 'g' },
                   { key: 'sugar', label: '당류', unit: 'g' },
                   { key: 'sodium', label: '나트륨', unit: 'mg' },
-                  ...(meal.nutrient?.caffeine != null ? [{ key: 'caffeine', label: '카페인', unit: 'mg' }] : []),
+                  ...((meal.nutrient?.caffeine != null || (isEditing && editNutrient['caffeine'] !== undefined)) ? [{ key: 'caffeine', label: '카페인', unit: 'mg' }] : []),
                 ];
                 return (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1px', backgroundColor: '#e5e7eb', border: '1px solid #e5e7eb' }}>
@@ -516,6 +538,7 @@ function MealDetailContent() {
                           <input
                             value={editNutrient[n.key] ?? ''}
                             onChange={e => handleNumericInput(n.key, e.target.value, v => setEditNutrient(prev => ({ ...prev, [n.key]: v })))}
+                            onFocus={selectAll}
                             inputMode="decimal"
                             style={{ fontSize: '14px', border: `1.5px solid ${invalidFields.has(n.key) ? '#ef4444' : '#d1d5db'}`, borderRadius: '3px', width: '58px', textAlign: 'center', padding: '3px 2px', outline: 'none', backgroundColor: 'white', transition: 'border-color 0.2s' }}
                           />
@@ -531,31 +554,95 @@ function MealDetailContent() {
 
             <div style={{ marginTop: '24px' }}>
               <p style={{ fontSize: '11px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>Vitamins & Minerals</p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                {[
+              {(() => {
+                const vitaminFields = [
                   { key: 'vitaminA', label: '비타민A', unit: 'μg' },
                   { key: 'vitaminC', label: '비타민C', unit: 'mg' },
                   { key: 'vitaminD', label: '비타민D', unit: 'μg' },
                   { key: 'calcium', label: '칼슘', unit: 'mg' },
                   { key: 'iron', label: '철분', unit: 'mg' },
                   { key: 'potassium', label: '칼륨', unit: 'mg' },
-                ].filter(n => (meal.nutrient as any)?.[n.key]).map(n => (
-                  <div key={n.key} style={{ padding: '6px 12px', border: `1px solid ${isEditing ? '#d1d5db' : '#e5e7eb'}`, fontSize: '12px', backgroundColor: isEditing ? '#fafafa' : 'white' }}>
-                    <span style={{ color: '#9ca3af', marginRight: '4px' }}>{n.label}</span>
-                    {isEditing ? (
-                      <input
-                        value={editNutrient[n.key] ?? ''}
-                        onChange={e => handleNumericInput(n.key, e.target.value, v => setEditNutrient(prev => ({ ...prev, [n.key]: v })))}
-                        inputMode="decimal"
-                        style={{ fontSize: '12px', border: `1.5px solid ${invalidFields.has(n.key) ? '#ef4444' : '#d1d5db'}`, borderRadius: '3px', width: '48px', padding: '2px', outline: 'none', backgroundColor: 'white', transition: 'border-color 0.2s' }}
-                      />
-                    ) : (
-                      <span>{(meal.nutrient as any)?.[n.key]}{n.unit}</span>
-                    )}
+                ];
+                // 편집 중: editNutrient에 값이 있는 것도 표시
+                const visibleFields = isEditing
+                  ? vitaminFields.filter(n => (meal.nutrient as any)?.[n.key] || editNutrient[n.key])
+                  : vitaminFields.filter(n => (meal.nutrient as any)?.[n.key]);
+                return (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    {visibleFields.map(n => (
+                      <div key={n.key} style={{ padding: '6px 12px', border: `1px solid ${isEditing ? '#d1d5db' : '#e5e7eb'}`, fontSize: '12px', backgroundColor: isEditing ? '#fafafa' : 'white' }}>
+                        <span style={{ color: '#9ca3af', marginRight: '4px' }}>{n.label}</span>
+                        {isEditing ? (
+                          <input
+                            value={editNutrient[n.key] ?? ''}
+                            onChange={e => handleNumericInput(n.key, e.target.value, v => setEditNutrient(prev => ({ ...prev, [n.key]: v })))}
+                            onFocus={selectAll}
+                            inputMode="decimal"
+                            style={{ fontSize: '12px', border: `1.5px solid ${invalidFields.has(n.key) ? '#ef4444' : '#d1d5db'}`, borderRadius: '3px', width: '48px', padding: '2px', outline: 'none', backgroundColor: 'white', transition: 'border-color 0.2s' }}
+                          />
+                        ) : (
+                          <span>{(meal.nutrient as any)?.[n.key]}{n.unit}</span>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                );
+              })()}
             </div>
+
+            {/* 영양성분 추가 — 편집 중일 때만 표시 */}
+            {isEditing && (
+              <div style={{ marginTop: '16px' }}>
+                {!showAddNutrient ? (
+                  <button
+                    onClick={() => setShowAddNutrient(true)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '6px',
+                      padding: '8px 14px', fontSize: '12px', color: '#6B21A8',
+                      backgroundColor: 'white', border: '1px dashed #c4b5fd',
+                      cursor: 'pointer', letterSpacing: '0.5px',
+                    }}
+                  >
+                    + 영양성분 추가
+                  </button>
+                ) : (
+                  <div style={{ border: '1px solid #e5e7eb', padding: '16px', backgroundColor: '#fafafa' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                      <p style={{ fontSize: '11px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase' }}>영양성분 선택</p>
+                      <button
+                        onClick={() => setShowAddNutrient(false)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', color: '#9ca3af', padding: 0 }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {STANDARD_NUTRIENTS.filter(n => {
+                        const alreadyInGrid = ['carbohydrates', 'protein', 'fat', 'fiber', 'sugar', 'sodium'].includes(n.key);
+                        const alreadyHasValue = editNutrient[n.key] !== undefined && editNutrient[n.key] !== '';
+                        return !alreadyInGrid && !alreadyHasValue;
+                      }).map(n => (
+                        <button
+                          key={n.key}
+                          onClick={() => {
+                            setEditNutrient(prev => ({ ...prev, [n.key]: '' }));
+                            setShowAddNutrient(false);
+                          }}
+                          style={{
+                            padding: '6px 12px', fontSize: '12px',
+                            backgroundColor: 'white', border: '1px solid #e5e7eb',
+                            cursor: 'pointer', color: '#374151',
+                            transition: 'all 0.15s',
+                          }}
+                        >
+                          {n.label} <span style={{ color: '#9ca3af', fontSize: '10px' }}>({n.unit})</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       ) : (

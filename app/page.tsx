@@ -76,7 +76,6 @@ export default function Home() {
   const [coachComment, setCoachComment] = useState<string>('');
   const [loadingFeedback, setLoadingFeedback] = useState(false);
   const [persona, setPersona] = useState<Persona>('dog');
-  const aiFetchedRef = useRef(false);
   const syncedRef = useRef(false);
 
   useEffect(() => {
@@ -118,8 +117,6 @@ export default function Home() {
   };
 
   const runCoachLocal = (meals: Meal[], currentPersona: Persona, goalRaw: string | null) => {
-    if (aiFetchedRef.current) return;
-    aiFetchedRef.current = true;
     const finalStats = computeTodayStats(meals);
     const weekly = buildWeekly(meals);
     const goalData = JSON.parse(goalRaw || '{"goal":"유지"}');
@@ -135,19 +132,9 @@ export default function Home() {
     const kstDate = getKSTDate();
     const result = analyzeCoach({ todayMeals: finalStats.todayMeals as any, allMeals: meals as any, goalCalories, goalProtein, persona: currentPersona });
     if (!result.useGemini) {
-      const cacheKey = `mybob_coach_${currentPersona}_${kstDate}`;
-      const cached = localStorage.getItem(cacheKey);
-      if (cached) {
-        try {
-          const parsed = JSON.parse(cached);
-          if (parsed.type === 'local') { setCoachComment(parsed.message); return; }
-        } catch { }
-      }
+      // 로컬 규칙 기반 메시지는 상황이 수시로 바뀌므로 캐시 없이 매번 재분석
       const message = getCoachMessage(result, parseInt(kstDate, 10));
-      if (message) {
-        setCoachComment(message);
-        localStorage.setItem(cacheKey, JSON.stringify({ type: 'local', message }));
-      }
+      if (message) setCoachComment(message);
     } else {
       fetchAI(finalStats, weekly, goalData, currentPersona);
     }
