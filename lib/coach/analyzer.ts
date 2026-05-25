@@ -29,6 +29,12 @@ const SODIUM_KEYWORDS = [
   '소시지', '햄', '김치찌개', '된장찌개', '부대찌개', '짜장', '우동', '어묵',
 ];
 
+// 음식명 유사도 매칭용 — 앞 2글자(한글 기준) 키워드로 그룹핑
+function foodGroupKey(name: string): string {
+  const cleaned = name.trim().replace(/\s+/g, '');
+  return cleaned.slice(0, 2);
+}
+
 function toKSTDate(iso: string): string {
   const d = new Date(iso);
   return new Date(d.getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -67,7 +73,11 @@ export function analyzeCoach(params: {
 
   const todayTotal = todayMeals.reduce((s, m) => s + (Number(m.calories) || 0), 0);
   const todayProtein = todayMeals.reduce((s, m) => s + (Number(m.nutrient?.protein) || 0), 0);
-  const todayCarbs = todayMeals.reduce((s, m) => s + (Number(m.nutrient?.carbohydrates) || 0), 0);
+
+  // 탄수화물 비율 계산: 영양소 데이터가 있는 식사만 대상으로 계산
+  const mealsWithNutrient = todayMeals.filter(m => m.nutrient?.carbohydrates != null);
+  const nutrientCalories = mealsWithNutrient.reduce((s, m) => s + (Number(m.calories) || 0), 0);
+  const todayCarbs = mealsWithNutrient.reduce((s, m) => s + (Number(m.nutrient?.carbohydrates) || 0), 0);
 
   const currentHour = getCurrentKSTHour();
   const timeSlot = getTimeSlot(currentHour);
@@ -82,7 +92,6 @@ export function analyzeCoach(params: {
   const yesterdayMeals = allMeals.filter(m => toKSTDate(m.created_at) === getDateKST(1));
   const dayBeforeMeals = allMeals.filter(m => toKSTDate(m.created_at) === getDateKST(2));
   if (todayMeals.length === 0 && yesterdayMeals.length === 0 && dayBeforeMeals.length === 0) {
-    // 3일 연속 기록 없음 — 더 강한 메시지
     return { situation: 'consecutive_skip', persona, timeSlot, useGemini: false };
   }
   if (todayMeals.length === 0 && yesterdayMeals.length === 0) {
@@ -94,13 +103,17 @@ export function analyzeCoach(params: {
     return { situation: 'no_record', persona, timeSlot, useGemini: false };
   }
 
-  // 3. very_few
-  if (todayMeals.length <= 2) {
+  // 3. very_few — 칼로리 기반으로 판단 (목표의 20% 미만)
+  // 아직 하루가 덜 지난 아침/점심 시간대는 기준 완화
+  const earlyDaySlots: TimeSlot[] = ['dawn', 'morning', 'lunch'];
+  const calThresholdVeryFew = earlyDaySlots.includes(timeSlot) ? goalCalories * 0.15 : goalCalories * 0.2;
+  if (todayTotal > 0 && todayTotal < calThresholdVeryFew) {
     return { situation: 'very_few', persona, useGemini: false };
   }
 
-  // 4. few
-  if (todayMeals.length <= 4) {
+  // 4. few — 목표의 20~45% 범위 (저녁 이후 시간대만 판단, 낮에는 아직 더 먹을 수 있음)
+  const lateSlots: TimeSlot[] = ['evening', 'night'];
+  if (lateSlots.includes(timeSlot) && todayTotal < goalCalories * 0.45) {
     return { situation: 'few', persona, useGemini: false };
   }
 
@@ -109,18 +122,24 @@ export function analyzeCoach(params: {
     return { situation: 'high_calorie', persona, useGemini: false };
   }
 
-  // 6. low_calorie (5개 이상)
-  if (todayMeals.length >= 5 && todayTotal < goalCalories * 0.5) {
+  // 6. low_calorie — 저녁 이후 기준, 목표 50% 미만
+  if (lateSlots.includes(timeSlot) && todayTotal < goalCalories * 0.5) {
     return { situation: 'low_calorie', persona, useGemini: false };
   }
 
-  // 7. protein_lack
-  if (todayProtein < goalProtein * 0.6) {
+  // 7. protein_lack — 저녁 이후에만 판단 (낮에는 아직 먹을 기회 있음)
+  // 영양소 데이터가 있는 식사가 절반 이상일 때만 신뢰성 있는 판단
+  const proteinTrackedMeals = todayMeals.filter(m => m.nutrient?.protein != null).length;
+  if (
+    lateSlots.includes(timeSlot) &&
+    proteinTrackedMeals >= Math.ceil(todayMeals.length / 2) &&
+    todayProtein < goalProtein * 0.6
+  ) {
     return { situation: 'protein_lack', persona, useGemini: false };
   }
 
-  // 8. carb_heavy
-  if (todayTotal > 0 && (todayCarbs * 4) / todayTotal > 0.7) {
+  // 8. carb_heavy — 영양소 데이터가 있는 식사 기준으로만 계산
+  if (nutrientCalories > 0 && (todayCarbs * 4) / nutrientCalories > 0.7) {
     return { situation: 'carb_heavy', persona, useGemini: false };
   }
 
@@ -137,14 +156,21 @@ export function analyzeCoach(params: {
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
   const recentMeals = allMeals.filter(m => new Date(m.created_at) >= thirtyDaysAgo);
 
-  // 10. soul_food
-  const foodFreq: Record<string, number> = {};
+  // 10. soul_food — 앞 2글자 그룹핑으로 유사 음식 묶어서 카운트
+  const foodGroupFreq: Record<string, { count: number; topName: string }> = {};
   recentMeals.forEach(m => {
-    if (m.food_name) foodFreq[m.food_name] = (foodFreq[m.food_name] || 0) + 1;
+    if (!m.food_name) return;
+    const key = foodGroupKey(m.food_name);
+    if (!foodGroupFreq[key]) foodGroupFreq[key] = { count: 0, topName: m.food_name };
+    foodGroupFreq[key].count += 1;
+    // 그룹 내 가장 짧은(대표) 이름 유지
+    if (m.food_name.length < foodGroupFreq[key].topName.length) {
+      foodGroupFreq[key].topName = m.food_name;
+    }
   });
-  const topFood = Object.entries(foodFreq).sort((a, b) => b[1] - a[1])[0];
-  if (topFood && topFood[1] >= 5) {
-    return { situation: 'soul_food', persona, foodName: topFood[0], count: topFood[1], useGemini: false };
+  const topGroup = Object.values(foodGroupFreq).sort((a, b) => b.count - a.count)[0];
+  if (topGroup && topGroup.count >= 5) {
+    return { situation: 'soul_food', persona, foodName: topGroup.topName, count: topGroup.count, useGemini: false };
   }
 
   // 11. sodium_warning
@@ -167,11 +193,14 @@ export function analyzeCoach(params: {
     };
   }
 
-  // 12. streak_good (최근 3일 연속 목표 칼로리 ±20% 이내)
+  // 12. streak_good — 오늘 포함 최근 3일 연속 목표 ±20% 이내
+  // 오늘(i=0): 아직 하루가 안 끝났으므로 저녁 이후에만 오늘 포함
   let streakCount = 0;
-  for (let i = 1; i <= 3; i++) {
-    const dateStr = getDateKST(i);
-    const dayMeals = allMeals.filter(m => toKSTDate(m.created_at) === dateStr);
+  const startDay = lateSlots.includes(timeSlot) ? 0 : 1;
+  const endDay = lateSlots.includes(timeSlot) ? 2 : 3;
+  for (let i = startDay; i <= endDay; i++) {
+    const dateStr = i === 0 ? todayKST : getDateKST(i);
+    const dayMeals = i === 0 ? todayMeals : allMeals.filter(m => toKSTDate(m.created_at) === dateStr);
     const dayCalories = dayMeals.reduce((s, m) => s + (Number(m.calories) || 0), 0);
     if (dayCalories >= goalCalories * 0.8 && dayCalories <= goalCalories * 1.2) streakCount++;
   }
