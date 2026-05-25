@@ -520,15 +520,35 @@ function MealDetailContent() {
                 const displayNutrient = showOriginal && meal.original_nutrition
                   ? meal.original_nutrition.nutrients
                   : meal.nutrient;
-                const nutrientFields = [
+
+                // 전체 후보 항목 정의
+                const allNutrientFields = [
                   { key: 'carbohydrates', label: '탄수화물', unit: 'g' },
                   { key: 'protein', label: '단백질', unit: 'g' },
                   { key: 'fat', label: '지방', unit: 'g' },
                   { key: 'fiber', label: '식이섬유', unit: 'g' },
                   { key: 'sugar', label: '당류', unit: 'g' },
                   { key: 'sodium', label: '나트륨', unit: 'mg' },
-                  ...((meal.nutrient?.caffeine != null || (isEditing && editNutrient['caffeine'] !== undefined)) ? [{ key: 'caffeine', label: '카페인', unit: 'mg' }] : []),
+                  { key: 'caffeine', label: '카페인', unit: 'mg' },
+                  { key: 'vitaminA', label: '비타민A', unit: 'μg' },
+                  { key: 'vitaminC', label: '비타민C', unit: 'mg' },
+                  { key: 'vitaminD', label: '비타민D', unit: 'μg' },
+                  { key: 'calcium', label: '칼슘', unit: 'mg' },
+                  { key: 'iron', label: '철분', unit: 'mg' },
+                  { key: 'potassium', label: '칼륨', unit: 'mg' },
                 ];
+
+                // 값이 있는 항목만 + 편집 중에 추가된 항목 포함
+                const nutrientFields = allNutrientFields.filter(n => {
+                  const hasOriginalValue = (meal.nutrient as any)?.[n.key] != null;
+                  const hasEditValue = isEditing && editNutrient[n.key] !== undefined;
+                  return hasOriginalValue || hasEditValue;
+                });
+
+                // 3열 그리드 행·열 정렬을 위해 3의 배수로 빈 셀 패딩
+                const remainder = nutrientFields.length % 3;
+                const padCount = remainder === 0 ? 0 : 3 - remainder;
+
                 return (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1px', backgroundColor: '#e5e7eb', border: '1px solid #e5e7eb' }}>
                     {nutrientFields.map(n => (
@@ -543,47 +563,13 @@ function MealDetailContent() {
                             style={{ fontSize: '14px', border: `1.5px solid ${invalidFields.has(n.key) ? '#ef4444' : '#d1d5db'}`, borderRadius: '3px', width: '58px', textAlign: 'center', padding: '3px 2px', outline: 'none', backgroundColor: 'white', transition: 'border-color 0.2s' }}
                           />
                         ) : (
-                          <p style={{ fontSize: '15px' }}>{(displayNutrient as any)?.[n.key] ?? 0}{n.unit}</p>
+                          <p style={{ fontSize: '15px' }}>{(displayNutrient as any)?.[n.key]}{n.unit}</p>
                         )}
                       </div>
                     ))}
-                  </div>
-                );
-              })()}
-            </div>
-
-            <div style={{ marginTop: '24px' }}>
-              <p style={{ fontSize: '11px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>Vitamins & Minerals</p>
-              {(() => {
-                const vitaminFields = [
-                  { key: 'vitaminA', label: '비타민A', unit: 'μg' },
-                  { key: 'vitaminC', label: '비타민C', unit: 'mg' },
-                  { key: 'vitaminD', label: '비타민D', unit: 'μg' },
-                  { key: 'calcium', label: '칼슘', unit: 'mg' },
-                  { key: 'iron', label: '철분', unit: 'mg' },
-                  { key: 'potassium', label: '칼륨', unit: 'mg' },
-                ];
-                // 편집 중: editNutrient에 값이 있는 것도 표시
-                const visibleFields = isEditing
-                  ? vitaminFields.filter(n => (meal.nutrient as any)?.[n.key] || editNutrient[n.key])
-                  : vitaminFields.filter(n => (meal.nutrient as any)?.[n.key]);
-                return (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                    {visibleFields.map(n => (
-                      <div key={n.key} style={{ padding: '6px 12px', border: `1px solid ${isEditing ? '#d1d5db' : '#e5e7eb'}`, fontSize: '12px', backgroundColor: isEditing ? '#fafafa' : 'white' }}>
-                        <span style={{ color: '#9ca3af', marginRight: '4px' }}>{n.label}</span>
-                        {isEditing ? (
-                          <input
-                            value={editNutrient[n.key] ?? ''}
-                            onChange={e => handleNumericInput(n.key, e.target.value, v => setEditNutrient(prev => ({ ...prev, [n.key]: v })))}
-                            onFocus={selectAll}
-                            inputMode="decimal"
-                            style={{ fontSize: '12px', border: `1.5px solid ${invalidFields.has(n.key) ? '#ef4444' : '#d1d5db'}`, borderRadius: '3px', width: '48px', padding: '2px', outline: 'none', backgroundColor: 'white', transition: 'border-color 0.2s' }}
-                          />
-                        ) : (
-                          <span>{(meal.nutrient as any)?.[n.key]}{n.unit}</span>
-                        )}
-                      </div>
+                    {/* 빈 자리 — 행 정렬 유지 */}
+                    {Array.from({ length: padCount }).map((_, i) => (
+                      <div key={`pad_${i}`} style={{ padding: '14px 8px', backgroundColor: isEditing && !showOriginal ? '#fafafa' : 'white' }} />
                     ))}
                   </div>
                 );
@@ -618,9 +604,9 @@ function MealDetailContent() {
                     </div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                       {STANDARD_NUTRIENTS.filter(n => {
-                        const alreadyInGrid = ['carbohydrates', 'protein', 'fat', 'fiber', 'sugar', 'sodium'].includes(n.key);
-                        const alreadyHasValue = editNutrient[n.key] !== undefined && editNutrient[n.key] !== '';
-                        return !alreadyInGrid && !alreadyHasValue;
+                        const hasOriginalValue = (meal.nutrient as any)?.[n.key] != null;
+                        const alreadyAdded = editNutrient[n.key] !== undefined;
+                        return !hasOriginalValue && !alreadyAdded;
                       }).map(n => (
                         <button
                           key={n.key}
