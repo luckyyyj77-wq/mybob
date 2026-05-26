@@ -15,7 +15,7 @@ const PLANS: { key: PaddlePlan; label: string; badge?: string }[] = [
 ];
 
 const FEATURES = [
-  '하루 AI 분석 25회 (무료 10회)',
+  '하루 AI 분석 25회',
   '클라우드 저장 & 다기기 동기화',
   'AI 정밀 진단 리포트',
   '닉네임 & 아바타 커스텀',
@@ -67,15 +67,16 @@ export default function UpgradeModal({ userEmail, userId, onClose }: Props) {
       onClick={onClose}
       style={{
         position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)',
-        zIndex: 1000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+        zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '16px',
       }}
     >
       <div
         onClick={e => e.stopPropagation()}
         style={{
           backgroundColor: 'white', width: '100%', maxWidth: '480px',
-          borderRadius: '16px 16px 0 0', padding: '28px 24px 40px',
-          maxHeight: '85vh', overflowY: 'auto',
+          borderRadius: '16px', padding: '28px 24px 32px',
+          maxHeight: '90vh', overflowY: 'auto',
         }}
       >
         {/* 헤더 */}

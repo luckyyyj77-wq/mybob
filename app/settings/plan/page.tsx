@@ -136,8 +136,8 @@ export default function PlanPage() {
             <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>PRO 혜택</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: '#e5e7eb', border: '1px solid #e5e7eb', marginBottom: '28px' }}>
               {[
-                { icon: '🤖', text: 'AI 분석 하루 25회 (무료: 5회)' },
-                { icon: '☁️', text: '클라우드 저장 하루 25장 (무료: 5장)' },
+                { icon: '🤖', text: 'AI 분석 하루 25회' },
+                { icon: '☁️', text: '클라우드 저장 하루 25장' },
                 { icon: '📊', text: '정밀 영양 진단 리포트' },
                 { icon: '🎯', text: '맞춤 목표 칼로리 AI 코칭' },
                 { icon: '👤', text: '프로필 닉네임 · 사진 변경' },
