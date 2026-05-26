@@ -5,7 +5,6 @@ import { FaArrowLeft } from 'react-icons/fa';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/lib/auth-context';
-import { requestServerDataDeletion } from '@/lib/storage-migration';
 import { clearAllPhotos } from '@/lib/indexed-db';
 import { type StatusTemplate, pickRandom3 } from '@/lib/status-templates';
 import { getPinHash, savePin, verifyPin, incrementBodyAttempts, resetBodyAttempts, getBodyAttempts, BODY_ENC_KEY, BODY_SALT_KEY, BODY_WARN_AT, BODY_MAX_ATTEMPTS, PIN_KEY } from '@/lib/settings/pin';
@@ -176,7 +175,8 @@ export default function AccountPage() {
   // 위험구역
   const [dangerUnlocked, setDangerUnlocked] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [confirmWithdraw, setConfirmWithdraw] = useState(false);
+  const [withdrawModal, setWithdrawModal] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
   const [logoutModal, setLogoutModal] = useState(false);
   const [hasPinSet, setHasPinSet] = useState(false);
   const [pinModal, setPinModal] = useState<{ mode: 'set' | 'verify'; context: 'body' | 'danger'; resolve: (ok: boolean, pin?: string) => void } | null>(null);
@@ -258,6 +258,25 @@ export default function AccountPage() {
       setAvatarUploading(false);
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleWithdraw = async () => {
+    if (!token) return;
+    setWithdrawing(true);
+    try {
+      const res = await fetch('/api/auth/delete', {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error();
+      await clearAllPhotos();
+      localStorage.clear();
+      window.location.href = '/auth/login';
+    } catch {
+      setWithdrawing(false);
+      setWithdrawModal(false);
+      alert('탈퇴 처리 중 오류가 발생했습니다. 다시 시도해주세요.');
+    }
   };
 
   const handleLogout = async (clearData: boolean) => {
@@ -429,18 +448,54 @@ export default function AccountPage() {
           </div>
 
           <div style={{ padding: '14px 16px', backgroundColor: 'white' }}>
-            <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '10px', lineHeight: 1.5 }}>계정과 서버에 저장된 모든 데이터가 영구 삭제됩니다.</p>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={() => setConfirmWithdraw(v => !v)} disabled={!dangerUnlocked} style={{ padding: '8px 14px', backgroundColor: confirmWithdraw ? '#ef4444' : 'white', color: confirmWithdraw ? 'white' : '#ef4444', border: '1px solid #fca5a5', fontSize: '13px', cursor: dangerUnlocked ? 'pointer' : 'not-allowed', transition: 'all 0.2s' }}>
-                {confirmWithdraw ? '정말 탈퇴하시겠습니까?' : '회원 탈퇴'}
-              </button>
-              {confirmWithdraw && (
-                <button onClick={async () => { if (token) await requestServerDataDeletion(token); await supabase.auth.signOut(); localStorage.clear(); window.location.href = '/auth/login'; }}
-                  style={{ padding: '8px 14px', backgroundColor: '#ef4444', color: 'white', border: 'none', fontSize: '13px', cursor: 'pointer' }}>최종 확인 · 탈퇴</button>
-              )}
-              {confirmWithdraw && <button onClick={() => setConfirmWithdraw(false)} style={{ padding: '8px 14px', backgroundColor: 'white', color: '#9ca3af', border: '1px solid #e5e7eb', fontSize: '13px', cursor: 'pointer' }}>취소</button>}
-            </div>
+            <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '10px', lineHeight: 1.5 }}>계정과 모든 개인정보가 즉시 영구 삭제됩니다.</p>
+            <button
+              onClick={() => setWithdrawModal(true)}
+              disabled={!dangerUnlocked}
+              style={{ padding: '8px 14px', backgroundColor: 'white', color: '#ef4444', border: '1px solid #fca5a5', fontSize: '13px', cursor: dangerUnlocked ? 'pointer' : 'not-allowed' }}
+            >
+              회원 탈퇴
+            </button>
           </div>
+
+          {/* 탈퇴 확인 모달 */}
+          {withdrawModal && (
+            <div onClick={() => !withdrawing && setWithdrawModal(false)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+              <div onClick={e => e.stopPropagation()} style={{ backgroundColor: 'white', width: '100%', maxWidth: '360px', padding: '28px 24px 24px' }}>
+                <p style={{ fontSize: '10px', color: '#ef4444', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '8px' }}>WITHDRAW</p>
+                <h3 style={{ fontSize: '18px', fontWeight: 500, color: 'black', marginBottom: '16px' }}>정말 탈퇴하시겠습니까?</h3>
+
+                <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fca5a5', padding: '14px 16px', marginBottom: '24px' }}>
+                  <p style={{ fontSize: '13px', color: '#ef4444', fontWeight: 500, marginBottom: '8px' }}>⚠️ 탈퇴 시 아래 정보가 즉시 삭제됩니다</p>
+                  <ul style={{ fontSize: '12px', color: '#6b7280', lineHeight: 2, paddingLeft: '16px', margin: 0 }}>
+                    <li>계정 및 로그인 정보</li>
+                    <li>모든 식단 기록 및 사진</li>
+                    <li>AI 분석 기록</li>
+                    <li>이웃 및 커뮤니티 정보</li>
+                    <li>이 기기의 로컬 데이터</li>
+                  </ul>
+                  <p style={{ fontSize: '12px', color: '#ef4444', marginTop: '10px', fontWeight: 500 }}>삭제된 데이터는 복구할 수 없습니다.</p>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <button
+                    onClick={handleWithdraw}
+                    disabled={withdrawing}
+                    style={{ width: '100%', padding: '14px', backgroundColor: withdrawing ? '#9ca3af' : '#ef4444', color: 'white', border: 'none', fontSize: '14px', fontWeight: 500, cursor: withdrawing ? 'not-allowed' : 'pointer' }}
+                  >
+                    {withdrawing ? '처리 중...' : '모두 삭제하고 탈퇴'}
+                  </button>
+                  <button
+                    onClick={() => setWithdrawModal(false)}
+                    disabled={withdrawing}
+                    style={{ width: '100%', padding: '12px', backgroundColor: 'white', border: '1px solid #e5e7eb', fontSize: '13px', color: '#6b7280', cursor: 'pointer' }}
+                  >
+                    취소
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
