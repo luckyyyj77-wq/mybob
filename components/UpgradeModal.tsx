@@ -30,19 +30,13 @@ export default function UpgradeModal({ userEmail, userId, onClose }: Props) {
   useEffect(() => {
     const env = process.env.NEXT_PUBLIC_PADDLE_ENV as 'sandbox' | 'production' ?? 'sandbox';
     const token = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN!;
-    console.log('[Paddle] env:', env, '/ token prefix:', token?.slice(0, 10));
     initializePaddle({ environment: env, token })
-      .then(p => {
-        console.log('[Paddle] initializePaddle result:', p);
-        if (p) setPaddle(p);
-        else console.error('[Paddle] initializePaddle returned null/undefined');
-      })
-      .catch(err => console.error('[Paddle] initializePaddle error:', err));
+      .then(p => { if (p) setPaddle(p); })
+      .catch(() => {});
   }, []);
 
   async function handleCheckout() {
-    console.log('[Paddle] handleCheckout called, paddle:', paddle, '/ priceId:', PADDLE_PRODUCTS[selected]);
-    if (!paddle) return;
+    if (!paddle || loading) return;
     setLoading(true);
     try {
       paddle.Checkout.open({
@@ -55,8 +49,8 @@ export default function UpgradeModal({ userEmail, userId, onClose }: Props) {
           successUrl: `${window.location.origin}/settings?upgraded=1`,
         },
       });
-    } catch (err) {
-      console.error('[Paddle] Checkout.open error:', err);
+    } catch {
+      // ignore
     } finally {
       setLoading(false);
     }
