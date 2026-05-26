@@ -258,13 +258,12 @@ function AppShell({ children }: { children: React.ReactNode }) {
                     <span style={{ fontSize: '16px' }}>로그인</span>
                   </Link>
                 ) : (
-                  <button
-                    onClick={async () => { await supabase.auth.signOut(); await clearAllPhotos(); localStorage.removeItem('mybob_meals'); localStorage.removeItem('mybob_storage_mode'); localStorage.removeItem('mybob_onboarding_done'); setIsMenuOpen(false); router.push('/auth/login'); }}
-                    style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 0 }}
+                  <Link href="/settings/account" onClick={() => setIsMenuOpen(false)}
+                    style={{ display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none', color: '#374151' }}
                   >
                     <FaSignOutAlt size={18} />
-                    <span style={{ fontSize: '16px' }}>로그아웃</span>
-                  </button>
+                    <span style={{ fontSize: '16px' }}>로그아웃 / 계정</span>
+                  </Link>
                 )}
               </div>
             </nav>
