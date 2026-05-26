@@ -177,7 +177,7 @@ export default function AccountPage() {
   const [dangerUnlocked, setDangerUnlocked] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmWithdraw, setConfirmWithdraw] = useState(false);
-  const [confirmLogout, setConfirmLogout] = useState(false);
+  const [logoutModal, setLogoutModal] = useState(false);
   const [hasPinSet, setHasPinSet] = useState(false);
   const [pinModal, setPinModal] = useState<{ mode: 'set' | 'verify'; context: 'body' | 'danger'; resolve: (ok: boolean, pin?: string) => void } | null>(null);
   const [showPinReset, setShowPinReset] = useState(false);
@@ -260,11 +260,16 @@ export default function AccountPage() {
     reader.readAsDataURL(file);
   };
 
-  const handleLogout = async () => {
-    if (!confirmLogout) { setConfirmLogout(true); return; }
+  const handleLogout = async (clearData: boolean) => {
+    setLogoutModal(false);
     await supabase.auth.signOut();
-    await clearAllPhotos();
-    localStorage.removeItem('mybob_meals'); localStorage.removeItem('mybob_storage_mode'); localStorage.removeItem('mybob_onboarding_done');
+    if (clearData) {
+      await clearAllPhotos();
+      localStorage.clear();
+    } else {
+      localStorage.removeItem('mybob_storage_mode');
+      localStorage.removeItem('mybob_onboarding_done');
+    }
     window.location.href = '/auth/login';
   };
 
@@ -368,17 +373,41 @@ export default function AccountPage() {
             <p style={{ fontSize: '14px', color: 'black' }}>{userEmail || '로그인 필요'}</p>
           </div>
 
-          {!confirmLogout ? (
-            <button onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', backgroundColor: 'white', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left' }}>
-              <span style={{ fontSize: '14px', color: 'black' }}>로그아웃</span>
-              <span style={{ fontSize: '12px', color: '#9ca3af' }}>›</span>
-            </button>
-          ) : (
-            <div style={{ padding: '12px 16px', backgroundColor: 'white', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-              <span style={{ fontSize: '13px', color: '#6b7280' }}>정말 로그아웃할까요?</span>
-              <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-                <button onClick={handleLogout} style={{ padding: '6px 14px', backgroundColor: 'black', color: 'white', border: 'none', fontSize: '12px', cursor: 'pointer' }}>확인</button>
-                <button onClick={() => setConfirmLogout(false)} style={{ padding: '6px 14px', backgroundColor: 'white', color: '#6b7280', border: '1px solid #e5e7eb', fontSize: '12px', cursor: 'pointer' }}>취소</button>
+          <button onClick={() => setLogoutModal(true)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', backgroundColor: 'white', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left' }}>
+            <span style={{ fontSize: '14px', color: 'black' }}>로그아웃</span>
+            <span style={{ fontSize: '12px', color: '#9ca3af' }}>›</span>
+          </button>
+
+          {/* 로그아웃 모달 */}
+          {logoutModal && (
+            <div onClick={() => setLogoutModal(false)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+              <div onClick={e => e.stopPropagation()} style={{ backgroundColor: 'white', width: '100%', maxWidth: '360px', padding: '28px 24px 24px' }}>
+                <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '8px' }}>LOGOUT</p>
+                <h3 style={{ fontSize: '18px', fontWeight: 500, color: 'black', marginBottom: '8px' }}>로그아웃</h3>
+                <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '24px', lineHeight: 1.6 }}>
+                  이 기기에 저장된 식단 기록과 사진을 어떻게 할까요?
+                </p>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: '#e5e7eb', marginBottom: '16px' }}>
+                  <button
+                    onClick={() => handleLogout(false)}
+                    style={{ padding: '16px', backgroundColor: 'white', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+                  >
+                    <p style={{ fontSize: '14px', color: 'black', marginBottom: '3px' }}>데이터 유지 후 로그아웃</p>
+                    <p style={{ fontSize: '11px', color: '#9ca3af' }}>다음에 로그인하면 그대로 사용 가능</p>
+                  </button>
+                  <button
+                    onClick={() => handleLogout(true)}
+                    style={{ padding: '16px', backgroundColor: 'white', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+                  >
+                    <p style={{ fontSize: '14px', color: '#ef4444', marginBottom: '3px' }}>데이터 삭제 후 로그아웃</p>
+                    <p style={{ fontSize: '11px', color: '#9ca3af' }}>이 기기의 모든 개인정보 완전 제거</p>
+                  </button>
+                </div>
+
+                <button onClick={() => setLogoutModal(false)} style={{ width: '100%', padding: '12px', backgroundColor: 'white', border: '1px solid #e5e7eb', fontSize: '13px', color: '#6b7280', cursor: 'pointer' }}>
+                  취소
+                </button>
               </div>
             </div>
           )}
