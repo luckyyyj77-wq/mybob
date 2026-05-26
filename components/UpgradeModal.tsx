@@ -55,6 +55,8 @@ export default function UpgradeModal({ userEmail, userId, onClose }: Props) {
           successUrl: `${window.location.origin}/settings?upgraded=1`,
         },
       });
+    } catch (err) {
+      console.error('[Paddle] Checkout.open error:', err);
     } finally {
       setLoading(false);
     }
