@@ -215,7 +215,7 @@ export default function AccountPage() {
   }, [hasPinSet]);
 
   const handleDangerUnlock = async () => {
-    if (dangerUnlocked) { setDangerUnlocked(false); setConfirmDelete(false); setConfirmWithdraw(false); return; }
+    if (dangerUnlocked) { setDangerUnlocked(false); setConfirmDelete(false); setWithdrawModal(false); return; }
     const ok = await requestAuth();
     if (ok) setDangerUnlocked(true);
   };
