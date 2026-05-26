@@ -6,6 +6,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/lib/auth-context';
 import { requestServerDataDeletion } from '@/lib/storage-migration';
+import { clearAllPhotos } from '@/lib/indexed-db';
 import { type StatusTemplate, pickRandom3 } from '@/lib/status-templates';
 import { getPinHash, savePin, verifyPin, incrementBodyAttempts, resetBodyAttempts, getBodyAttempts, BODY_ENC_KEY, BODY_SALT_KEY, BODY_WARN_AT, BODY_MAX_ATTEMPTS, PIN_KEY } from '@/lib/settings/pin';
 import { getStorageMode } from '@/lib/storage-mode';
@@ -262,6 +263,7 @@ export default function AccountPage() {
   const handleLogout = async () => {
     if (!confirmLogout) { setConfirmLogout(true); return; }
     await supabase.auth.signOut();
+    await clearAllPhotos();
     localStorage.removeItem('mybob_meals'); localStorage.removeItem('mybob_storage_mode'); localStorage.removeItem('mybob_onboarding_done');
     window.location.href = '/auth/login';
   };

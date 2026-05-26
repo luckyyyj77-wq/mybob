@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
+import { clearAllPhotos } from '@/lib/indexed-db';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
 import './globals.css';
 import { FaCamera, FaHistory, FaHome, FaChartPie, FaUsers, FaCog, FaHandshake, FaSignInAlt, FaSignOutAlt, FaDownload } from 'react-icons/fa';
@@ -258,7 +259,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
                   </Link>
                 ) : (
                   <button
-                    onClick={async () => { await supabase.auth.signOut(); setIsMenuOpen(false); router.push('/auth/login'); }}
+                    onClick={async () => { await supabase.auth.signOut(); await clearAllPhotos(); localStorage.removeItem('mybob_meals'); localStorage.removeItem('mybob_storage_mode'); localStorage.removeItem('mybob_onboarding_done'); setIsMenuOpen(false); router.push('/auth/login'); }}
                     style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 0 }}
                   >
                     <FaSignOutAlt size={18} />

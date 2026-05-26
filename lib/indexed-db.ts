@@ -59,6 +59,16 @@ export async function getAllPhotoIds(): Promise<string[]> {
   });
 }
 
+export async function clearAllPhotos(): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_PHOTOS, 'readwrite');
+    const req = tx.objectStore(STORE_PHOTOS).clear();
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
 // 클라우드→로컬 전환 시: 서버 URL 사진을 IndexedDB로 마이그레이션
 export async function fetchAndSavePhoto(mealId: string, url: string): Promise<string | null> {
   try {

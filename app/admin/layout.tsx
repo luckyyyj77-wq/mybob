@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
+import { clearAllPhotos } from '@/lib/indexed-db';
 import {
   FaChartBar, FaUsers, FaUtensils, FaFileAlt,
   FaHandshake, FaCog, FaBars, FaTimes, FaSignOutAlt,
@@ -89,7 +90,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* 로그아웃 */}
       <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
         <button
-          onClick={async () => { await supabase.auth.signOut(); router.push('/auth/login'); }}
+          onClick={async () => { await supabase.auth.signOut(); await clearAllPhotos(); localStorage.removeItem('mybob_meals'); localStorage.removeItem('mybob_storage_mode'); localStorage.removeItem('mybob_onboarding_done'); router.push('/auth/login'); }}
           style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
         >
           <FaSignOutAlt size={13} color="rgba(255,255,255,0.3)" />
