@@ -192,6 +192,14 @@ export default function DiagnosisPage() {
         grade: r.diagnosis.grade,
       }));
 
+      // 달성 기록 로드
+      let achievedStreak = 0, totalAchievedDays = 0;
+      try {
+        const { getAchievedStreak, getTotalAchievedDays } = await import('@/lib/goal-achievement');
+        achievedStreak = getAchievedStreak();
+        totalAchievedDays = getTotalAchievedDays();
+      } catch { }
+
       const res = await fetch('/api/diagnosis', {
         method: 'POST',
         headers: {
@@ -203,6 +211,8 @@ export default function DiagnosisPage() {
           goal: bodyInfo?.goal || '유지',
           bodyInfo,
           previousScores,
+          achievedStreak,
+          totalAchievedDays,
         }),
       });
       const data = await res.json();

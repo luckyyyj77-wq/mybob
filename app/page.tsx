@@ -133,7 +133,13 @@ export default function Home() {
     }
     const goalProtein = weight * 1.5;
     const kstDate = getKSTDate();
-    const result = analyzeCoach({ todayMeals: finalStats.todayMeals as any, allMeals: meals as any, goalCalories, goalProtein, persona: currentPersona });
+    let todayAchieved = false;
+    try {
+      const achieved = JSON.parse(localStorage.getItem('mybob_goal_achieved') || '{}');
+      const todayKey = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      todayAchieved = achieved[todayKey] === true;
+    } catch { }
+    const result = analyzeCoach({ todayMeals: finalStats.todayMeals as any, allMeals: meals as any, goalCalories, goalProtein, persona: currentPersona, todayAchieved });
     if (!result.useGemini) {
       // 로컬 규칙 기반 메시지는 상황이 수시로 바뀌므로 캐시 없이 매번 재분석
       const message = getCoachMessage(result, parseInt(kstDate, 10));
@@ -214,6 +220,13 @@ export default function Home() {
         return;
       }
 
+      let achievedStreak = 0, totalAchievedDays = 0;
+      try {
+        const { getAchievedStreak, getTotalAchievedDays } = await import('@/lib/goal-achievement');
+        achievedStreak = getAchievedStreak();
+        totalAchievedDays = getTotalAchievedDays();
+      } catch { }
+
       const res = await fetch('/api/recommendation', {
         method: 'POST',
         headers: {
@@ -224,6 +237,8 @@ export default function Home() {
           today: { calories: stats.totalCalories, ...stats.nutrients },
           weekly,
           goal: goalData,
+          achievedStreak,
+          totalAchievedDays,
         }),
       });
       const r = await res.json();

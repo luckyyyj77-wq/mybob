@@ -5,6 +5,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import { getAchievedStreak, getTotalAchievedDays, GOAL_ACHIEVED_KEY } from '@/lib/goal-achievement';
 
 interface Meal {
   id: string;
@@ -45,6 +46,9 @@ export default function DailyReportPage() {
   const [allMeals, setAllMeals] = useState<Meal[]>([]);
   const [targetDate, setTargetDate] = useState(new Date());
   const [targetCalories, setTargetCalories] = useState(2000);
+  const [achievedStreak, setAchievedStreak] = useState(0);
+  const [totalAchievedDays, setTotalAchievedDays] = useState(0);
+  const [achievedMap, setAchievedMap] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const local: Meal[] = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
@@ -57,6 +61,10 @@ export default function DailyReportPage() {
       const goal = JSON.parse(localStorage.getItem('mybob_goal') || '{}');
       setTargetCalories(calcTargetCalories(Number(goal.height) || 0, Number(goal.weight) || 0, goal.goal || '유지'));
     }
+
+    setAchievedStreak(getAchievedStreak());
+    setTotalAchievedDays(getTotalAchievedDays());
+    try { setAchievedMap(JSON.parse(localStorage.getItem(GOAL_ACHIEVED_KEY) || '{}')); } catch { }
 
     if (token === null) return;
     fetch('/api/meals', { headers: token ? { Authorization: `Bearer ${token}` } : {} })
@@ -91,6 +99,9 @@ export default function DailyReportPage() {
 
   const progress = targetCalories > 0 ? Math.min(100, Math.round((totalCalories / targetCalories) * 100)) : 0;
   const remaining = targetCalories - totalCalories;
+  const ratio = targetCalories > 0 ? totalCalories / targetCalories : 0;
+  const isAchieved = ratio >= 0.9 && ratio <= 1.1;
+  const isDateAchieved = achievedMap[dateStr] === true;
 
   const chartData = [
     { name: '탄수화물', value: Math.round(nutrients.carbs) },
@@ -156,12 +167,50 @@ export default function DailyReportPage() {
               <div style={{
                 height: '100%',
                 width: `${progress}%`,
-                backgroundColor: progress >= 100 ? '#ef4444' : '#6B21A8',
+                backgroundColor: isAchieved ? '#16a34a' : progress >= 100 ? '#ef4444' : '#6B21A8',
                 transition: 'width 0.4s ease',
               }} />
             </div>
-            <p style={{ fontSize: '10px', color: '#9ca3af', marginTop: '6px', textAlign: 'right' }}>{progress}%</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
+              <span style={{ fontSize: '10px', color: '#9ca3af' }}>{progress}%</span>
+              {(isToday ? isAchieved : isDateAchieved) && (
+                <span style={{
+                  fontSize: '10px', padding: '2px 8px',
+                  backgroundColor: '#dcfce7', color: '#16a34a',
+                  letterSpacing: '0.5px',
+                }}>
+                  🎯 목표 달성
+                </span>
+              )}
+            </div>
           </div>
+
+          {/* 연속 달성 배너 (오늘 탭에서만, 1일 이상) */}
+          {isToday && (achievedStreak > 0 || totalAchievedDays > 0) && (
+            <div style={{ padding: '12px 20px', backgroundColor: 'white', borderTop: '1px solid #f3f4f6' }}>
+              <div style={{ display: 'flex', gap: '1px', backgroundColor: '#e5e7eb' }}>
+                {achievedStreak > 0 && (
+                  <div style={{ flex: 1, padding: '12px 16px', backgroundColor: achievedStreak >= 3 ? '#faf5ff' : 'white', textAlign: 'center' }}>
+                    <p style={{ fontSize: '9px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '4px' }}>연속 달성</p>
+                    <p style={{ fontSize: '22px', fontWeight: 600, color: achievedStreak >= 3 ? '#6B21A8' : 'black', lineHeight: 1 }}>
+                      {achievedStreak}<span style={{ fontSize: '11px', fontWeight: 400, color: '#9ca3af', marginLeft: '2px' }}>일</span>
+                    </p>
+                    {achievedStreak >= 3 && (
+                      <p style={{ fontSize: '9px', color: '#6B21A8', marginTop: '3px' }}>🔥 streak!</p>
+                    )}
+                  </div>
+                )}
+                {totalAchievedDays > 0 && (
+                  <div style={{ flex: 1, padding: '12px 16px', backgroundColor: 'white', textAlign: 'center' }}>
+                    <p style={{ fontSize: '9px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '4px' }}>총 달성일</p>
+                    <p style={{ fontSize: '22px', fontWeight: 600, color: 'black', lineHeight: 1 }}>
+                      {totalAchievedDays}<span style={{ fontSize: '11px', fontWeight: 400, color: '#9ca3af', marginLeft: '2px' }}>일</span>
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* 요약 카드 4개 */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1px', backgroundColor: '#e5e7eb' }}>

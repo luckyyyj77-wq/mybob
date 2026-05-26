@@ -43,7 +43,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'PRO_REQUIRED' }, { status: 403 });
     }
 
-    const { meals, goal, bodyInfo, previousScores } = await request.json();
+    const { meals, goal, bodyInfo, previousScores, achievedStreak = 0, totalAchievedDays = 0 } = await request.json();
     const apiKey = process.env.GEMINI_API_KEY?.trim();
     if (!apiKey) return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
     if (!meals || meals.length === 0) return NextResponse.json({ error: 'NO_DATA' }, { status: 422 });
@@ -103,6 +103,11 @@ export async function POST(request: Request) {
       ? `이전 진단 기록 (최근 순): ${previousScores.slice(0, 3).map((s: any) => `${s.date} 종합 ${s.overall_score}점(${s.grade})`).join(' / ')}`
       : '이전 진단 기록 없음 (첫 진단)';
 
+    // 목표 달성 기록
+    const achievementNote = totalAchievedDays > 0
+      ? `목표 칼로리 달성 기록: 총 ${totalAchievedDays}일 달성${achievedStreak > 0 ? `, 현재 ${achievedStreak}일 연속 달성 중` : ''}. 칼로리 일관성(consistency) 점수와 ai_message에 이 데이터를 반드시 반영하세요.`
+      : '목표 칼로리 달성 기록 없음 (달성 데이터 미집계 또는 0일)';
+
     const prompt = `당신은 국내 최고 수준의 영양사 겸 헬스 코치입니다.
 아래 사용자의 ${periodStart} ~ ${periodEnd} (${days}일, ${meals.length}개 기록) 식사 데이터를 분석해 정밀 진단 리포트를 JSON으로 작성하세요.
 
@@ -116,6 +121,7 @@ export async function POST(request: Request) {
 - 자주 먹는 음식: ${topFoods.join(', ') || '없음'}
 - 자주 먹는 카테고리: ${topCats.map(([c, n]) => `${c}(${n}회)`).join(', ') || '없음'}
 - ${trendNote}
+- ${achievementNote}
 
 아래 JSON 형식으로만 응답하세요. 각 항목은 한국어로 구체적이고 실용적으로 작성하세요.
 이전 진단 기록이 있으면 점수 변화와 개선/악화 여부를 summary와 ai_message에 반드시 언급하세요.

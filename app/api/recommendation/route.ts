@@ -26,7 +26,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' }, { status: 429 });
     }
 
-    const { today, weekly, goal } = await request.json();
+    const { today, weekly, goal, achievedStreak = 0, totalAchievedDays = 0 } = await request.json();
     const apiKey = process.env.GEMINI_API_KEY?.trim();
     if (!apiKey) return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
 
@@ -50,6 +50,14 @@ export async function POST(request: Request) {
       ? `최근 7일 평균: 칼로리 ${Math.round(weekly.reduce((s: number, d: any) => s + d.calories, 0) / weekly.length)}kcal, 탄수화물 ${Math.round(weekly.reduce((s: number, d: any) => s + d.carbs, 0) / weekly.length)}g, 단백질 ${Math.round(weekly.reduce((s: number, d: any) => s + d.protein, 0) / weekly.length)}g, 지방 ${Math.round(weekly.reduce((s: number, d: any) => s + d.fat, 0) / weekly.length)}g.`
       : '주간 데이터 없음.';
 
+    const achievementNote = achievedStreak >= 3
+      ? `목표 칼로리 ${achievedStreak}일 연속 달성 중 (총 ${totalAchievedDays}일 달성). 연속 달성에 대한 칭찬과 동기부여를 반드시 포함하세요.`
+      : achievedStreak > 0
+      ? `목표 칼로리 달성 중 (연속 ${achievedStreak}일, 총 ${totalAchievedDays}일). 꾸준함을 격려하세요.`
+      : totalAchievedDays > 0
+      ? `지금까지 총 ${totalAchievedDays}일 목표 칼로리를 달성한 이력이 있습니다.`
+      : '';
+
     const prompt = `당신은 15년 경력의 수석 영양학 박사이자 따뜻한 AI 헬스 코치입니다.
 
 [사용자 목표]
@@ -61,12 +69,14 @@ ${bmrNote}
 
 [주간 트렌드]
 ${weeklyNote}
+${achievementNote ? `\n[목표 달성 기록]\n${achievementNote}` : ''}
 
 위 데이터를 바탕으로 다음 기준에 따라 정밀 분석 피드백을 작성하세요:
 1. 오늘 PFC 비율이 목표 대비 어떤지 평가하세요.
 2. 주간 트렌드에서 지속적으로 부족하거나 과잉된 영양소 패턴이 있으면 언급하세요.
 3. 목표(${goal?.goal || '유지'})에 맞는 구체적인 내일 식단을 제안하세요.
 4. 전문적이면서 친근한 말투(해요체)를 사용하세요.
+${achievedStreak >= 3 ? '5. 연속 달성 기록을 goodPoint에 반드시 반영하세요.' : ''}
 
 다음 JSON 형식으로만 응답하세요:
 {

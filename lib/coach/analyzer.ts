@@ -68,8 +68,9 @@ export function analyzeCoach(params: {
   goalCalories: number;
   goalProtein: number;
   persona: Persona;
+  todayAchieved?: boolean;
 }): AnalysisResult {
-  const { todayMeals, allMeals, goalCalories, goalProtein, persona } = params;
+  const { todayMeals, allMeals, goalCalories, goalProtein, persona, todayAchieved } = params;
 
   const todayTotal = todayMeals.reduce((s, m) => s + (Number(m.calories) || 0), 0);
   const todayProtein = todayMeals.reduce((s, m) => s + (Number(m.nutrient?.protein) || 0), 0);
@@ -193,7 +194,12 @@ export function analyzeCoach(params: {
     };
   }
 
-  // 12. streak_good — 오늘 포함 최근 3일 연속 목표 ±20% 이내
+  // 12. goal_achieved — 오늘 목표 달성 (streak 체크 전에 단독 달성도 칭찬)
+  if (todayAchieved && lateSlots.includes(timeSlot)) {
+    return { situation: 'goal_achieved', persona, useGemini: false };
+  }
+
+  // 13. streak_good — 오늘 포함 최근 3일 연속 목표 ±20% 이내
   // 오늘(i=0): 아직 하루가 안 끝났으므로 저녁 이후에만 오늘 포함
   let streakCount = 0;
   const startDay = lateSlots.includes(timeSlot) ? 0 : 1;
