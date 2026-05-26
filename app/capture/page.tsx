@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth-context';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getStorageMode } from '@/lib/storage-mode';
 import { savePhoto } from '@/lib/indexed-db';
+import { updateGoalAchievement } from '@/lib/goal-achievement';
 
 type AnalysisResult = {
   name: string;
@@ -434,6 +435,7 @@ export default function CameraCapturePage() {
         };
         const existing = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
         localStorage.setItem('mybob_meals', JSON.stringify([localMeal, ...existing]));
+        updateGoalAchievement();
         localStorage.removeItem(`mybob_coach_${new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10)}`);
 
       } else {
@@ -502,6 +504,7 @@ export default function CameraCapturePage() {
         };
         const existing = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
         localStorage.setItem('mybob_meals', JSON.stringify([localMeal, ...existing]));
+        updateGoalAchievement();
         localStorage.removeItem(`mybob_coach_${new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10)}`);
       }
 

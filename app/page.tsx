@@ -125,8 +125,11 @@ export default function Home() {
       try {
         const gd = JSON.parse(goalRaw);
         if (gd.weight) weight = Number(gd.weight) || 65;
-        if (gd.calories) goalCalories = Number(gd.calories) || 2000;
       } catch { }
+    }
+    const savedTarget = localStorage.getItem('mybob_target_calories');
+    if (savedTarget && parseInt(savedTarget) > 0) {
+      goalCalories = parseInt(savedTarget);
     }
     const goalProtein = weight * 1.5;
     const kstDate = getKSTDate();

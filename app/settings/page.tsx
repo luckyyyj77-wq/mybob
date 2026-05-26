@@ -43,6 +43,7 @@ async function encryptBody(data: object, pin: string): Promise<void> {
   };
   localStorage.setItem(BODY_ENC_KEY, JSON.stringify(blob));
   localStorage.setItem(BODY_SALT_KEY, JSON.stringify(Array.from(salt)));
+  // 목표칼로리 평문 캐시는 handleSave에서 별도 처리
   // 구버전 평문 키 제거
   localStorage.removeItem('mybob_goal');
 }
@@ -428,19 +429,47 @@ type BodyInfo = {
   targetWeight: string;
   activity: 'sedentary' | 'light' | 'moderate' | 'active' | '';
   goal: '다이어트' | '유지' | '증량';
+  customCalories: string; // 직접 입력한 목표칼로리 (비어있으면 권장값 사용)
 };
 
 const EMPTY_BODY: BodyInfo = {
   gender: '', age: '', height: '', weight: '',
   targetWeight: '', activity: '', goal: '유지',
+  customCalories: '',
 };
+
+const ACTIVITY_MULTIPLIER: Record<string, number> = {
+  sedentary: 1.2,
+  light:     1.375,
+  moderate:  1.55,
+  active:    1.725,
+};
+
+function calcRecommendedCalories(b: BodyInfo): number | null {
+  const h = parseFloat(b.height);
+  const w = parseFloat(b.weight);
+  const a = parseFloat(b.age);
+  if (!h || !w) return null;
+  const age = isFinite(a) ? a : 30;
+  const bmr = b.gender === 'female'
+    ? 10 * w + 6.25 * h - 5 * age - 161
+    : 10 * w + 6.25 * h - 5 * age + 5;
+  const multiplier = ACTIVITY_MULTIPLIER[b.activity] ?? 1.375;
+  const tdee = Math.round(bmr * multiplier);
+  if (b.goal === '다이어트') return Math.round(tdee * 0.8);
+  if (b.goal === '증량')    return Math.round(tdee * 1.15);
+  return tdee;
+}
 
 const ACTIVITY_LABEL: Record<string, string> = {
   sedentary: '좌식 (거의 운동 안 함)',
-  light: '가벼운 활동 (주 1~2회)',
-  moderate: '보통 활동 (주 3~5회)',
-  active: '활동적 (매일 운동)',
+  light:     '가벼운 활동 (주 1~2회)',
+  moderate:  '보통 활동 (주 3~5회)',
+  active:    '활동적 (매일 운동)',
 };
+
+const TARGET_CALORIES_KEY = 'mybob_target_calories';
+const GOAL_ACHIEVED_KEY   = 'mybob_goal_achieved';
 
 // ── GoalSettings 컴포넌트 ─────────────────────────────────────
 function GoalSettings({ onRequestAuth }: { onRequestAuth: (cb: (pin: string) => void) => void }) {
@@ -450,6 +479,7 @@ function GoalSettings({ onRequestAuth }: { onRequestAuth: (cb: (pin: string) => 
   const [saving, setSaving] = useState(false);
   const [authing, setAuthing] = useState(false);
   const [decryptErr, setDecryptErr] = useState(false);
+  const [useCustom, setUseCustom] = useState(false);
   const currentPin = useRef('');
 
   const handleUnlock = () => {
@@ -461,7 +491,8 @@ function GoalSettings({ onRequestAuth }: { onRequestAuth: (cb: (pin: string) => 
       if (enc) {
         const data = await decryptBody(pin);
         if (data) {
-          setBody(data);
+          setBody({ ...EMPTY_BODY, ...data });
+          setUseCustom(!!data.customCalories);
           setDecryptErr(false);
           setUnlocked(true);
         } else {
@@ -489,12 +520,49 @@ function GoalSettings({ onRequestAuth }: { onRequestAuth: (cb: (pin: string) => 
   const handleSave = async () => {
     const err = validateBody();
     if (err) { alert(err); return; }
+    if (useCustom && body.customCalories) {
+      const val = parseInt(body.customCalories);
+      if (!isFinite(val) || val < 500 || val > 9999) {
+        alert('목표 칼로리는 500~9999 kcal 사이로 입력해 주세요');
+        return;
+      }
+    }
     setSaving(true);
     await encryptBody(body, currentPin.current);
+    // 목표칼로리 평문 캐시 저장
+    const recommended = calcRecommendedCalories(body);
+    const finalCalories = (useCustom && body.customCalories)
+      ? parseInt(body.customCalories)
+      : (recommended ?? 2000);
+    localStorage.setItem(TARGET_CALORIES_KEY, String(finalCalories));
+    // 저장 시점의 오늘 섭취 칼로리로 달성 여부 체크
+    checkDailyGoalAchievement();
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 1500);
   };
+
+  function checkDailyGoalAchievement() {
+    try {
+      const targetStr = localStorage.getItem(TARGET_CALORIES_KEY);
+      if (!targetStr) return;
+      const target = parseInt(targetStr);
+      if (!target) return;
+      const meals: { calories: number; created_at: string }[] = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
+      const todayKey = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const todayCalories = meals
+        .filter(m => new Date(new Date(m.created_at).getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10) === todayKey)
+        .reduce((s, m) => s + (Number(m.calories) || 0), 0);
+      const ratio = todayCalories / target;
+      const achieved: Record<string, boolean> = JSON.parse(localStorage.getItem(GOAL_ACHIEVED_KEY) || '{}');
+      if (ratio >= 0.9 && ratio <= 1.1) {
+        achieved[todayKey] = true;
+      } else {
+        delete achieved[todayKey];
+      }
+      localStorage.setItem(GOAL_ACHIEVED_KEY, JSON.stringify(achieved));
+    } catch { }
+  }
 
   const LIMITS = {
     age:          { min: 1,  max: 99,  label: '나이',      unit: '세' },
@@ -665,11 +733,90 @@ function GoalSettings({ onRequestAuth }: { onRequestAuth: (cb: (pin: string) => 
 
         {/* 목표 */}
         <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '6px' }}>목표</p>
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
           {(['다이어트', '유지', '증량'] as const).map(g => (
             <button key={g} onClick={() => set('goal')(g)} style={chipStyle(body.goal === g)}>{g}</button>
           ))}
         </div>
+
+        {/* 목표 칼로리 */}
+        {(() => {
+          const recommended = calcRecommendedCalories(body);
+          const displayCalories = useCustom
+            ? (body.customCalories || '')
+            : (recommended ? String(recommended) : '');
+          return (
+            <div style={{ backgroundColor: '#faf5ff', border: '1px solid #e9d5ff', padding: '14px', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                <p style={{ fontSize: '11px', color: '#6B21A8', letterSpacing: '1px' }}>일일 목표 칼로리</p>
+                {recommended && (
+                  <span style={{ fontSize: '10px', color: '#9ca3af' }}>
+                    권장 <strong style={{ color: '#6B21A8' }}>{recommended.toLocaleString()} kcal</strong>
+                  </span>
+                )}
+              </div>
+
+              {/* 토글 버튼 */}
+              <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
+                <button
+                  onClick={() => { setUseCustom(false); setBody(prev => ({ ...prev, customCalories: '' })); }}
+                  style={{
+                    flex: 1, padding: '8px', fontSize: '11px', border: '1px solid',
+                    borderColor: !useCustom ? '#6B21A8' : '#e5e7eb',
+                    backgroundColor: !useCustom ? '#6B21A8' : 'white',
+                    color: !useCustom ? 'white' : '#6b7280',
+                    cursor: 'pointer',
+                  }}
+                >
+                  권장값 사용
+                </button>
+                <button
+                  onClick={() => setUseCustom(true)}
+                  style={{
+                    flex: 1, padding: '8px', fontSize: '11px', border: '1px solid',
+                    borderColor: useCustom ? '#6B21A8' : '#e5e7eb',
+                    backgroundColor: useCustom ? '#6B21A8' : 'white',
+                    color: useCustom ? 'white' : '#6b7280',
+                    cursor: 'pointer',
+                  }}
+                >
+                  직접 입력
+                </button>
+              </div>
+
+              {useCustom ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    value={body.customCalories}
+                    onChange={e => setBody(prev => ({ ...prev, customCalories: e.target.value }))}
+                    placeholder={recommended ? String(recommended) : '2000'}
+                    style={{ ...inputStyle, flex: 1, marginBottom: 0 }}
+                  />
+                  <span style={{ fontSize: '12px', color: '#9ca3af', flexShrink: 0 }}>kcal</span>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px', backgroundColor: 'white', border: '1px solid #e9d5ff' }}>
+                  {recommended ? (
+                    <span style={{ fontSize: '20px', fontWeight: 600, color: '#6B21A8' }}>
+                      {recommended.toLocaleString()} <span style={{ fontSize: '13px', fontWeight: 400 }}>kcal/일</span>
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: '12px', color: '#9ca3af' }}>키·몸무게·활동량을 입력하면 계산됩니다</span>
+                  )}
+                </div>
+              )}
+
+              {!useCustom && recommended && (
+                <p style={{ fontSize: '10px', color: '#9ca3af', marginTop: '8px', lineHeight: 1.6 }}>
+                  Harris-Benedict BMR × 활동량 계수
+                  {body.goal === '다이어트' ? ' × 0.8 (다이어트)' : body.goal === '증량' ? ' × 1.15 (증량)' : ' (유지)'}
+                </p>
+              )}
+            </div>
+          );
+        })()}
 
         {/* 저장 */}
         <button

@@ -7,6 +7,7 @@ import { FaArrowLeft, FaChevronLeft, FaChevronRight, FaTh, FaThLarge } from 'rea
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/lib/auth-context';
 import { MealPhoto } from '@/components/MealPhoto';
+import { updateGoalAchievement } from '@/lib/goal-achievement';
 
 type Nutrient = {
   carbohydrates: number;
@@ -223,6 +224,7 @@ function MealDetailContent() {
       localStorage.setItem('mybob_meals', JSON.stringify(
         existing.map(m => m.id === meal.id ? updatedMeal : m)
       ));
+      updateGoalAchievement();
       localStorage.removeItem(`mybob_coach_${new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10)}`);
       setIsEditing(false);
     } catch (err: any) {

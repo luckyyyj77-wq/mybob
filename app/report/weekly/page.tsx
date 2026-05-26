@@ -51,8 +51,13 @@ export default function WeeklyReportPage() {
     const local: Meal[] = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
     setAllMeals(local);
 
-    const goal = JSON.parse(localStorage.getItem('mybob_goal') || '{}');
-    setTargetCalories(calcTargetCalories(Number(goal.height) || 0, Number(goal.weight) || 0, goal.goal || '유지'));
+    const savedTarget = localStorage.getItem('mybob_target_calories');
+    if (savedTarget && parseInt(savedTarget) > 0) {
+      setTargetCalories(parseInt(savedTarget));
+    } else {
+      const goal = JSON.parse(localStorage.getItem('mybob_goal') || '{}');
+      setTargetCalories(calcTargetCalories(Number(goal.height) || 0, Number(goal.weight) || 0, goal.goal || '유지'));
+    }
 
     if (token === null) return;
     fetch('/api/meals', { headers: token ? { Authorization: `Bearer ${token}` } : {} })
