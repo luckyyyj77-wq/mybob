@@ -285,8 +285,8 @@ export default function AccountPage() {
       await clearAllPhotos();
       localStorage.clear();
     }
-    await supabase.auth.signOut();
-    window.location.href = '/auth/login';
+    await supabase.auth.signOut({ scope: 'local' });
+    window.location.replace('/auth/login');
   };
 
   const handleDeleteAll = () => {

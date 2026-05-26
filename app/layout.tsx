@@ -91,7 +91,10 @@ function AppShell({ children }: { children: React.ReactNode }) {
     const isProtected = p === '/' || ['/capture', '/report', '/history', '/community', '/settings'].some(r => p.startsWith(r));
     const isResetPassword = p.startsWith('/auth/reset-password');
     if (!session && isProtected && !isAuth) router.push('/auth/login');
-    else if (session && isAuth && !isResetPassword) router.push('/');
+    else if (session && isAuth && !isResetPassword) {
+      // 로그아웃 직후 세션 정리 타이밍 확보
+      setTimeout(() => router.push('/'), 100);
+    }
   }, [session, loading, pathname, router]);
 
   const handleInstall = async () => {
