@@ -13,6 +13,7 @@ type Stats = {
   recentUsers: { id: string; email?: string; created_at: string; last_sign_in_at?: string }[];
   categoryStats: { name: string; count: number }[];
   dailyStats: { date: string; count: number }[];
+  signupStats: { date: string; count: number }[];
 };
 
 function StatCard({ icon: Icon, label, value, sub, color = 'black' }: {
@@ -64,6 +65,7 @@ export default function AdminDashboard() {
   if (!stats) return null;
 
   const maxCount = Math.max(...stats.dailyStats.map(d => d.count), 1);
+  const maxSignup = Math.max(...stats.signupStats.map(d => d.count), 1);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', maxWidth: '960px' }}>
@@ -100,6 +102,28 @@ export default function AdminDashboard() {
               <Bar dataKey="count" radius={[2, 2, 0, 0]}>
                 {stats.dailyStats.map((entry, i) => (
                   <Cell key={i} fill={entry.count === maxCount ? '#6B21A8' : '#e5e7eb'} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* 신규 가입자 추이 */}
+      <div style={{ backgroundColor: 'white', border: '1px solid #e5e7eb', padding: '20px' }}>
+        <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '16px' }}>최근 14일 신규 가입자</p>
+        <div style={{ height: '160px' }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={stats.signupStats} barSize={14} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+              <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#9ca3af' }} interval={1} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#9ca3af' }} allowDecimals={false} />
+              <Tooltip
+                contentStyle={{ border: '1px solid #e5e7eb', borderRadius: 0, fontSize: '11px' }}
+                formatter={(v) => [`${v}명`, '신규 가입']}
+              />
+              <Bar dataKey="count" radius={[2, 2, 0, 0]}>
+                {stats.signupStats.map((entry, i) => (
+                  <Cell key={i} fill={entry.count === maxSignup && maxSignup > 0 ? '#6B21A8' : '#e5e7eb'} />
                 ))}
               </Bar>
             </BarChart>

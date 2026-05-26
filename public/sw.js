@@ -21,9 +21,11 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
-  // API 요청은 캐시 안 함
   if (url.pathname.startsWith('/api/')) return;
+
   e.respondWith(
-    fetch(e.request).catch(() => caches.match(e.request))
+    fetch(e.request).catch(() =>
+      caches.match(e.request).then((cached) => cached ?? new Response('', { status: 503 }))
+    )
   );
 });

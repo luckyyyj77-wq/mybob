@@ -119,7 +119,13 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p style={{ marginTop: '28px', fontSize: '14px', color: '#6b7280', textAlign: 'center' }}>
+        <p style={{ marginTop: '16px', textAlign: 'center' }}>
+          <Link href="/auth/reset-password" style={{ fontSize: '13px', color: '#9ca3af', textDecoration: 'none' }}>
+            비밀번호를 잊으셨나요?
+          </Link>
+        </p>
+
+        <p style={{ marginTop: '12px', fontSize: '14px', color: '#6b7280', textAlign: 'center' }}>
           계정이 없으신가요?{' '}
           <Link href="/auth/signup" style={{ color: '#6B21A8', textDecoration: 'none' }}>
             회원가입

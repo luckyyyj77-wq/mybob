@@ -57,6 +57,24 @@ export async function GET(request: Request) {
       .slice(0, 5)
       .map(u => ({ id: u.id, email: u.email, created_at: u.created_at, last_sign_in_at: u.last_sign_in_at }));
 
+    // 최근 14일 일별 신규 가입자 수
+    const allUsers = usersData?.users ?? [];
+    const signupStats = [];
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const start = new Date(d); start.setHours(0, 0, 0, 0);
+      const end = new Date(d); end.setHours(23, 59, 59, 999);
+      const count = allUsers.filter(u => {
+        const t = new Date(u.created_at).getTime();
+        return t >= start.getTime() && t <= end.getTime();
+      }).length;
+      signupStats.push({
+        date: d.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }),
+        count,
+      });
+    }
+
     // 카테고리별 기록 분포
     const { data: categoryData } = await adminSupabase
       .from('meals')
@@ -91,7 +109,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       success: true,
-      data: { totalMeals, todayMeals, weekMeals, totalUsers, recentUsers, categoryStats, dailyStats },
+      data: { totalMeals, todayMeals, weekMeals, totalUsers, recentUsers, categoryStats, dailyStats, signupStats },
     });
   } catch (error: any) {
     console.error('[admin/stats GET]', error?.message);
