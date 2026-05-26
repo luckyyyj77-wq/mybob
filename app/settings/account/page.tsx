@@ -373,6 +373,10 @@ export default function AccountPage() {
             <span style={{ fontSize: '14px', color: 'black' }}>개인정보 처리방침</span>
             <span style={{ fontSize: '16px', color: '#9ca3af' }}>›</span>
           </button>
+          <Link href="/auth/reset-password" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', backgroundColor: 'white' }}>
+            <span style={{ fontSize: '14px', color: 'black' }}>비밀번호 재설정</span>
+            <span style={{ fontSize: '16px', color: '#9ca3af' }}>›</span>
+          </Link>
         </div>
 
         {/* 위험구역 */}
