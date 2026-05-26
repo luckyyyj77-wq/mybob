@@ -13,6 +13,8 @@ type UserRow = {
   analyses_today: number;
 };
 
+type Plan = 'free' | 'pro' | 'lifetime';
+
 const PLAN_COLOR: Record<string, string> = { free: '#9ca3af', pro: '#6B21A8', lifetime: '#d97706' };
 const PLAN_LABEL: Record<string, string> = { free: 'FREE', pro: 'PRO', lifetime: 'LIFE' };
 
@@ -37,11 +39,14 @@ export default function AdminUsersPage() {
   const [filtered, setFiltered] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [planFilter, setPlanFilter] = useState<'all' | 'free' | 'pro' | 'lifetime'>('all');
+  const [planFilter, setPlanFilter] = useState<'all' | Plan>('all');
+  const [changingId, setChangingId] = useState<string | null>(null);
+  const [token, setToken] = useState<string>('');
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) return;
+      setToken(session.access_token);
       const res = await fetch('/api/admin/users', {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
@@ -53,6 +58,19 @@ export default function AdminUsersPage() {
       setLoading(false);
     });
   }, []);
+
+  async function changePlan(userId: string, newPlan: Plan) {
+    setChangingId(userId);
+    const res = await fetch('/api/admin/users', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ userId, plan: newPlan }),
+    });
+    if (res.ok) {
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, plan: newPlan } : u));
+    }
+    setChangingId(null);
+  }
 
   useEffect(() => {
     let list = users;
@@ -119,9 +137,9 @@ export default function AdminUsersPage() {
           </div>
         ) : (
           filtered.map(u => (
-            <div key={u.id} className="user-row" style={{ backgroundColor: 'white', padding: '12px 14px' }}>
-              {/* 모바일: 카드형 레이아웃 */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+            <div key={u.id} style={{ backgroundColor: 'white', padding: '12px 14px' }}>
+              {/* 이메일 + 플랜 배지 */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                 <span style={{
                   fontSize: '9px', letterSpacing: '1px', color: 'white',
                   backgroundColor: PLAN_COLOR[u.plan], padding: '2px 5px', flexShrink: 0,
@@ -132,11 +150,31 @@ export default function AdminUsersPage() {
                   {u.email}
                 </span>
               </div>
-              <div style={{ display: 'flex', gap: '16px' }}>
+              {/* 통계 */}
+              <div style={{ display: 'flex', gap: '16px', marginBottom: '10px' }}>
                 <span style={{ fontSize: '11px', color: '#9ca3af' }}>가입 {fmtDate(u.created_at)}</span>
                 <span style={{ fontSize: '11px', color: '#9ca3af' }}>접속 {fmtRelative(u.last_sign_in_at)}</span>
                 <span style={{ fontSize: '11px', color: '#374151' }}>식단 {u.meal_count}건</span>
                 <span style={{ fontSize: '11px', color: u.analyses_today > 0 ? '#6B21A8' : '#9ca3af' }}>오늘 {u.analyses_today}회</span>
+              </div>
+              {/* 플랜 변경 버튼 */}
+              <div style={{ display: 'flex', gap: '4px' }}>
+                {(['free', 'pro', 'lifetime'] as Plan[]).map(p => (
+                  <button
+                    key={p}
+                    onClick={() => { if (u.plan !== p && confirm(`${u.email}\n플랜을 ${PLAN_LABEL[p]}(으)로 변경할까요?`)) changePlan(u.id, p); }}
+                    disabled={changingId === u.id}
+                    style={{
+                      fontSize: '10px', padding: '3px 8px', border: 'none', cursor: u.plan === p ? 'default' : 'pointer',
+                      letterSpacing: '0.5px',
+                      backgroundColor: u.plan === p ? PLAN_COLOR[p] : '#f3f4f6',
+                      color: u.plan === p ? 'white' : '#9ca3af',
+                      opacity: changingId === u.id ? 0.5 : 1,
+                    }}
+                  >
+                    {changingId === u.id && u.plan !== p ? '...' : PLAN_LABEL[p]}
+                  </button>
+                ))}
               </div>
             </div>
           ))

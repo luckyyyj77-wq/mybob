@@ -68,3 +68,30 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
   }
 }
+
+export async function PATCH(request: Request) {
+  try {
+    const admin = await verifyAdmin(request);
+    if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+    const { userId, plan } = await request.json();
+    if (!userId || !['free', 'pro', 'lifetime'].includes(plan)) {
+      return NextResponse.json({ error: '잘못된 요청입니다.' }, { status: 400 });
+    }
+
+    const adminSupabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+
+    const { error } = await adminSupabase
+      .from('profiles')
+      .upsert({ id: userId, plan, updated_at: new Date().toISOString() }, { onConflict: 'id' });
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error('[admin/users PATCH]', error?.message);
+    return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
+  }
+}
