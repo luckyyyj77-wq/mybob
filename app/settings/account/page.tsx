@@ -281,14 +281,11 @@ export default function AccountPage() {
 
   const handleLogout = async (clearData: boolean) => {
     setLogoutModal(false);
-    await supabase.auth.signOut();
     if (clearData) {
       await clearAllPhotos();
       localStorage.clear();
-    } else {
-      localStorage.removeItem('mybob_storage_mode');
-      localStorage.removeItem('mybob_onboarding_done');
     }
+    await supabase.auth.signOut();
     window.location.href = '/auth/login';
   };
 
