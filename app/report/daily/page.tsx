@@ -64,9 +64,10 @@ export default function DailyReportPage() {
       }).catch(() => {});
   }, [token]);
 
-  const dateStr = targetDate.toLocaleDateString();
+  const toKSTKey = (d: Date) => new Date(d.getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const dateStr = toKSTKey(targetDate);
   const meals = allMeals
-    .filter(m => new Date(m.created_at).toLocaleDateString() === dateStr)
+    .filter(m => toKSTKey(new Date(m.created_at)) === dateStr)
     .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
   const totalCalories = meals.reduce((s, m) => s + (Number(m.calories) || 0), 0);
@@ -92,7 +93,7 @@ export default function DailyReportPage() {
     { name: '지방',     value: Math.round(nutrients.fat) },
   ].filter(d => d.value > 0);
 
-  const isToday = targetDate.toLocaleDateString() === new Date().toLocaleDateString();
+  const isToday = toKSTKey(targetDate) === toKSTKey(new Date());
 
   const moveDate = (delta: number) => {
     const d = new Date(targetDate);

@@ -223,7 +223,7 @@ function MealDetailContent() {
       localStorage.setItem('mybob_meals', JSON.stringify(
         existing.map(m => m.id === meal.id ? updatedMeal : m)
       ));
-      localStorage.removeItem(`mybob_coach_${new Date().toISOString().slice(0, 10)}`);
+      localStorage.removeItem(`mybob_coach_${new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10)}`);
       setIsEditing(false);
     } catch (err: any) {
       alert(`저장 실패: ${err.message}`);

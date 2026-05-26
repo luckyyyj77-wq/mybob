@@ -32,22 +32,28 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: 'cal_asc',   label: '칼로리 낮은순' },
 ];
 
+// KST(UTC+9) 기준 날짜 키 반환 (YYYY-MM-DD)
+function toKSTDateKey(dateStr: string): string {
+  const kst = new Date(new Date(dateStr).getTime() + 9 * 60 * 60 * 1000);
+  return kst.toISOString().slice(0, 10);
+}
+
 function formatDateLabel(dateStr: string): string {
-  const d = new Date(dateStr);
-  const today = new Date();
-  const yesterday = new Date();
-  yesterday.setDate(today.getDate() - 1);
-  const isSameDay = (a: Date, b: Date) =>
-    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-  if (isSameDay(d, today)) return '오늘';
-  if (isSameDay(d, yesterday)) return '어제';
-  return d.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
+  const kst = new Date(new Date(dateStr).getTime() + 9 * 60 * 60 * 1000);
+  const todayKST = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  const kstKey = kst.toISOString().slice(0, 10);
+  const todayKey = todayKST.toISOString().slice(0, 10);
+  const yesterdayKST = new Date(todayKST.getTime() - 24 * 60 * 60 * 1000);
+  const yesterdayKey = yesterdayKST.toISOString().slice(0, 10);
+  if (kstKey === todayKey) return '오늘';
+  if (kstKey === yesterdayKey) return '어제';
+  return kst.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
 }
 
 function groupByDate(meals: Meal[]): { dateKey: string; label: string; meals: Meal[] }[] {
   const map = new Map<string, Meal[]>();
   meals.forEach(m => {
-    const key = new Date(m.created_at).toLocaleDateString();
+    const key = toKSTDateKey(m.created_at);
     if (!map.has(key)) map.set(key, []);
     map.get(key)!.push(m);
   });

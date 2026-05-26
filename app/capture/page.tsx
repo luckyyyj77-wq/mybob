@@ -434,7 +434,7 @@ export default function CameraCapturePage() {
         };
         const existing = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
         localStorage.setItem('mybob_meals', JSON.stringify([localMeal, ...existing]));
-        localStorage.removeItem(`mybob_coach_${new Date().toISOString().slice(0, 10)}`);
+        localStorage.removeItem(`mybob_coach_${new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10)}`);
 
       } else {
         if (!token) {
@@ -502,7 +502,7 @@ export default function CameraCapturePage() {
         };
         const existing = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
         localStorage.setItem('mybob_meals', JSON.stringify([localMeal, ...existing]));
-        localStorage.removeItem(`mybob_coach_${new Date().toISOString().slice(0, 10)}`);
+        localStorage.removeItem(`mybob_coach_${new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10)}`);
       }
 
       setSaved(true);

@@ -1,6 +1,13 @@
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnySupabaseClient = any;
 
+// KST(UTC+9) 기준 오늘 날짜 반환 (YYYY-MM-DD)
+function getKSTDateString(): string {
+  const now = new Date();
+  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  return kst.toISOString().slice(0, 10);
+}
+
 export type Plan = 'free' | 'pro' | 'lifetime';
 
 export const UPLOAD_LIMITS: Record<Plan, number> = {
@@ -30,7 +37,7 @@ async function getOrCreateProfile(adminSupabase: AnySupabaseClient, userId: stri
     .single();
 
   if (error || !profile) {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = getKSTDateString();
     await adminSupabase.from('profiles').upsert({
       id: userId,
       plan: 'free',
@@ -49,7 +56,7 @@ export async function checkUploadLimit(
   adminSupabase: AnySupabaseClient,
   userId: string
 ): Promise<{ allowed: boolean; plan: Plan; used: number; limit: number }> {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getKSTDateString();
   const profile = await getOrCreateProfile(adminSupabase, userId);
 
   const plan = profile.plan as Plan;
@@ -64,7 +71,7 @@ export async function incrementUploadCount(
   adminSupabase: AnySupabaseClient,
   userId: string
 ): Promise<void> {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getKSTDateString();
   const { data: profile } = await adminSupabase
     .from('profiles')
     .select('uploads_today, last_upload_date')
@@ -86,7 +93,7 @@ export async function checkAnalysisLimit(
   adminSupabase: AnySupabaseClient,
   userId: string
 ): Promise<{ allowed: boolean; plan: Plan; used: number; limit: number }> {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getKSTDateString();
   const profile = await getOrCreateProfile(adminSupabase, userId);
 
   const plan = profile.plan as Plan;
@@ -101,7 +108,7 @@ export async function incrementAnalysisCount(
   adminSupabase: AnySupabaseClient,
   userId: string
 ): Promise<void> {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getKSTDateString();
   const { data: profile } = await adminSupabase
     .from('profiles')
     .select('analyses_today, last_analysis_date')

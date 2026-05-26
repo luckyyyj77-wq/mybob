@@ -80,15 +80,18 @@ export default function WeeklyReportPage() {
     return `${s} — ${e}`;
   };
 
+  const toKSTKey = (d: Date) => new Date(d.getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const todayKSTKey = toKSTKey(new Date());
+
   // 7일치 데이터 생성
   const weekData = DAY_LABELS.map((label, i) => {
     const d = new Date(monday);
     d.setDate(d.getDate() + i);
-    const dateStr = d.toLocaleDateString();
-    const dayMeals = allMeals.filter(m => new Date(m.created_at).toLocaleDateString() === dateStr);
+    const dateStr = toKSTKey(d);
+    const dayMeals = allMeals.filter(m => toKSTKey(new Date(m.created_at)) === dateStr);
     const calories = dayMeals.reduce((s, m) => s + (Number(m.calories) || 0), 0);
-    const isToday = d.toLocaleDateString() === new Date().toLocaleDateString();
-    const isFuture = d > new Date();
+    const isToday = dateStr === todayKSTKey;
+    const isFuture = dateStr > todayKSTKey;
     return { label, calories, isToday, isFuture, date: d };
   });
 
