@@ -171,6 +171,7 @@ export default function CommunityRecommendationPage() {
   const [isPro, setIsPro] = useState(false);
 
   useEffect(() => {
+    // 로컬 모드도 PRO면 광고 없음 — profile API로 플랜만 확인
     if (!token) return;
     fetch('/api/profile', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.ok ? r.json() : null)

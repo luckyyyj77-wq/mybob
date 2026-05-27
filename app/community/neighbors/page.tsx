@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/auth-context';
+import { useRouter } from 'next/navigation';
 import { FaUserPlus, FaCheck, FaTimes, FaUserMinus, FaUndo } from 'react-icons/fa';
+import { getStorageMode } from '@/lib/storage-mode';
 
 interface Profile { id: string; nickname: string; avatar_url?: string }
 interface Friend { friendshipId: string; id: string; nickname: string; avatar_url?: string }
@@ -70,6 +72,8 @@ function timeAgo(iso: string) {
 
 export default function NeighborsPage() {
   const { token } = useAuth();
+  const router = useRouter();
+  const [isLocalMode, setIsLocalMode] = useState(false);
   const [tab, setTab] = useState<'feed' | 'friends' | 'requests' | 'add'>('feed');
   const [friends, setFriends] = useState<Friend[]>([]);
   const [incoming, setIncoming] = useState<IncomingRequest[]>([]);
@@ -83,6 +87,10 @@ export default function NeighborsPage() {
   const [feed, setFeed] = useState<FeedMeal[]>([]);
   const [feedLoading, setFeedLoading] = useState(true);
   const [isPro, setIsPro] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    setIsLocalMode(getStorageMode() === 'local');
+  }, []);
 
   useEffect(() => {
     if (token === null) return;
@@ -213,6 +221,35 @@ export default function NeighborsPage() {
   };
 
   const incomingCount = incoming.length;
+
+  if (isLocalMode) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 32px', textAlign: 'center', height: '100%' }}>
+        <p style={{ fontSize: '40px', marginBottom: '20px' }}>☁️</p>
+        <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '8px' }}>CLOUD ONLY</p>
+        <p style={{ fontSize: '18px', fontWeight: 500, color: 'black', marginBottom: '12px' }}>이웃 기능은 클라우드 모드 전용입니다</p>
+        <p style={{ fontSize: '13px', color: '#6b7280', lineHeight: 1.8, marginBottom: '32px' }}>
+          현재 로컬 모드로 사용 중입니다.<br />
+          이웃 추가, 피드 공유 등 커뮤니티 기능은<br />
+          클라우드 모드에서만 사용할 수 있습니다.
+        </p>
+        <button
+          onClick={() => router.push('/settings/storage')}
+          style={{
+            padding: '14px 28px', backgroundColor: '#6B21A8', color: 'white',
+            border: 'none', cursor: 'pointer', fontSize: '13px', letterSpacing: '0.5px',
+            marginBottom: '12px', width: '100%', maxWidth: '280px',
+          }}
+        >
+          클라우드 모드로 전환하기
+        </button>
+        <p style={{ fontSize: '11px', color: '#9ca3af', lineHeight: 1.7 }}>
+          기존 식단 데이터는 그대로 유지됩니다.<br />
+          설정 {'>'} 저장 방식에서도 변경할 수 있습니다.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div>

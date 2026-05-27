@@ -472,13 +472,21 @@ function MealDetailContent() {
                       ✅
                     </button>
                   </div>
-                ) : userPlan !== 'free' ? (
+                ) : userPlan !== 'free' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(meal.id) ? (
                   <button
                     onClick={startEdit}
                     title="편집"
                     style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', padding: '2px', filter: 'grayscale(1)', lineHeight: 1 }}
                   >
                     ✏️
+                  </button>
+                ) : userPlan !== 'free' ? (
+                  <button
+                    onClick={() => alert('클라우드 모드에서만 편집 가능합니다.\n설정 > 저장 방식에서 전환해주세요.')}
+                    title="편집 (클라우드 전용)"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', padding: '2px', opacity: 0.35, lineHeight: 1 }}
+                  >
+                    ☁️
                   </button>
                 ) : (
                   <button
