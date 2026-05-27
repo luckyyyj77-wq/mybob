@@ -297,7 +297,7 @@ function MealDetailContent() {
           {/* 반투명 뷰 모드 오버레이 */}
           <div style={{
             position: 'fixed',
-            bottom: '80px',
+            top: '70px',
             right: '16px',
             display: 'flex',
             flexDirection: 'column',
@@ -724,7 +724,7 @@ function MealDetailContent() {
           {/* 닫기 오버레이 버튼 */}
           <div style={{
             position: 'fixed',
-            bottom: '80px',
+            top: '70px',
             right: '16px',
             display: 'flex',
             flexDirection: 'column',
