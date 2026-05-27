@@ -70,7 +70,7 @@ function MealDetailContent() {
   const [showOriginal, setShowOriginal] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
   const [savingRating, setSavingRating] = useState(false);
-  const [userPlan, setUserPlan] = useState<string>('free');
+  const [userPlan, setUserPlan] = useState<string | null>(null);
   const [editPortion, setEditPortion] = useState<number>(1);
   const [editRating, setEditRating] = useState<number | null>(null);
   const [invalidFields, setInvalidFields] = useState<Set<string>>(new Set());
@@ -104,10 +104,13 @@ function MealDetailContent() {
   const selectAll = (e: React.FocusEvent<HTMLInputElement>) => e.target.select();
 
   useEffect(() => {
+    if (token === undefined) return; // 토큰 초기화 대기
     const loadData = async () => {
       let all: Meal[] = [];
       const localStr = localStorage.getItem('mybob_meals');
       if (localStr) all = JSON.parse(localStr);
+
+      let serverMeals: Meal[] = [];
 
       if (token) {
         try {
@@ -119,8 +122,9 @@ function MealDetailContent() {
           if (mealsRes.ok) {
             const r = await mealsRes.json();
             if (r.success && Array.isArray(r.data)) {
-              const serverIds = new Set(r.data.map((m: Meal) => m.id));
-              all = [...r.data, ...all.filter((m: Meal) => !serverIds.has(m.id))];
+              serverMeals = r.data;
+              const serverIds = new Set(serverMeals.map((m: Meal) => m.id));
+              all = [...serverMeals, ...all.filter((m: Meal) => !serverIds.has(m.id))];
             }
           }
           if (profileRes?.ok) {
@@ -128,6 +132,8 @@ function MealDetailContent() {
             setUserPlan(profileData.plan || 'free');
           }
         } catch { /* use local only */ }
+      } else {
+        setUserPlan('free');
       }
 
       const sorted = all.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
@@ -135,10 +141,11 @@ function MealDetailContent() {
 
       const idx = sorted.findIndex(m => m.id === id);
       if (idx !== -1) {
-        const found = sorted[idx];
+        // 서버 데이터 우선 (is_public 등 서버 전용 필드 포함)
+        const serverVersion = serverMeals.find(m => m.id === id);
+        const found = serverVersion ?? sorted[idx];
         setMeal(found);
         setCurrentIndex(idx);
-        // 편집 초기값 세팅
         setEditFoodName(found.food_name);
         setEditCalories(String(found.calories));
         setEditNutrient(
@@ -150,7 +157,7 @@ function MealDetailContent() {
       setLoading(false);
     };
     loadData();
-  }, [id]);
+  }, [id, token]);
 
   const navigateTo = (idx: number) => {
     if (idx >= 0 && idx < allMeals.length) {
@@ -625,7 +632,7 @@ function MealDetailContent() {
             </div>
 
             {/* 이웃 공개 토글 (PRO + UUID 식단만, 로컬 Date.now() id 제외) */}
-            {userPlan !== 'free' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(meal.id) && (
+            {userPlan !== null && userPlan !== 'free' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(meal.id) && (
               <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #f3f4f6' }}>
                 <button
                   onClick={handleTogglePublic}
