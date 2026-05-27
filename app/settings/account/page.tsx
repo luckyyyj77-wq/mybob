@@ -400,7 +400,7 @@ export default function AccountPage() {
                 </button>
                 <button onClick={() => handleLogout(true)} style={{ padding: '16px', backgroundColor: 'white', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
                   <p style={{ fontSize: '14px', color: '#ef4444', marginBottom: '3px' }}>데이터 삭제 후 로그아웃</p>
-                  <p style={{ fontSize: '11px', color: '#9ca3af' }}>이 기기의 모든 개인정보 완전 제거</p>
+                  <p style={{ fontSize: '11px', color: '#9ca3af' }}>이 기기의 로컬 데이터만 삭제 (서버 데이터는 유지)</p>
                 </button>
               </div>
               <button onClick={() => setLogoutModal(false)} style={{ width: '100%', padding: '12px', backgroundColor: 'white', border: '1px solid #e5e7eb', fontSize: '13px', color: '#6b7280', cursor: 'pointer' }}>
