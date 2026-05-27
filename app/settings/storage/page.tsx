@@ -78,6 +78,40 @@ export default function StoragePage() {
           </div>
         )}
 
+        {/* 모드별 기능 비교 */}
+        <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>기능 비교</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: '#e5e7eb', marginBottom: '28px' }}>
+          {[
+            { label: '식단 저장', local: '이 기기에만', cloud: '모든 기기 동기화' },
+            { label: '식단 편집', local: '❌ 불가', cloud: '✅ PRO 전용' },
+            { label: '다기기 접속', local: '❌ 불가', cloud: '✅ 가능' },
+            { label: '이웃 추가/관리', local: '❌ 불가', cloud: '✅ 가능' },
+            { label: '이웃 피드 공유', local: '❌ 불가', cloud: '✅ PRO 전용' },
+            { label: '커뮤니티 추천 탭', local: '✅ (광고 포함)', cloud: '✅ PRO는 광고 없음' },
+          ].map((row, i) => (
+            <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', backgroundColor: 'white', borderBottom: '1px solid #f3f4f6' }}>
+              <div style={{ padding: '11px 12px', borderRight: '1px solid #f3f4f6' }}>
+                <p style={{ fontSize: '12px', color: '#374151' }}>{row.label}</p>
+              </div>
+              <div style={{ padding: '11px 12px', borderRight: '1px solid #f3f4f6', backgroundColor: storageMode === 'local' ? '#fafafa' : 'white' }}>
+                <p style={{ fontSize: '11px', color: row.local.startsWith('❌') ? '#9ca3af' : '#374151' }}>{row.local}</p>
+              </div>
+              <div style={{ padding: '11px 12px', backgroundColor: storageMode === 'cloud' ? '#fafafa' : 'white' }}>
+                <p style={{ fontSize: '11px', color: row.cloud.startsWith('❌') ? '#9ca3af' : '#374151' }}>{row.cloud}</p>
+              </div>
+            </div>
+          ))}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', backgroundColor: '#f9fafb' }}>
+            <div style={{ padding: '8px 12px' }} />
+            <div style={{ padding: '8px 12px', borderRight: '1px solid #f3f4f6', borderLeft: '1px solid #f3f4f6', textAlign: 'center' }}>
+              <p style={{ fontSize: '10px', color: storageMode === 'local' ? '#6B21A8' : '#9ca3af', letterSpacing: '1px', fontWeight: storageMode === 'local' ? 600 : 400 }}>📱 로컬</p>
+            </div>
+            <div style={{ padding: '8px 12px', textAlign: 'center' }}>
+              <p style={{ fontSize: '10px', color: storageMode === 'cloud' ? '#0ea5e9' : '#9ca3af', letterSpacing: '1px', fontWeight: storageMode === 'cloud' ? 600 : 400 }}>☁️ 클라우드</p>
+            </div>
+          </div>
+        </div>
+
         <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>알림 설정</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: '#e5e7eb', marginBottom: '28px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', backgroundColor: 'white' }}>

@@ -92,10 +92,15 @@ export default function OnboardingPage() {
             <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: `2px solid ${selected === 'local' ? 'black' : '#d1d5db'}`, backgroundColor: selected === 'local' ? 'black' : 'white', flexShrink: 0 }} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            {['개인정보 보호 최우선', '인터넷 없이도 사용 가능', '기기 분실 시 데이터 복구 불가'].map((t, i) => (
-              <p key={t} style={{ fontSize: '12px', color: i === 2 ? '#f97316' : '#6b7280', display: 'flex', gap: '6px', alignItems: 'center' }}>
-                <span style={{ color: i === 2 ? '#f97316' : '#6B21A8', fontSize: '11px' }}>{i === 2 ? '⚠' : '✓'}</span>
-                {t}
+            {[
+              { text: '개인정보 보호 최우선 — 서버 전송 없음', warn: false },
+              { text: '이 기기에서만 사용 가능', warn: false },
+              { text: '이웃·피드 공유 등 커뮤니티 기능 제한', warn: false },
+              { text: '기기 분실 시 데이터 복구 불가', warn: true },
+            ].map((item) => (
+              <p key={item.text} style={{ fontSize: '12px', color: item.warn ? '#f97316' : '#6b7280', display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
+                <span style={{ color: item.warn ? '#f97316' : '#6B21A8', fontSize: '11px', flexShrink: 0, marginTop: '1px' }}>{item.warn ? '⚠' : '✓'}</span>
+                {item.text}
               </p>
             ))}
           </div>
@@ -114,9 +119,14 @@ export default function OnboardingPage() {
             <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: `2px solid ${selected === 'cloud' ? 'black' : '#d1d5db'}`, backgroundColor: selected === 'cloud' ? 'black' : 'white', flexShrink: 0 }} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            {['여러 기기에서 동기화', '커뮤니티·챌린지 참여 가능', '기기 분실 시 복구 가능', '현재 베타 기간 중 무료 제공'].map((t, i) => (
-              <p key={t} style={{ fontSize: '12px', color: '#6b7280', display: 'flex', gap: '6px', alignItems: 'center' }}>
-                <span style={{ color: '#6B21A8', fontSize: '11px' }}>✓</span>
+            {[
+              '여러 기기에서 동기화',
+              '이웃 추가 및 피드 공유 가능 (PRO)',
+              '커뮤니티·챌린지 참여 가능',
+              '기기 분실 시 복구 가능',
+            ].map((t) => (
+              <p key={t} style={{ fontSize: '12px', color: '#6b7280', display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
+                <span style={{ color: '#6B21A8', fontSize: '11px', flexShrink: 0, marginTop: '1px' }}>✓</span>
                 {t}
               </p>
             ))}
