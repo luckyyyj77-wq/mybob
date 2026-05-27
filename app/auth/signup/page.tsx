@@ -10,6 +10,8 @@ export default function SignUpPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showEmailConfirm, setShowEmailConfirm] = useState(false);
+  const [sentEmail, setSentEmail] = useState('');
   const router = useRouter();
 
   const handleGoogle = async () => {
@@ -29,13 +31,53 @@ export default function SignUpPage() {
     if (error) {
       setError(error.message);
     } else {
-      router.push('/onboarding');
+      setSentEmail(email);
+      setShowEmailConfirm(true);
     }
     setLoading(false);
   };
 
   return (
     <div style={{ minHeight: '100svh', backgroundColor: 'white', display: 'flex', flexDirection: 'column' }}>
+
+      {/* 이메일 인증 안내 팝업 */}
+      {showEmailConfirm && (
+        <div style={{
+          position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 1000, padding: '24px',
+        }}>
+          <div style={{
+            backgroundColor: 'white', width: '100%', maxWidth: '360px',
+            padding: '36px 28px', textAlign: 'center',
+          }}>
+            <div style={{ fontSize: '40px', marginBottom: '16px' }}>✉️</div>
+            <h3 style={{ fontSize: '18px', fontWeight: 500, color: 'black', marginBottom: '12px' }}>
+              이메일을 확인해주세요
+            </h3>
+            <p style={{ fontSize: '14px', color: '#6b7280', lineHeight: 1.6, marginBottom: '8px' }}>
+              <span style={{ color: '#111', fontWeight: 500 }}>{sentEmail}</span>으로<br />
+              인증 메일을 보냈습니다.
+            </p>
+            <p style={{ fontSize: '13px', color: '#9ca3af', lineHeight: 1.6, marginBottom: '28px' }}>
+              메일 속 링크를 클릭하면<br />가입이 완료됩니다.
+            </p>
+            <button
+              onClick={() => router.push('/auth/login')}
+              style={{
+                width: '100%', padding: '14px', fontSize: '14px',
+                color: 'white', backgroundColor: '#6B21A8',
+                border: 'none', cursor: 'pointer', letterSpacing: '0.5px',
+              }}
+            >
+              로그인 페이지로 이동
+            </button>
+            <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '16px' }}>
+              메일이 오지 않으면 스팸함을 확인해주세요
+            </p>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div style={{ padding: '48px 32px 0', borderBottom: '1px solid #e5e7eb' }}>
         <h1 style={{ fontSize: '40px', fontWeight: 400, color: 'black', letterSpacing: '-1px', lineHeight: 1, marginBottom: '8px' }}>
