@@ -111,6 +111,7 @@ export default function CameraCapturePage() {
   const [captureMode, setCaptureMode] = useState<CaptureMode>('food');
   const [ocrMeta, setOcrMeta] = useState<{ barcode?: string | null; serving_size?: string; servings_per_container?: number | null } | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [shareWithNeighbors, setShareWithNeighbors] = useState(false);
   // TODO: 바코드 재작업 시 복구
   // const [barcodeScanning, setBarcodeScanning] = useState(false);
   // const [barcodeDetected, setBarcodeDetected] = useState<string | null>(null);
@@ -459,6 +460,7 @@ export default function CameraCapturePage() {
             rating,
             portion,
             originalNutrition: { calories: analysis.calories, nutrients: analysis.nutrients },
+            isPublic: shareWithNeighbors,
           }),
         });
         const result = await res.json();
@@ -1080,6 +1082,38 @@ export default function CameraCapturePage() {
                           ))}
                         </div>
                       </div>
+                    )}
+
+                    {/* 이웃 공유 토글 (PRO만) */}
+                    {uploadStatus?.plan !== 'free' && !saved && (
+                      <button
+                        onClick={() => setShareWithNeighbors(p => !p)}
+                        style={{
+                          width: '100%', padding: '11px 14px',
+                          backgroundColor: shareWithNeighbors ? '#f5f3ff' : 'white',
+                          border: `1px solid ${shareWithNeighbors ? '#a855f7' : '#e5e7eb'}`,
+                          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '14px' }}>👥</span>
+                          <span style={{ fontSize: '12px', color: shareWithNeighbors ? '#6B21A8' : '#6b7280' }}>
+                            이웃에게 공유
+                          </span>
+                        </div>
+                        <div style={{
+                          width: '36px', height: '20px', borderRadius: '10px',
+                          backgroundColor: shareWithNeighbors ? '#6B21A8' : '#d1d5db',
+                          position: 'relative', transition: 'background-color 0.2s',
+                        }}>
+                          <div style={{
+                            position: 'absolute', top: '3px',
+                            left: shareWithNeighbors ? '19px' : '3px',
+                            width: '14px', height: '14px', borderRadius: '50%',
+                            backgroundColor: 'white', transition: 'left 0.2s',
+                          }} />
+                        </div>
+                      </button>
                     )}
 
                     {saved && (

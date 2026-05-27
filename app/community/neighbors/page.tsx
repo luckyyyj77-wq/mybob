@@ -9,6 +9,19 @@ interface Friend { friendshipId: string; id: string; nickname: string; avatar_ur
 interface IncomingRequest { id: string; created_at: string; requester: Profile }
 interface OutgoingRequest { id: string; created_at: string; receiver: Profile }
 
+interface FeedMeal {
+  id: string;
+  user_id: string;
+  food_name: string;
+  calories: number;
+  category?: string;
+  photo_url?: string;
+  created_at: string;
+  portion?: number;
+  nickname: string;
+  avatar_url?: string;
+}
+
 function Skeleton({ width, height }: { width: string | number; height: number }) {
   return (
     <div style={{
@@ -47,9 +60,17 @@ function SkeletonRow() {
   );
 }
 
+function timeAgo(iso: string) {
+  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (diff < 60) return '방금 전';
+  if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
+  return `${Math.floor(diff / 86400)}일 전`;
+}
+
 export default function NeighborsPage() {
   const { token } = useAuth();
-  const [tab, setTab] = useState<'friends' | 'requests' | 'add'>('friends');
+  const [tab, setTab] = useState<'feed' | 'friends' | 'requests' | 'add'>('feed');
   const [friends, setFriends] = useState<Friend[]>([]);
   const [incoming, setIncoming] = useState<IncomingRequest[]>([]);
   const [outgoing, setOutgoing] = useState<OutgoingRequest[]>([]);
@@ -59,12 +80,34 @@ export default function NeighborsPage() {
   const [sendLoading, setSendLoading] = useState(false);
   const [sendResult, setSendResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
+  const [feed, setFeed] = useState<FeedMeal[]>([]);
+  const [feedLoading, setFeedLoading] = useState(false);
+  const [isPro, setIsPro] = useState(false);
 
   useEffect(() => {
     if (token === null) return;
-    if (token) loadFriends(token);
-    else setLoading(false);
+    if (token) {
+      loadFriends(token);
+      loadFeed(token);
+    } else {
+      setLoading(false);
+    }
   }, [token]);
+
+  const loadFeed = useCallback(async (t: string) => {
+    setFeedLoading(true);
+    try {
+      const res = await fetch('/api/community', { headers: { Authorization: `Bearer ${t}` } });
+      if (res.status === 403) { setIsPro(false); return; }
+      const data = await res.json();
+      if (res.ok) {
+        setIsPro(true);
+        setFeed(data.data ?? []);
+      }
+    } catch { } finally {
+      setFeedLoading(false);
+    }
+  }, []);
 
   const loadFriends = useCallback(async (t: string) => {
     try {
@@ -181,6 +224,7 @@ export default function NeighborsPage() {
       {/* 서브탭 */}
       <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb', backgroundColor: 'white', position: 'sticky', top: 0, zIndex: 1 }}>
         {([
+          { key: 'feed', label: '피드' },
           { key: 'friends', label: `이웃${!loading ? ` ${friends.length}` : ''}` },
           { key: 'requests', label: `요청${incomingCount > 0 ? ` · ${incomingCount}` : ''}` },
           { key: 'add', label: '+ 추가' },
@@ -198,6 +242,84 @@ export default function NeighborsPage() {
       </div>
 
       <div style={{ padding: '20px' }}>
+
+        {/* 이웃 피드 */}
+        {tab === 'feed' && (
+          !isPro ? (
+            <div style={{ textAlign: 'center', paddingTop: '60px' }}>
+              <p style={{ fontSize: '28px', marginBottom: '12px' }}>👥</p>
+              <p style={{ fontSize: '15px', color: 'black', marginBottom: '6px' }}>PRO 전용 기능</p>
+              <p style={{ fontSize: '13px', color: '#9ca3af', lineHeight: 1.7 }}>
+                PRO 플랜에서 이웃의 식단을<br />피드로 확인할 수 있습니다.
+              </p>
+            </div>
+          ) : feedLoading ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', border: '1px solid #e5e7eb' }}>
+              {[1, 2, 3].map(i => <SkeletonRow key={i} />)}
+            </div>
+          ) : feed.length === 0 ? (
+            <div style={{ textAlign: 'center', paddingTop: '60px' }}>
+              <p style={{ fontSize: '28px', marginBottom: '12px' }}>🍽️</p>
+              <p style={{ fontSize: '14px', color: '#9ca3af', lineHeight: 1.7 }}>
+                이웃이 공유한 식단이 없습니다.<br />
+                이웃을 추가하거나 공유를 기다려보세요.
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', border: '1px solid #e5e7eb' }}>
+              {feed.map(item => {
+                const initials = item.nickname.replace(/[_0-9]/g, '').slice(0, 2);
+                return (
+                  <div key={item.id} style={{ backgroundColor: 'white', padding: '16px', borderBottom: '1px solid #f3f4f6' }}>
+                    {/* 유저 헤더 */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                      <div style={{
+                        width: '34px', height: '34px', borderRadius: '50%',
+                        backgroundColor: '#f3f4f6', border: '1px solid #e5e7eb',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '11px', fontWeight: 500, color: '#6b7280', flexShrink: 0,
+                        overflow: 'hidden',
+                      }}>
+                        {item.avatar_url
+                          ? <img src={item.avatar_url} alt={item.nickname} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          : initials || '?'
+                        }
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <p style={{ fontSize: '13px', color: 'black', fontWeight: 500 }}>{item.nickname}</p>
+                        <p style={{ fontSize: '11px', color: '#9ca3af' }}>{timeAgo(item.created_at)}</p>
+                      </div>
+                      {item.category && (
+                        <span style={{
+                          fontSize: '9px', letterSpacing: '1px', textTransform: 'uppercase',
+                          color: '#9ca3af', border: '1px solid #e5e7eb', padding: '3px 7px',
+                        }}>
+                          {item.category}
+                        </span>
+                      )}
+                    </div>
+                    {/* 사진 (클라우드 식단만) */}
+                    {item.photo_url && !item.photo_url.startsWith('local:') && (
+                      <img
+                        src={item.photo_url}
+                        alt={item.food_name}
+                        style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', marginBottom: '12px', display: 'block' }}
+                      />
+                    )}
+                    {/* 음식 정보 */}
+                    <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+                      <p style={{ fontSize: '16px', fontWeight: 400, color: 'black' }}>{item.food_name}</p>
+                      <p style={{ fontSize: '18px', color: '#6B21A8', lineHeight: 1 }}>
+                        {Math.round(item.calories * (item.portion ?? 1))}
+                        <span style={{ fontSize: '10px', color: '#9ca3af', marginLeft: '3px' }}>kcal</span>
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )
+        )}
 
         {/* 이웃 목록 */}
         {tab === 'friends' && (

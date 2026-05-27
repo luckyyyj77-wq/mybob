@@ -58,7 +58,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { mealData, imageBase64, rating, portion, originalNutrition } = await request.json();
+    const { mealData, imageBase64, rating, portion, originalNutrition, isPublic } = await request.json();
     if (!mealData || !imageBase64) {
       return NextResponse.json({ error: 'mealData and imageBase64 are required.' }, { status: 400 });
     }
@@ -137,6 +137,7 @@ export async function POST(request: Request) {
       rating: rating ?? null,
       portion: portion ?? 1.0,
       original_nutrition: originalNutrition ?? null,
+      is_public: Boolean(isPublic),
     };
 
     const { data, error } = await adminSupabase
@@ -203,6 +204,7 @@ export async function PATCH(request: Request) {
     if (updates.calories !== undefined) patchData.calories = toNum(updates.calories) ?? 0;
     if (updates.rating !== undefined) patchData.rating = updates.rating ?? null;
     if (updates.portion !== undefined) patchData.portion = updates.portion ?? 1.0;
+    if (updates.is_public !== undefined) patchData.is_public = Boolean(updates.is_public);
     if (updates.nutrient !== undefined) {
       patchData.nutrient = Object.fromEntries(
         Object.entries(updates.nutrient).map(([k, v]) => {

@@ -38,6 +38,7 @@ type Meal = {
   original_nutrition?: { calories: number; nutrients: Nutrient } | null;
   edited_nutrition?: Nutrient | null;
   is_edited?: boolean;
+  is_public?: boolean;
 };
 
 type GalleryMode = 'detail' | 'grid4' | 'grid16';
@@ -231,6 +232,25 @@ function MealDetailContent() {
       alert(`저장 실패: ${err.message}`);
     } finally {
       setSavingEdit(false);
+    }
+  };
+
+  const handleTogglePublic = async () => {
+    if (!meal || !token) return;
+    const newVal = !meal.is_public;
+    setMeal({ ...meal, is_public: newVal });
+    try {
+      await fetch('/api/meals', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ mealId: meal.id, updates: { is_public: newVal } }),
+      });
+      const existing: Meal[] = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
+      localStorage.setItem('mybob_meals', JSON.stringify(
+        existing.map(m => m.id === meal.id ? { ...m, is_public: newVal } : m)
+      ));
+    } catch {
+      setMeal({ ...meal, is_public: !newVal });
     }
   };
 
@@ -603,6 +623,45 @@ function MealDetailContent() {
                 );
               })()}
             </div>
+
+            {/* 이웃 공개 토글 (PRO + 클라우드 식단만) */}
+            {userPlan !== 'free' && meal.photo_url && !meal.photo_url.startsWith('local:') && (
+              <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #f3f4f6' }}>
+                <button
+                  onClick={handleTogglePublic}
+                  style={{
+                    width: '100%', padding: '12px 14px',
+                    backgroundColor: meal.is_public ? '#f5f3ff' : 'white',
+                    border: `1px solid ${meal.is_public ? '#a855f7' : '#e5e7eb'}`,
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '14px' }}>👥</span>
+                    <div style={{ textAlign: 'left' }}>
+                      <p style={{ fontSize: '13px', color: meal.is_public ? '#6B21A8' : '#374151' }}>
+                        {meal.is_public ? '이웃에게 공개 중' : '이웃 공개'}
+                      </p>
+                      <p style={{ fontSize: '11px', color: '#9ca3af' }}>
+                        {meal.is_public ? '이웃 피드에 표시됩니다' : '이웃 피드에 표시되지 않습니다'}
+                      </p>
+                    </div>
+                  </div>
+                  <div style={{
+                    width: '36px', height: '20px', borderRadius: '10px',
+                    backgroundColor: meal.is_public ? '#6B21A8' : '#d1d5db',
+                    position: 'relative', transition: 'background-color 0.2s', flexShrink: 0,
+                  }}>
+                    <div style={{
+                      position: 'absolute', top: '3px',
+                      left: meal.is_public ? '19px' : '3px',
+                      width: '14px', height: '14px', borderRadius: '50%',
+                      backgroundColor: 'white', transition: 'left 0.2s',
+                    }} />
+                  </div>
+                </button>
+              </div>
+            )}
 
             {/* 영양성분 추가 — 편집 중일 때만 표시 */}
             {isEditing && (
