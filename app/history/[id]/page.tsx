@@ -624,8 +624,8 @@ function MealDetailContent() {
               })()}
             </div>
 
-            {/* 이웃 공개 토글 (PRO + 클라우드 식단만) */}
-            {userPlan !== 'free' && meal.photo_url && !meal.photo_url.startsWith('local:') && (
+            {/* 이웃 공개 토글 (PRO + UUID 식단만, 로컬 Date.now() id 제외) */}
+            {userPlan !== 'free' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(meal.id) && (
               <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #f3f4f6' }}>
                 <button
                   onClick={handleTogglePublic}

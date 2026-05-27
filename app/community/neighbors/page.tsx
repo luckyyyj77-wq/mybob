@@ -81,8 +81,8 @@ export default function NeighborsPage() {
   const [sendResult, setSendResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
   const [feed, setFeed] = useState<FeedMeal[]>([]);
-  const [feedLoading, setFeedLoading] = useState(false);
-  const [isPro, setIsPro] = useState(false);
+  const [feedLoading, setFeedLoading] = useState(true);
+  const [isPro, setIsPro] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (token === null) return;
@@ -108,6 +108,7 @@ export default function NeighborsPage() {
       setFeedLoading(false);
     }
   }, []);
+
 
   const loadFriends = useCallback(async (t: string) => {
     try {
@@ -245,17 +246,17 @@ export default function NeighborsPage() {
 
         {/* 이웃 피드 */}
         {tab === 'feed' && (
-          !isPro ? (
+          isPro === null || feedLoading ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', border: '1px solid #e5e7eb' }}>
+              {[1, 2, 3].map(i => <SkeletonRow key={i} />)}
+            </div>
+          ) : !isPro ? (
             <div style={{ textAlign: 'center', paddingTop: '60px' }}>
               <p style={{ fontSize: '28px', marginBottom: '12px' }}>👥</p>
               <p style={{ fontSize: '15px', color: 'black', marginBottom: '6px' }}>PRO 전용 기능</p>
               <p style={{ fontSize: '13px', color: '#9ca3af', lineHeight: 1.7 }}>
                 PRO 플랜에서 이웃의 식단을<br />피드로 확인할 수 있습니다.
               </p>
-            </div>
-          ) : feedLoading ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', border: '1px solid #e5e7eb' }}>
-              {[1, 2, 3].map(i => <SkeletonRow key={i} />)}
             </div>
           ) : feed.length === 0 ? (
             <div style={{ textAlign: 'center', paddingTop: '60px' }}>
@@ -303,7 +304,7 @@ export default function NeighborsPage() {
                       <img
                         src={item.photo_url}
                         alt={item.food_name}
-                        style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', marginBottom: '12px', display: 'block' }}
+                        style={{ width: '100%', maxHeight: '320px', objectFit: 'cover', marginBottom: '12px', display: 'block' }}
                       />
                     )}
                     {/* 음식 정보 */}
