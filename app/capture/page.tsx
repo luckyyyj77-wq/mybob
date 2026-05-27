@@ -433,6 +433,7 @@ export default function CameraCapturePage() {
           rating,
           portion,
           original_nutrition: { calories: analysis.calories, nutrients: analysis.nutrients },
+          is_public: false,
         };
         const existing = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
         localStorage.setItem('mybob_meals', JSON.stringify([localMeal, ...existing]));
@@ -503,6 +504,7 @@ export default function CameraCapturePage() {
           rating,
           portion,
           original_nutrition: { calories: analysis.calories, nutrients: analysis.nutrients },
+          is_public: shareWithNeighbors,
         };
         const existing = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
         localStorage.setItem('mybob_meals', JSON.stringify([localMeal, ...existing]));

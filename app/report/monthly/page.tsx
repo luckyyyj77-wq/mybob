@@ -58,7 +58,9 @@ export default function MonthlyReportPage() {
       .then(r => r.json()).then(result => {
         if (result.success && Array.isArray(result.data)) {
           const serverIds = new Set(result.data.map((m: Meal) => m.id));
-          setAllMeals([...result.data, ...local.filter(m => !serverIds.has(m.id))]);
+          const merged = [...result.data, ...local.filter(m => !serverIds.has(m.id))];
+          setAllMeals(merged);
+          localStorage.setItem('mybob_meals', JSON.stringify(merged));
         }
       }).catch(() => {});
   }, [token]);

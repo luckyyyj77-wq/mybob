@@ -125,6 +125,7 @@ export default function HistoryPage() {
           const serverIds = new Set(result.data.map((m: Meal) => m.id));
           const merged = [...result.data, ...local.filter(m => !serverIds.has(m.id))];
           setMeals(sorted(merged));
+          localStorage.setItem('mybob_meals', JSON.stringify(merged));
         }
       }).catch(() => {});
   }, [token]);
