@@ -687,7 +687,7 @@ export default function HistoryPage() {
 
       {/* ── Quick Log 바텀시트 ── */}
       {showQuickLog && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 100 }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 10002 }}>
           {/* 배경 딤 — touchmove 막아서 뒤 스크롤 차단 */}
           <div
             onClick={closeQuickLog}
