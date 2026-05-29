@@ -701,17 +701,17 @@ export default function HistoryPage() {
               style={{
                 position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 101,
                 backgroundColor: 'white', borderRadius: '20px 20px 0 0',
-                padding: '0 0 40px',
-                maxHeight: '90vh', overflowY: 'auto',
+                display: 'flex', flexDirection: 'column',
+                maxHeight: '92dvh',
               }}
             >
               {/* 핸들 */}
-              <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 4px' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 4px', flexShrink: 0 }}>
                 <div style={{ width: '36px', height: '4px', borderRadius: '2px', backgroundColor: '#e5e7eb' }} />
               </div>
 
               {/* 헤더 */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 24px 16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 24px 16px', flexShrink: 0 }}>
                 <div>
                   <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '2px' }}>QUICK LOG</p>
                   <h2 style={{ fontSize: '20px', fontWeight: 400, color: 'black', letterSpacing: '-0.5px' }}>
@@ -723,111 +723,120 @@ export default function HistoryPage() {
                 </button>
               </div>
 
-              {/* Step 1: 식사 시간 선택 */}
-              {qlStep === 'time' && (
-                <div style={{ padding: '0 24px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {MEAL_TIMES.map(mt => (
-                      <button
-                        key={mt.value}
-                        onClick={() => selectMealTime(mt.value)}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: '16px',
-                          padding: '16px 20px',
-                          backgroundColor: qlMealTime === mt.value ? '#faf5ff' : '#fafafa',
-                          border: `1px solid ${qlMealTime === mt.value ? '#a855f7' : '#e5e7eb'}`,
-                          cursor: 'pointer', textAlign: 'left',
-                        }}
-                      >
-                        <span style={{ fontSize: '28px', lineHeight: 1 }}>{mt.emoji}</span>
-                        <div>
-                          <p style={{ fontSize: '15px', color: 'black', marginBottom: '2px' }}>{mt.label}</p>
-                          <p style={{ fontSize: '11px', color: '#9ca3af' }}>
-                            기본 {String(mt.defaultHour).padStart(2, '0')}:{String(mt.defaultMinute).padStart(2, '0')}
-                          </p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+              {/* 스크롤 가능한 본문 */}
+              <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' as any }}>
 
-              {/* Step 2: 음식 이름 + 시간 조정 */}
-              {qlStep === 'input' && (
-                <div style={{ padding: '0 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-
-                  {/* 선택된 식사 시간 표시 + 뒤로 */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <button
-                      onClick={() => setQlStep('time')}
-                      style={{ background: 'none', border: '1px solid #e5e7eb', padding: '6px 10px', fontSize: '11px', cursor: 'pointer', color: '#6b7280' }}
-                    >
-                      ← 시간 변경
-                    </button>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', backgroundColor: '#faf5ff', border: '1px solid #e9d5ff' }}>
-                      <span>{MEAL_TIMES.find(t => t.value === qlMealTime)?.emoji}</span>
-                      <span style={{ fontSize: '13px', color: '#6B21A8' }}>{MEAL_TIMES.find(t => t.value === qlMealTime)?.label}</span>
+                {/* Step 1: 식사 시간 선택 */}
+                {qlStep === 'time' && (
+                  <div style={{ padding: '0 24px 24px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {MEAL_TIMES.map(mt => (
+                        <button
+                          key={mt.value}
+                          onClick={() => selectMealTime(mt.value)}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: '16px',
+                            padding: '16px 20px',
+                            backgroundColor: qlMealTime === mt.value ? '#faf5ff' : '#fafafa',
+                            border: `1px solid ${qlMealTime === mt.value ? '#a855f7' : '#e5e7eb'}`,
+                            cursor: 'pointer', textAlign: 'left',
+                          }}
+                        >
+                          <span style={{ fontSize: '28px', lineHeight: 1 }}>{mt.emoji}</span>
+                          <div>
+                            <p style={{ fontSize: '15px', color: 'black', marginBottom: '2px' }}>{mt.label}</p>
+                            <p style={{ fontSize: '11px', color: '#9ca3af' }}>
+                              기본 {String(mt.defaultHour).padStart(2, '0')}:{String(mt.defaultMinute).padStart(2, '0')}
+                            </p>
+                          </div>
+                        </button>
+                      ))}
                     </div>
                   </div>
+                )}
 
-                  {/* 날짜 + 시간 조정 */}
-                  <div>
-                    <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px' }}>날짜 · 시간</p>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      <input
-                        type="date"
-                        value={qlDate}
-                        max={todayKST()}
-                        onChange={e => setQlDate(e.target.value)}
-                        style={{ flex: 1, padding: '10px 12px', border: '1px solid #e5e7eb', fontSize: '13px', color: 'black', outline: 'none', backgroundColor: 'white' }}
-                      />
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid #e5e7eb', padding: '10px 12px' }}>
-                        <input
-                          type="number"
-                          min={0} max={23}
-                          value={String(qlHour).padStart(2, '0')}
-                          onChange={e => setQlHour(Math.max(0, Math.min(23, Number(e.target.value))))}
-                          style={{ width: '32px', border: 'none', outline: 'none', fontSize: '13px', textAlign: 'center', color: 'black' }}
-                        />
-                        <span style={{ color: '#9ca3af' }}>:</span>
-                        <input
-                          type="number"
-                          min={0} max={59} step={5}
-                          value={String(qlMinute).padStart(2, '0')}
-                          onChange={e => setQlMinute(Math.max(0, Math.min(59, Number(e.target.value))))}
-                          style={{ width: '32px', border: 'none', outline: 'none', fontSize: '13px', textAlign: 'center', color: 'black' }}
-                        />
+                {/* Step 2: 음식 이름 + 시간 조정 */}
+                {qlStep === 'input' && (
+                  <div style={{ padding: '0 24px 8px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+                    {/* 선택된 식사 시간 표시 + 뒤로 */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <button
+                        onClick={() => setQlStep('time')}
+                        style={{ background: 'none', border: '1px solid #e5e7eb', padding: '6px 10px', fontSize: '11px', cursor: 'pointer', color: '#6b7280' }}
+                      >
+                        ← 시간 변경
+                      </button>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', backgroundColor: '#faf5ff', border: '1px solid #e9d5ff' }}>
+                        <span>{MEAL_TIMES.find(t => t.value === qlMealTime)?.emoji}</span>
+                        <span style={{ fontSize: '13px', color: '#6B21A8' }}>{MEAL_TIMES.find(t => t.value === qlMealTime)?.label}</span>
                       </div>
                     </div>
+
+                    {/* 날짜 + 시간 조정 */}
+                    <div>
+                      <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px' }}>날짜 · 시간</p>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <input
+                          type="date"
+                          value={qlDate}
+                          max={todayKST()}
+                          onChange={e => setQlDate(e.target.value)}
+                          style={{ flex: 1, padding: '10px 12px', border: '1px solid #e5e7eb', fontSize: '13px', color: 'black', outline: 'none', backgroundColor: 'white' }}
+                        />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid #e5e7eb', padding: '10px 12px' }}>
+                          <input
+                            type="number"
+                            min={0} max={23}
+                            value={String(qlHour).padStart(2, '0')}
+                            onChange={e => setQlHour(Math.max(0, Math.min(23, Number(e.target.value))))}
+                            style={{ width: '32px', border: 'none', outline: 'none', fontSize: '13px', textAlign: 'center', color: 'black' }}
+                          />
+                          <span style={{ color: '#9ca3af' }}>:</span>
+                          <input
+                            type="number"
+                            min={0} max={59} step={5}
+                            value={String(qlMinute).padStart(2, '0')}
+                            onChange={e => setQlMinute(Math.max(0, Math.min(59, Number(e.target.value))))}
+                            style={{ width: '32px', border: 'none', outline: 'none', fontSize: '13px', textAlign: 'center', color: 'black' }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 음식 이름 입력 */}
+                    <div>
+                      <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px' }}>음식 이름</p>
+                      <input
+                        ref={qlInputRef}
+                        value={qlFoodName}
+                        onChange={e => setQlFoodName(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter' && qlFoodName.trim()) handleQuickLogSave(); }}
+                        placeholder="예: 된장찌개, 바나나 1개, 아메리카노"
+                        style={{
+                          width: '100%', padding: '14px 16px',
+                          border: '1px solid #e5e7eb', fontSize: '15px',
+                          color: 'black', outline: 'none', boxSizing: 'border-box',
+                          backgroundColor: 'white',
+                        }}
+                      />
+                      <p style={{ fontSize: '11px', color: '#9ca3af', marginTop: '6px', lineHeight: 1.5 }}>
+                        AI가 칼로리와 영양소를 자동으로 계산해요. 분석 횟수는 차감되지 않아요.
+                      </p>
+                    </div>
+
+                    {qlError && (
+                      <p style={{ fontSize: '12px', color: '#ef4444', padding: '10px 14px', backgroundColor: '#fef2f2', border: '1px solid #fecaca' }}>
+                        {qlError}
+                      </p>
+                    )}
                   </div>
+                )}
+              </div>
 
-                  {/* 음식 이름 입력 */}
-                  <div>
-                    <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px' }}>음식 이름</p>
-                    <input
-                      ref={qlInputRef}
-                      value={qlFoodName}
-                      onChange={e => setQlFoodName(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter' && qlFoodName.trim()) handleQuickLogSave(); }}
-                      placeholder="예: 된장찌개, 바나나 1개, 아메리카노"
-                      style={{
-                        width: '100%', padding: '14px 16px',
-                        border: '1px solid #e5e7eb', fontSize: '15px',
-                        color: 'black', outline: 'none', boxSizing: 'border-box',
-                        backgroundColor: 'white',
-                      }}
-                    />
-                    <p style={{ fontSize: '11px', color: '#9ca3af', marginTop: '6px', lineHeight: 1.5 }}>
-                      AI가 칼로리와 영양소를 자동으로 계산해요. 분석 횟수는 차감되지 않아요.
-                    </p>
-                  </div>
-
-                  {qlError && (
-                    <p style={{ fontSize: '12px', color: '#ef4444', padding: '10px 14px', backgroundColor: '#fef2f2', border: '1px solid #fecaca' }}>
-                      {qlError}
-                    </p>
-                  )}
-
+              {/* 저장 버튼 — 항상 하단 고정 (키보드 위) */}
+              {qlStep === 'input' && (
+                <div style={{ flexShrink: 0, padding: '12px 24px', paddingBottom: 'calc(12px + env(safe-area-inset-bottom))', borderTop: '1px solid #f3f4f6', backgroundColor: 'white' }}>
                   <button
                     onClick={handleQuickLogSave}
                     disabled={qlLoading || !qlFoodName.trim()}
