@@ -702,7 +702,8 @@ export default function HistoryPage() {
                 position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 101,
                 backgroundColor: 'white', borderRadius: '20px 20px 0 0',
                 display: 'flex', flexDirection: 'column',
-                maxHeight: '92dvh',
+                maxHeight: '85vh',
+                minHeight: '40vh',
               }}
             >
               {/* 핸들 */}
@@ -724,7 +725,7 @@ export default function HistoryPage() {
               </div>
 
               {/* 스크롤 가능한 본문 */}
-              <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' as any }}>
+              <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch' as any }}>
 
                 {/* Step 1: 식사 시간 선택 */}
                 {qlStep === 'time' && (
