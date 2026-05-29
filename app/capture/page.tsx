@@ -212,11 +212,15 @@ export default function CameraCapturePage() {
   useEffect(() => {
     if (permState === 'granted' && captureMode === 'food' && !imageSrc) {
       startFoodCamera();
-    } else if (permState !== 'granted' || captureMode !== 'food') {
+    } else if (permState !== 'granted' || captureMode !== 'food' || imageSrc) {
       stopFoodCamera();
     }
-    return () => { stopFoodCamera(); };
   }, [permState, captureMode, imageSrc, startFoodCamera, stopFoodCamera]);
+
+  // 페이지 언마운트 시에만 카메라 정리
+  useEffect(() => {
+    return () => { stopFoodCamera(); };
+  }, [stopFoodCamera]);
 
   // 버튼 클릭 → getUserMedia를 동기 컨텍스트에서 즉시 호출 (안드로이드 user gesture 보장)
   // async/await 사용 금지: await 이후는 user gesture 체인이 끊겨 안드로이드에서 팝업 차단됨
