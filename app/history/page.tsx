@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaThList, FaThLarge, FaTh, FaPlus, FaMinus, FaSearch, FaTimes } from 'react-icons/fa';
+import { FaThList, FaThLarge, FaTh, FaPlus, FaMinus, FaSearch, FaTimes, FaSpinner } from 'react-icons/fa';
 import { useAuth } from '@/lib/auth-context';
 import { MealPhoto } from '@/components/MealPhoto';
+import { getStorageMode } from '@/lib/storage-mode';
 
 const DAYS_PER_PAGE = 3;
 
@@ -18,10 +19,12 @@ type Meal = {
   photo_url?: string;
   category?: string;
   nutrient?: any;
+  is_manual?: boolean;
 };
 
 type ViewMode = 'full' | 'grid' | 'gallery';
 type SortKey = 'date_desc' | 'date_asc' | 'cal_desc' | 'cal_asc';
+type MealTime = 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'latenight';
 
 const CATEGORIES = ['전체', '한식', '중식', '일식', '양식', '간식', '음료', '기타'];
 
@@ -32,7 +35,51 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: 'cal_asc',   label: '칼로리 낮은순' },
 ];
 
-// KST(UTC+9) 기준 날짜 키 반환 (YYYY-MM-DD)
+const MEAL_TIMES: { value: MealTime; label: string; emoji: string; defaultHour: number; defaultMinute: number }[] = [
+  { value: 'breakfast', label: '아침',  emoji: '🌅', defaultHour: 8,  defaultMinute: 0  },
+  { value: 'lunch',     label: '점심',  emoji: '☀️', defaultHour: 12, defaultMinute: 30 },
+  { value: 'dinner',    label: '저녁',  emoji: '🌆', defaultHour: 18, defaultMinute: 30 },
+  { value: 'snack',     label: '간식',  emoji: '🍪', defaultHour: 15, defaultMinute: 0  },
+  { value: 'latenight', label: '야식',  emoji: '🌙', defaultHour: 22, defaultMinute: 0  },
+];
+
+// 카테고리별 이모지
+const CATEGORY_EMOJI: Record<string, string> = {
+  '한식': '🍱', '중식': '🥢', '일식': '🍣', '양식': '🍝',
+  '간식': '🍪', '음료': '🧃', '기타': '🍽️',
+};
+
+// 카테고리별 배경 (이모지 카드용)
+const CATEGORY_BG: Record<string, { bg: string; accent: string }> = {
+  '한식':   { bg: '#fff8f0', accent: '#f97316' },
+  '중식':   { bg: '#fff0f0', accent: '#ef4444' },
+  '일식':   { bg: '#f0f4ff', accent: '#6366f1' },
+  '양식':   { bg: '#f0fff4', accent: '#16a34a' },
+  '간식':   { bg: '#fdf4ff', accent: '#a855f7' },
+  '음료':   { bg: '#f0f9ff', accent: '#0ea5e9' },
+  '기타':   { bg: '#f9fafb', accent: '#6b7280' },
+};
+
+// 건강/다이어트 격언 (카드 공백 채우기용)
+const HEALTH_TIPS = [
+  '천천히 씹을수록 포만감이 높아져요',
+  '식사 30분 전 물 한 잔이 과식을 줄여줘요',
+  '단백질은 근육을 지키는 최고의 친구예요',
+  '식이섬유가 풍부한 식사는 혈당 급등을 막아요',
+  '규칙적인 식사 시간이 신진대사를 높여요',
+  '채소를 먼저 먹으면 칼로리 흡수가 줄어요',
+  '나트륨을 줄이면 붓기가 빠져요',
+  '야식은 수면의 질을 낮춰요',
+  '아침 식사는 하루 에너지의 시작이에요',
+  '식사 일기를 쓰면 과식이 20% 줄어요',
+];
+
+function getHealthTip(seed: string) {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
+  return HEALTH_TIPS[Math.abs(h) % HEALTH_TIPS.length];
+}
+
 function toKSTDateKey(dateStr: string): string {
   const kst = new Date(new Date(dateStr).getTime() + 9 * 60 * 60 * 1000);
   return kst.toISOString().slice(0, 10);
@@ -66,19 +113,13 @@ function groupByDate(meals: Meal[]): { dateKey: string; label: string; meals: Me
 
 function applyFilters(meals: Meal[], query: string, category: string, sort: SortKey): Meal[] {
   let result = [...meals];
-
-  // 검색어
   if (query.trim()) {
     const q = query.trim().toLowerCase();
     result = result.filter(m => m.food_name.toLowerCase().includes(q));
   }
-
-  // 카테고리
   if (category !== '전체') {
     result = result.filter(m => (m.category || '기타') === category);
   }
-
-  // 정렬
   result.sort((a, b) => {
     if (sort === 'date_desc') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     if (sort === 'date_asc')  return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
@@ -86,8 +127,21 @@ function applyFilters(meals: Meal[], query: string, category: string, sort: Sort
     if (sort === 'cal_asc')   return a.calories - b.calories;
     return 0;
   });
-
   return result;
+}
+
+// KST 기준 오늘 날짜 YYYY-MM-DD
+function todayKST(): string {
+  return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+// 오늘 식단 요약 (타임라인 카드 공백 채우기)
+function getDailySummary(meals: Meal[], dateKey: string): { totalCal: number; count: number } {
+  const dayMeals = meals.filter(m => toKSTDateKey(m.created_at) === dateKey);
+  return {
+    totalCal: dayMeals.reduce((s, m) => s + m.calories, 0),
+    count: dayMeals.length,
+  };
 }
 
 export default function HistoryPage() {
@@ -99,18 +153,25 @@ export default function HistoryPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('full');
   const [galleryScale, setGalleryScale] = useState(4);
 
-  // 검색 / 필터 / 정렬
   const [showSearch, setShowSearch] = useState(false);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('전체');
   const [sort, setSort] = useState<SortKey>('date_desc');
   const searchInputRef = useRef<HTMLInputElement>(null);
-
-  // 날짜 그룹 pagination
   const [visibleDays, setVisibleDays] = useState(DAYS_PER_PAGE);
-
-  // 맨 위로 버튼
   const [showTop, setShowTop] = useState(false);
+
+  // Quick Log 상태
+  const [showQuickLog, setShowQuickLog] = useState(false);
+  const [qlStep, setQlStep] = useState<'time' | 'input'>('time');
+  const [qlMealTime, setQlMealTime] = useState<MealTime>('lunch');
+  const [qlFoodName, setQlFoodName] = useState('');
+  const [qlDate, setQlDate] = useState(todayKST());
+  const [qlHour, setQlHour] = useState(12);
+  const [qlMinute, setQlMinute] = useState(30);
+  const [qlLoading, setQlLoading] = useState(false);
+  const [qlError, setQlError] = useState<string | null>(null);
+  const qlInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const local: Meal[] = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
@@ -130,42 +191,212 @@ export default function HistoryPage() {
       }).catch(() => {});
   }, [token]);
 
-  // 검색창 열릴 때 포커스
   useEffect(() => {
     if (showSearch) setTimeout(() => searchInputRef.current?.focus(), 80);
   }, [showSearch]);
 
-  // 필터/정렬 변경 시 visibleDays 리셋
-  useEffect(() => {
-    setVisibleDays(DAYS_PER_PAGE);
-  }, [query, category, sort, viewMode]);
+  useEffect(() => { setVisibleDays(DAYS_PER_PAGE); }, [query, category, sort, viewMode]);
 
-  // 맨 위로 버튼 표시
   useEffect(() => {
     const onScroll = () => setShowTop(window.scrollY > 300);
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const handleZoom = (delta: number) => {
-    setGalleryScale(prev => Math.max(3, Math.min(6, prev + delta)));
+  // Quick Log: 식사 시간 선택 시 기본 시간 세팅
+  const selectMealTime = (mt: MealTime) => {
+    setQlMealTime(mt);
+    const found = MEAL_TIMES.find(t => t.value === mt);
+    if (found) { setQlHour(found.defaultHour); setQlMinute(found.defaultMinute); }
+    setQlStep('input');
+    setTimeout(() => qlInputRef.current?.focus(), 100);
   };
 
-  const filtered = useMemo(
-    () => applyFilters(meals, query, category, sort),
-    [meals, query, category, sort]
-  );
+  const openQuickLog = () => {
+    setQlStep('time');
+    setQlFoodName('');
+    setQlDate(todayKST());
+    setQlError(null);
+    setShowQuickLog(true);
+  };
+
+  const closeQuickLog = () => {
+    setShowQuickLog(false);
+    setQlStep('time');
+    setQlFoodName('');
+    setQlError(null);
+    setQlLoading(false);
+  };
+
+  const handleQuickLogSave = useCallback(async () => {
+    if (!qlFoodName.trim()) return;
+    setQlLoading(true);
+    setQlError(null);
+
+    // KST 기준 날짜 + 시간으로 created_at 생성
+    const createdAt = new Date(`${qlDate}T${String(qlHour).padStart(2, '0')}:${String(qlMinute).padStart(2, '0')}:00+09:00`).toISOString();
+    const mode = getStorageMode();
+
+    try {
+      if (mode === 'cloud' && token) {
+        const res = await fetch('/api/quick-log', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ foodName: qlFoodName.trim(), mealTime: qlMealTime, createdAt }),
+        });
+        const result = await res.json();
+        if (res.status === 429) { setQlError('오늘 저장 한도에 도달했습니다.'); setQlLoading(false); return; }
+        if (!res.ok) { setQlError('저장 실패. 다시 시도해주세요.'); setQlLoading(false); return; }
+
+        const newMeal: Meal = {
+          id: result.data?.id ?? Date.now().toString(),
+          food_name: qlFoodName.trim(),
+          calories: result.nutrition?.calories ?? 0,
+          category: result.nutrition?.category ?? '기타',
+          nutrient: result.nutrition?.nutrients,
+          photo_url: undefined,
+          created_at: createdAt,
+          is_manual: true,
+        };
+        setMeals(prev => {
+          const updated = [newMeal, ...prev].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+          localStorage.setItem('mybob_meals', JSON.stringify(updated));
+          return updated;
+        });
+
+      } else {
+        // 로컬 모드: Gemini 없이 간단히 저장 (칼로리 0으로, 나중에 직접 수정)
+        // 로컬에서도 칼로리 추정 API 호출
+        const res = await fetch('/api/quick-log', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          body: JSON.stringify({ foodName: qlFoodName.trim(), mealTime: qlMealTime, createdAt }),
+        });
+
+        let nutrition = { calories: 0, category: '기타', nutrients: {} };
+        if (res.ok) {
+          const result = await res.json();
+          nutrition = result.nutrition ?? nutrition;
+        }
+
+        const mealId = Date.now().toString();
+        const newMeal: Meal = {
+          id: mealId,
+          food_name: qlFoodName.trim(),
+          calories: nutrition.calories,
+          category: nutrition.category,
+          nutrient: nutrition.nutrients,
+          photo_url: undefined,
+          created_at: createdAt,
+          is_manual: true,
+        };
+        setMeals(prev => {
+          const updated = [newMeal, ...prev].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+          localStorage.setItem('mybob_meals', JSON.stringify(updated));
+          return updated;
+        });
+      }
+
+      closeQuickLog();
+    } catch {
+      setQlError('저장 실패. 다시 시도해주세요.');
+      setQlLoading(false);
+    }
+  }, [qlFoodName, qlMealTime, qlDate, qlHour, qlMinute, token]);
+
+  const handleZoom = (delta: number) => setGalleryScale(prev => Math.max(3, Math.min(6, prev + delta)));
+
+  const filtered = useMemo(() => applyFilters(meals, query, category, sort), [meals, query, category, sort]);
   const allGroups = useMemo(() => groupByDate(filtered), [filtered]);
   const groups = useMemo(() => allGroups.slice(0, visibleDays), [allGroups, visibleDays]);
   const visibleFiltered = useMemo(() => groups.flatMap(g => g.meals), [groups]);
-
-  // 검색/필터 활성화 여부
   const isFiltered = query.trim() !== '' || category !== '전체' || sort !== 'date_desc';
 
-  const clearAll = () => {
-    setQuery('');
-    setCategory('전체');
-    setSort('date_desc');
+  const clearAll = () => { setQuery(''); setCategory('전체'); setSort('date_desc'); };
+
+  // 이모지 카드 (사진 없는 수동 입력 식단)
+  const ManualMealCard = ({ meal }: { meal: Meal }) => {
+    const cat = meal.category || '기타';
+    const theme = CATEGORY_BG[cat] ?? CATEGORY_BG['기타'];
+    const emoji = CATEGORY_EMOJI[cat] ?? '🍽️';
+    const tip = getHealthTip(meal.id);
+    const summary = getDailySummary(meals, toKSTDateKey(meal.created_at));
+
+    return (
+      <div
+        onClick={() => router.push(`/history/${meal.id}`)}
+        style={{
+          flex: 1, border: '1px solid #e5e7eb', backgroundColor: theme.bg,
+          cursor: 'pointer', overflow: 'hidden', minHeight: '180px',
+          display: 'flex', flexDirection: 'column',
+        }}
+      >
+        {/* 상단: 이모지 + 시간 */}
+        <div style={{
+          flex: 1, display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          padding: '20px 16px 12px', gap: '8px',
+        }}>
+          <div style={{ fontSize: '56px', lineHeight: 1 }}>{emoji}</div>
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ fontSize: '17px', fontWeight: 400, color: 'black', letterSpacing: '-0.3px', marginBottom: '2px' }}>
+              {meal.food_name}
+            </p>
+            <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '0.5px' }}>
+              {new Date(meal.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+              {' · '}{cat}
+              {' · '}
+              <span style={{ color: '#d1fae5', backgroundColor: '#065f46', padding: '1px 5px', fontSize: '9px', borderRadius: '2px' }}>수동입력</span>
+            </p>
+          </div>
+        </div>
+
+        {/* 중단: 칼로리 강조 */}
+        <div style={{
+          padding: '10px 16px',
+          backgroundColor: 'rgba(255,255,255,0.6)',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          borderTop: `1px solid ${theme.accent}22`,
+        }}>
+          <div>
+            <p style={{ fontSize: '9px', color: '#9ca3af', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '2px' }}>칼로리</p>
+            <p style={{ fontSize: '24px', color: theme.accent, lineHeight: 1 }}>{meal.calories}</p>
+            <p style={{ fontSize: '9px', color: '#9ca3af', letterSpacing: '1px' }}>KCAL</p>
+          </div>
+          {meal.nutrient && (
+            <div style={{ display: 'flex', gap: '12px' }}>
+              {[
+                { label: '탄', value: meal.nutrient.carbohydrates },
+                { label: '단', value: meal.nutrient.protein },
+                { label: '지', value: meal.nutrient.fat },
+              ].map(n => n.value != null && (
+                <div key={n.label} style={{ textAlign: 'center' }}>
+                  <p style={{ fontSize: '13px', color: 'black' }}>{Math.round(n.value)}</p>
+                  <p style={{ fontSize: '8px', color: '#9ca3af', letterSpacing: '0.5px' }}>{n.label}(g)</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* 하단: 건강 팁 or 오늘 요약 */}
+        <div style={{
+          padding: '10px 16px',
+          backgroundColor: theme.accent + '11',
+          borderTop: `1px solid ${theme.accent}22`,
+        }}>
+          {summary.count >= 2 ? (
+            <p style={{ fontSize: '10px', color: theme.accent, lineHeight: 1.5 }}>
+              오늘 {summary.count}끼 · 총 {summary.totalCal}kcal
+            </p>
+          ) : (
+            <p style={{ fontSize: '10px', color: theme.accent, lineHeight: 1.5 }}>
+              💡 {tip}
+            </p>
+          )}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -178,13 +409,24 @@ export default function HistoryPage() {
           <h1 style={{ fontSize: '26px', fontWeight: 400, color: 'black', letterSpacing: '-1px', lineHeight: 1 }}>기록</h1>
         </div>
         <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-          {/* 검색 버튼 */}
+          {/* Quick Log 버튼 */}
+          <button
+            onClick={openQuickLog}
+            style={{
+              background: 'none', border: '1px solid #e5e7eb',
+              width: '34px', height: '34px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', fontSize: '16px',
+            }}
+            title="식단 수동 입력"
+          >
+            🍚
+          </button>
           <button
             onClick={() => setShowSearch(v => !v)}
             style={{ background: showSearch ? 'black' : 'none', border: '1px solid #e5e7eb', width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', position: 'relative' }}
           >
             <FaSearch size={12} color={showSearch ? 'white' : 'black'} />
-            {/* 필터 활성 표시 dot */}
             {isFiltered && !showSearch && (
               <span style={{ position: 'absolute', top: '5px', right: '5px', width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#6B21A8' }} />
             )}
@@ -214,15 +456,11 @@ export default function HistoryPage() {
       <AnimatePresence>
         {showSearch && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
+            initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
             style={{ overflow: 'hidden', borderBottom: '1px solid #e5e7eb', backgroundColor: 'white' }}
           >
             <div style={{ padding: '12px 24px 14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-
-              {/* 검색 인풋 */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid #e5e7eb', padding: '8px 12px' }}>
                 <FaSearch size={11} color="#9ca3af" style={{ flexShrink: 0 }} />
                 <input
@@ -238,57 +476,36 @@ export default function HistoryPage() {
                   </button>
                 )}
               </div>
-
-              {/* 카테고리 필터 */}
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                 {CATEGORIES.map(cat => (
-                  <button
-                    key={cat}
-                    onClick={() => setCategory(cat)}
-                    style={{
-                      padding: '5px 10px', fontSize: '11px', cursor: 'pointer', border: '1px solid',
-                      borderColor: category === cat ? 'black' : '#e5e7eb',
-                      backgroundColor: category === cat ? 'black' : 'white',
-                      color: category === cat ? 'white' : '#6b7280',
-                      letterSpacing: '0.3px',
-                    }}
-                  >
-                    {cat}
-                  </button>
+                  <button key={cat} onClick={() => setCategory(cat)} style={{
+                    padding: '5px 10px', fontSize: '11px', cursor: 'pointer', border: '1px solid',
+                    borderColor: category === cat ? 'black' : '#e5e7eb',
+                    backgroundColor: category === cat ? 'black' : 'white',
+                    color: category === cat ? 'white' : '#6b7280', letterSpacing: '0.3px',
+                  }}>{cat}</button>
                 ))}
               </div>
-
-              {/* 정렬 + 초기화 */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', gap: '6px' }}>
                   {SORT_OPTIONS.map(opt => (
-                    <button
-                      key={opt.value}
-                      onClick={() => setSort(opt.value)}
-                      style={{
-                        padding: '5px 10px', fontSize: '11px', cursor: 'pointer', border: '1px solid',
-                        borderColor: sort === opt.value ? '#6B21A8' : '#e5e7eb',
-                        backgroundColor: sort === opt.value ? '#6B21A8' : 'white',
-                        color: sort === opt.value ? 'white' : '#6b7280',
-                      }}
-                    >
-                      {opt.label}
-                    </button>
+                    <button key={opt.value} onClick={() => setSort(opt.value)} style={{
+                      padding: '5px 10px', fontSize: '11px', cursor: 'pointer', border: '1px solid',
+                      borderColor: sort === opt.value ? '#6B21A8' : '#e5e7eb',
+                      backgroundColor: sort === opt.value ? '#6B21A8' : 'white',
+                      color: sort === opt.value ? 'white' : '#6b7280',
+                    }}>{opt.label}</button>
                   ))}
                 </div>
                 {isFiltered && (
-                  <button onClick={clearAll} style={{ fontSize: '11px', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
-                    초기화
-                  </button>
+                  <button onClick={clearAll} style={{ fontSize: '11px', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>초기화</button>
                 )}
               </div>
-
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* 결과 수 표시 (검색/필터 활성 시) */}
       {isFiltered && (
         <div style={{ padding: '8px 24px', borderBottom: '1px solid #f3f4f6', backgroundColor: '#fafafa' }}>
           <p style={{ fontSize: '11px', color: '#9ca3af' }}>
@@ -299,7 +516,6 @@ export default function HistoryPage() {
         </div>
       )}
 
-      {/* Gallery 줌 컨트롤 */}
       {viewMode === 'gallery' && (
         <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 24px', gap: '6px', borderBottom: '1px solid #e5e7eb' }}>
           <button onClick={() => handleZoom(-1)} style={{ background: 'none', border: '1px solid #e5e7eb', padding: '4px 10px', fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
@@ -311,7 +527,6 @@ export default function HistoryPage() {
         </div>
       )}
 
-      {/* Content */}
       <main style={{ flex: 1, padding: viewMode === 'full' ? '20px 24px' : '0' }}>
         {loading ? (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: '80px' }}>
@@ -359,37 +574,42 @@ export default function HistoryPage() {
                           style={{ display: 'flex', gap: '20px', marginBottom: '16px', position: 'relative' }}
                         >
                           <div style={{ width: '9px', height: '9px', borderRadius: '50%', border: '2px solid #6B21A8', backgroundColor: 'white', flexShrink: 0, marginTop: '16px', zIndex: 1 }} />
-                          <div
-                            onClick={() => router.push(`/history/${meal.id}`)}
-                            style={{ flex: 1, border: '1px solid #e5e7eb', backgroundColor: 'white', cursor: 'pointer', overflow: 'hidden' }}
-                          >
-                            {meal.photo_url && (
-                              <div style={{ width: '100%', aspectRatio: '4/3', overflow: 'hidden', position: 'relative' }}>
-                                <MealPhoto photoUrl={meal.photo_url} alt={meal.food_name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: '8px 10px', background: 'linear-gradient(to bottom, rgba(0,0,0,0.45), transparent)' }}>
-                                  <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.9)', letterSpacing: '0.5px' }}>
+                          {/* 수동 입력 카드 vs 일반 카드 */}
+                          {meal.is_manual ? (
+                            <ManualMealCard meal={meal} />
+                          ) : (
+                            <div
+                              onClick={() => router.push(`/history/${meal.id}`)}
+                              style={{ flex: 1, border: '1px solid #e5e7eb', backgroundColor: 'white', cursor: 'pointer', overflow: 'hidden' }}
+                            >
+                              {meal.photo_url && (
+                                <div style={{ width: '100%', aspectRatio: '4/3', overflow: 'hidden', position: 'relative' }}>
+                                  <MealPhoto photoUrl={meal.photo_url} alt={meal.food_name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: '8px 10px', background: 'linear-gradient(to bottom, rgba(0,0,0,0.45), transparent)' }}>
+                                    <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.9)', letterSpacing: '0.5px' }}>
+                                      {new Date(meal.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                                      {meal.category ? ` · ${meal.category}` : ''}
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
+                              <div style={{ padding: '10px 14px' }}>
+                                {!meal.photo_url && (
+                                  <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1px', marginBottom: '6px' }}>
                                     {new Date(meal.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
                                     {meal.category ? ` · ${meal.category}` : ''}
                                   </p>
-                                </div>
-                              </div>
-                            )}
-                            <div style={{ padding: '10px 14px' }}>
-                              {!meal.photo_url && (
-                                <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1px', marginBottom: '6px' }}>
-                                  {new Date(meal.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
-                                  {meal.category ? ` · ${meal.category}` : ''}
-                                </p>
-                              )}
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                                <h3 style={{ fontSize: '17px', fontWeight: 400, color: 'black', letterSpacing: '-0.3px' }}>{meal.food_name}</h3>
-                                <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '8px' }}>
-                                  <p style={{ fontSize: '18px', fontWeight: 400, color: '#6B21A8', lineHeight: 1 }}>{meal.calories}</p>
-                                  <p style={{ fontSize: '9px', color: '#9ca3af', letterSpacing: '1px' }}>KCAL</p>
+                                )}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                                  <h3 style={{ fontSize: '17px', fontWeight: 400, color: 'black', letterSpacing: '-0.3px' }}>{meal.food_name}</h3>
+                                  <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '8px' }}>
+                                    <p style={{ fontSize: '18px', fontWeight: 400, color: '#6B21A8', lineHeight: 1 }}>{meal.calories}</p>
+                                    <p style={{ fontSize: '9px', color: '#9ca3af', letterSpacing: '1px' }}>KCAL</p>
+                                  </div>
                                 </div>
                               </div>
                             </div>
-                          </div>
+                          )}
                         </motion.div>
                       ))}
                     </div>
@@ -405,9 +625,12 @@ export default function HistoryPage() {
               >
                 {visibleFiltered.map(meal => (
                   <div key={meal.id} onClick={() => router.push(`/history/${meal.id}`)}
-                    style={{ position: 'relative', width: '100%', aspectRatio: '1/1', backgroundColor: '#f3f4f6', cursor: 'pointer', overflow: 'hidden' }}
+                    style={{ position: 'relative', width: '100%', aspectRatio: '1/1', backgroundColor: meal.is_manual ? (CATEGORY_BG[meal.category || '기타']?.bg ?? '#f9fafb') : '#f3f4f6', cursor: 'pointer', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   >
-                    {meal.photo_url && <MealPhoto photoUrl={meal.photo_url} alt={meal.food_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                    {meal.photo_url
+                      ? <MealPhoto photoUrl={meal.photo_url} alt={meal.food_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      : <span style={{ fontSize: '48px' }}>{CATEGORY_EMOJI[meal.category || '기타'] ?? '🍽️'}</span>
+                    }
                     <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '16px 8px 8px', background: 'linear-gradient(to top, rgba(0,0,0,0.55), transparent)', pointerEvents: 'none', display: 'flex', justifyContent: 'center' }}>
                       <span style={{ fontSize: '17px', color: 'white', textShadow: '0 1px 4px rgba(0,0,0,0.5)', fontWeight: 400, letterSpacing: '0.5px' }}>
                         {meal.calories}
@@ -425,9 +648,12 @@ export default function HistoryPage() {
               >
                 {visibleFiltered.map(meal => (
                   <div key={meal.id} onClick={() => router.push(`/history/${meal.id}`)}
-                    style={{ position: 'relative', width: '100%', aspectRatio: '1/1', backgroundColor: '#f3f4f6', cursor: 'pointer', overflow: 'hidden' }}
+                    style={{ position: 'relative', width: '100%', aspectRatio: '1/1', backgroundColor: meal.is_manual ? (CATEGORY_BG[meal.category || '기타']?.bg ?? '#f9fafb') : '#f3f4f6', cursor: 'pointer', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   >
-                    {meal.photo_url && <MealPhoto photoUrl={meal.photo_url} alt={meal.food_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                    {meal.photo_url
+                      ? <MealPhoto photoUrl={meal.photo_url} alt={meal.food_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      : <span style={{ fontSize: '24px' }}>{CATEGORY_EMOJI[meal.category || '기타'] ?? '🍽️'}</span>
+                    }
                   </div>
                 ))}
               </motion.div>
@@ -437,34 +663,21 @@ export default function HistoryPage() {
         )}
       </main>
 
-      {/* 더 보기 버튼 */}
       {!loading && visibleDays < allGroups.length && (
         <div style={{ padding: '16px 24px 32px', display: 'flex', justifyContent: 'center' }}>
           <button
             onClick={() => setVisibleDays(d => d + DAYS_PER_PAGE)}
-            style={{
-              padding: '10px 28px', fontSize: '12px', letterSpacing: '1.5px',
-              color: '#6B21A8', backgroundColor: 'white',
-              border: '1px solid #e9d5ff', cursor: 'pointer',
-            }}
+            style={{ padding: '10px 28px', fontSize: '12px', letterSpacing: '1.5px', color: '#6B21A8', backgroundColor: 'white', border: '1px solid #e9d5ff', cursor: 'pointer' }}
           >
             +3일 더 보기
           </button>
         </div>
       )}
 
-      {/* 맨 위로 버튼 */}
       {showTop && (
         <button
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          style={{
-            position: 'fixed', bottom: '88px', right: '20px',
-            width: '40px', height: '40px', borderRadius: '50%',
-            backgroundColor: 'rgba(0,0,0,0.6)', border: 'none',
-            cursor: 'pointer', display: 'flex',
-            alignItems: 'center', justifyContent: 'center',
-            zIndex: 50, backdropFilter: 'blur(6px)',
-          }}
+          style={{ position: 'fixed', bottom: '88px', right: '20px', width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'rgba(0,0,0,0.6)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, backdropFilter: 'blur(6px)' }}
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <path d="M8 12V4M4 8l4-4 4 4" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
@@ -472,7 +685,175 @@ export default function HistoryPage() {
         </button>
       )}
 
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      {/* ── Quick Log 바텀시트 ── */}
+      <AnimatePresence>
+        {showQuickLog && (
+          <>
+            {/* 배경 딤 */}
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={closeQuickLog}
+              style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 100 }}
+            />
+            <motion.div
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              style={{
+                position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 101,
+                backgroundColor: 'white', borderRadius: '20px 20px 0 0',
+                padding: '0 0 40px',
+                maxHeight: '90vh', overflowY: 'auto',
+              }}
+            >
+              {/* 핸들 */}
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 4px' }}>
+                <div style={{ width: '36px', height: '4px', borderRadius: '2px', backgroundColor: '#e5e7eb' }} />
+              </div>
+
+              {/* 헤더 */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 24px 16px' }}>
+                <div>
+                  <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '2px' }}>QUICK LOG</p>
+                  <h2 style={{ fontSize: '20px', fontWeight: 400, color: 'black', letterSpacing: '-0.5px' }}>
+                    {qlStep === 'time' ? '식사 시간 선택' : '음식 이름 입력'}
+                  </h2>
+                </div>
+                <button onClick={closeQuickLog} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}>
+                  <FaTimes size={16} color="#9ca3af" />
+                </button>
+              </div>
+
+              {/* Step 1: 식사 시간 선택 */}
+              {qlStep === 'time' && (
+                <div style={{ padding: '0 24px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {MEAL_TIMES.map(mt => (
+                      <button
+                        key={mt.value}
+                        onClick={() => selectMealTime(mt.value)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '16px',
+                          padding: '16px 20px',
+                          backgroundColor: qlMealTime === mt.value ? '#faf5ff' : '#fafafa',
+                          border: `1px solid ${qlMealTime === mt.value ? '#a855f7' : '#e5e7eb'}`,
+                          cursor: 'pointer', textAlign: 'left',
+                        }}
+                      >
+                        <span style={{ fontSize: '28px', lineHeight: 1 }}>{mt.emoji}</span>
+                        <div>
+                          <p style={{ fontSize: '15px', color: 'black', marginBottom: '2px' }}>{mt.label}</p>
+                          <p style={{ fontSize: '11px', color: '#9ca3af' }}>
+                            기본 {String(mt.defaultHour).padStart(2, '0')}:{String(mt.defaultMinute).padStart(2, '0')}
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Step 2: 음식 이름 + 시간 조정 */}
+              {qlStep === 'input' && (
+                <div style={{ padding: '0 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+                  {/* 선택된 식사 시간 표시 + 뒤로 */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <button
+                      onClick={() => setQlStep('time')}
+                      style={{ background: 'none', border: '1px solid #e5e7eb', padding: '6px 10px', fontSize: '11px', cursor: 'pointer', color: '#6b7280' }}
+                    >
+                      ← 시간 변경
+                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', backgroundColor: '#faf5ff', border: '1px solid #e9d5ff' }}>
+                      <span>{MEAL_TIMES.find(t => t.value === qlMealTime)?.emoji}</span>
+                      <span style={{ fontSize: '13px', color: '#6B21A8' }}>{MEAL_TIMES.find(t => t.value === qlMealTime)?.label}</span>
+                    </div>
+                  </div>
+
+                  {/* 날짜 + 시간 조정 */}
+                  <div>
+                    <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px' }}>날짜 · 시간</p>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <input
+                        type="date"
+                        value={qlDate}
+                        max={todayKST()}
+                        onChange={e => setQlDate(e.target.value)}
+                        style={{ flex: 1, padding: '10px 12px', border: '1px solid #e5e7eb', fontSize: '13px', color: 'black', outline: 'none', backgroundColor: 'white' }}
+                      />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid #e5e7eb', padding: '10px 12px' }}>
+                        <input
+                          type="number"
+                          min={0} max={23}
+                          value={String(qlHour).padStart(2, '0')}
+                          onChange={e => setQlHour(Math.max(0, Math.min(23, Number(e.target.value))))}
+                          style={{ width: '32px', border: 'none', outline: 'none', fontSize: '13px', textAlign: 'center', color: 'black' }}
+                        />
+                        <span style={{ color: '#9ca3af' }}>:</span>
+                        <input
+                          type="number"
+                          min={0} max={59} step={5}
+                          value={String(qlMinute).padStart(2, '0')}
+                          onChange={e => setQlMinute(Math.max(0, Math.min(59, Number(e.target.value))))}
+                          style={{ width: '32px', border: 'none', outline: 'none', fontSize: '13px', textAlign: 'center', color: 'black' }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 음식 이름 입력 */}
+                  <div>
+                    <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px' }}>음식 이름</p>
+                    <input
+                      ref={qlInputRef}
+                      value={qlFoodName}
+                      onChange={e => setQlFoodName(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter' && qlFoodName.trim()) handleQuickLogSave(); }}
+                      placeholder="예: 된장찌개, 바나나 1개, 아메리카노"
+                      style={{
+                        width: '100%', padding: '14px 16px',
+                        border: '1px solid #e5e7eb', fontSize: '15px',
+                        color: 'black', outline: 'none', boxSizing: 'border-box',
+                        backgroundColor: 'white',
+                      }}
+                    />
+                    <p style={{ fontSize: '11px', color: '#9ca3af', marginTop: '6px', lineHeight: 1.5 }}>
+                      AI가 칼로리와 영양소를 자동으로 계산해요. 분석 횟수는 차감되지 않아요.
+                    </p>
+                  </div>
+
+                  {qlError && (
+                    <p style={{ fontSize: '12px', color: '#ef4444', padding: '10px 14px', backgroundColor: '#fef2f2', border: '1px solid #fecaca' }}>
+                      {qlError}
+                    </p>
+                  )}
+
+                  <button
+                    onClick={handleQuickLogSave}
+                    disabled={qlLoading || !qlFoodName.trim()}
+                    style={{
+                      width: '100%', padding: '15px',
+                      backgroundColor: qlFoodName.trim() ? 'black' : '#f3f4f6',
+                      color: qlFoodName.trim() ? 'white' : '#9ca3af',
+                      border: 'none', fontSize: '14px', letterSpacing: '1px',
+                      cursor: qlFoodName.trim() ? 'pointer' : 'not-allowed',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                    }}
+                  >
+                    {qlLoading
+                      ? <><FaSpinner style={{ animation: 'spin 1s linear infinite' }} /> AI 계산 중...</>
+                      : '기록에 추가'}
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+      `}</style>
     </div>
   );
 }
