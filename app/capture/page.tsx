@@ -135,8 +135,14 @@ export default function CameraCapturePage() {
       });
       foodStreamRef.current = stream;
       if (foodVideoRef.current) {
-        foodVideoRef.current.srcObject = stream;
-        await foodVideoRef.current.play();
+        const video = foodVideoRef.current;
+        video.srcObject = stream;
+        // iOS Safari: srcObject 세팅 후 metadata 로드 대기 후 play() 호출해야 블랙스크린 방지
+        await new Promise<void>((resolve) => {
+          if (video.readyState >= 1) { resolve(); return; }
+          video.onloadedmetadata = () => resolve();
+        });
+        await video.play();
       }
       const track = stream.getVideoTracks()[0];
       if (track) {
@@ -209,13 +215,14 @@ export default function CameraCapturePage() {
   }, []);
 
   // permState가 granted로 바뀌면 food 카메라 자동 시작
+  // cameraReady가 이미 true면 requestCamera에서 스트림을 직접 연결한 것이므로 중복 호출 방지
   useEffect(() => {
-    if (permState === 'granted' && captureMode === 'food' && !imageSrc) {
+    if (permState === 'granted' && captureMode === 'food' && !imageSrc && !cameraReady) {
       startFoodCamera();
     } else if (permState !== 'granted' || captureMode !== 'food' || imageSrc) {
       stopFoodCamera();
     }
-  }, [permState, captureMode, imageSrc, startFoodCamera, stopFoodCamera]);
+  }, [permState, captureMode, imageSrc, cameraReady, startFoodCamera, stopFoodCamera]);
 
   // 페이지 언마운트 시에만 카메라 정리
   useEffect(() => {
@@ -224,25 +231,42 @@ export default function CameraCapturePage() {
 
   // 버튼 클릭 → getUserMedia를 동기 컨텍스트에서 즉시 호출 (안드로이드 user gesture 보장)
   // async/await 사용 금지: await 이후는 user gesture 체인이 끊겨 안드로이드에서 팝업 차단됨
+  // 버튼 클릭 → getUserMedia를 동기 컨텍스트에서 즉시 호출 (안드로이드 user gesture 보장)
+  // async/await 사용 금지: await 이후는 user gesture 체인이 끊겨 안드로이드에서 팝업 차단됨
+  // iOS: getUserMedia 성공 후 onloadedmetadata 대기 후 play() 호출해야 블랙스크린 방지
   const requestCamera = () => {
     navigator.mediaDevices.getUserMedia({
       video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
     }).then((stream) => {
       foodStreamRef.current = stream;
       localStorage.setItem('mybob_camera_granted', '1');
-      setPermState('granted');
-      if (foodVideoRef.current) {
-        foodVideoRef.current.srcObject = stream;
-        foodVideoRef.current.play().catch(() => {});
-      }
-      const track = stream.getVideoTracks()[0];
-      if (track) {
-        const caps = track.getCapabilities() as any;
-        if (caps?.focusMode?.includes('continuous')) {
-          track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as any] }).catch(() => {});
+      const video = foodVideoRef.current;
+      if (video) {
+        video.srcObject = stream;
+        const doPlay = () => {
+          video.play().then(() => {
+            const track = stream.getVideoTracks()[0];
+            if (track) {
+              const caps = track.getCapabilities() as any;
+              if (caps?.focusMode?.includes('continuous')) {
+                track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as any] }).catch(() => {});
+              }
+            }
+            setCameraReady(true);
+            setPermState('granted');
+          }).catch(() => {});
+        };
+        // iOS Safari: metadata 로드 완료 후 play() 해야 블랙스크린 방지
+        if (video.readyState >= 1) {
+          doPlay();
+        } else {
+          video.onloadedmetadata = doPlay;
         }
+      } else {
+        // video ref 없는 경우 (렌더 전): permState만 올려주면 useEffect에서 startFoodCamera 호출
+        setCameraReady(false);
+        setPermState('granted');
       }
-      setCameraReady(true);
     }).catch((err) => {
       const name = (err as DOMException)?.name ?? '';
       if (name === 'NotAllowedError' || name === 'SecurityError') {
