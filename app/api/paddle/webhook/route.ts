@@ -8,9 +8,20 @@ const webhookSecret = process.env.PADDLE_WEBHOOK_SECRET!;
 // Paddle webhook 서명 검증
 async function verifyPaddleSignature(body: string, signature: string): Promise<boolean> {
   try {
-    const [tsPart, h1Part] = signature.split(';');
-    const ts = tsPart.replace('ts=', '');
-    const h1 = h1Part.replace('h1=', '');
+    const parts: Record<string, string> = {};
+    for (const part of signature.split(';')) {
+      const idx = part.indexOf('=');
+      if (idx > 0) parts[part.slice(0, idx)] = part.slice(idx + 1);
+    }
+    const ts = parts['ts'];
+    const h1 = parts['h1'];
+    if (!ts || !h1) return false;
+
+    // 타임스탬프 5분 이내 검증 (NaN 방어)
+    const tsNum = parseInt(ts, 10);
+    if (!isFinite(tsNum)) return false;
+    const now = Math.floor(Date.now() / 1000);
+    if (Math.abs(now - tsNum) > 300) return false;
 
     const payload = `${ts}:${body}`;
     const key = await crypto.subtle.importKey(
@@ -25,10 +36,8 @@ async function verifyPaddleSignature(body: string, signature: string): Promise<b
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
 
-    // 타임스탬프 5분 이내 검증
-    const now = Math.floor(Date.now() / 1000);
-    if (Math.abs(now - parseInt(ts)) > 300) return false;
-
+    // 타이밍 공격 방어: 길이 다르면 즉시 false
+    if (computed.length !== h1.length) return false;
     return computed === h1;
   } catch {
     return false;

@@ -51,8 +51,8 @@ export async function POST(request: Request) {
   });
 
   if (!res.ok) {
-    const err = await res.json();
-    return NextResponse.json({ error: err.error?.detail ?? 'CANCEL_FAILED' }, { status: 500 });
+    console.error('[paddle/cancel] Paddle API error:', res.status);
+    return NextResponse.json({ error: 'CANCEL_FAILED' }, { status: 500 });
   }
 
   // webhook에서 최종 처리되지만 UI 즉시 반영용 메시지

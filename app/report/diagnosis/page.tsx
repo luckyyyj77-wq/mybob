@@ -75,12 +75,11 @@ function ScoreRing({ score, size = 88 }: { score: number; size?: number }) {
 
 // KST 기준 날짜 비교
 function toKSTDate(iso: string) {
-  const d = new Date(iso);
-  return new Date(d.getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  return new Date(iso).toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
 }
 
 function todayKST() {
-  return toKSTDate(new Date().toISOString());
+  return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
 }
 
 // 표시용 날짜 포맷: "2026-05-15" → "5월 15일"

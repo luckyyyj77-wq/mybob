@@ -3,9 +3,7 @@ type AnySupabaseClient = any;
 
 // KST(UTC+9) 기준 오늘 날짜 반환 (YYYY-MM-DD)
 function getKSTDateString(): string {
-  const now = new Date();
-  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-  return kst.toISOString().slice(0, 10);
+  return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
 }
 
 export type Plan = 'free' | 'pro' | 'lifetime';

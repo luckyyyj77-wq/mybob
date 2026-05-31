@@ -172,9 +172,9 @@ function checkDailyGoalAchievement() {
     const target = parseInt(targetStr);
     if (!target) return;
     const meals: { calories: number; created_at: string }[] = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
-    const todayKey = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const todayKey = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
     const todayCalories = meals
-      .filter(m => new Date(new Date(m.created_at).getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10) === todayKey)
+      .filter(m => new Date(m.created_at).toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' }) === todayKey)
       .reduce((s, m) => s + (Number(m.calories) || 0), 0);
     const ratio = todayCalories / target;
     const achieved: Record<string, boolean> = JSON.parse(localStorage.getItem(GOAL_ACHIEVED_KEY) || '{}');

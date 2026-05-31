@@ -6,7 +6,8 @@ const KEY = 'mybob_storage_mode';
 
 export function getStorageMode(): StorageMode {
   if (typeof window === 'undefined') return 'local';
-  return (localStorage.getItem(KEY) as StorageMode) || 'local';
+  const val = localStorage.getItem(KEY);
+  return val === 'cloud' ? 'cloud' : 'local';
 }
 
 export function setStorageMode(mode: StorageMode) {

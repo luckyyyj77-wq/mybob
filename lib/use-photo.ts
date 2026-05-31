@@ -12,8 +12,12 @@ export function usePhoto(photoUrl: string | undefined): string | null {
     if (!photoUrl) { setSrc(null); return; }
 
     if (photoUrl.startsWith('local:')) {
-      const mealId = photoUrl.slice(6); // "local:" 제거
-      getPhoto(mealId).then(base64 => setSrc(base64));
+      let cancelled = false;
+      const mealId = photoUrl.slice(6);
+      getPhoto(mealId)
+        .then(base64 => { if (!cancelled) setSrc(base64); })
+        .catch(() => { if (!cancelled) setSrc(null); });
+      return () => { cancelled = true; };
     } else {
       setSrc(photoUrl);
     }

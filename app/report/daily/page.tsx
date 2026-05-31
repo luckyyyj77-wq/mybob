@@ -78,7 +78,7 @@ export default function DailyReportPage() {
       }).catch(() => {});
   }, [token]);
 
-  const toKSTKey = (d: Date) => new Date(d.getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const toKSTKey = (d: Date) => d.toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
   const dateStr = toKSTKey(targetDate);
   const meals = allMeals
     .filter(m => toKSTKey(new Date(m.created_at)) === dateStr)

@@ -7,8 +7,7 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 function toKSTDate(iso: string) {
-  const d = new Date(iso);
-  return new Date(d.getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  return new Date(iso).toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
 }
 
 async function getUser(request: Request) {

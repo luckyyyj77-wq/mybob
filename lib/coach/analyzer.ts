@@ -36,17 +36,15 @@ function foodGroupKey(name: string): string {
 }
 
 function toKSTDate(iso: string): string {
-  const d = new Date(iso);
-  return new Date(d.getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  return new Date(iso).toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
 }
 
 function getTodayKST(): string {
-  return toKSTDate(new Date().toISOString());
+  return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
 }
 
 function getKSTHour(iso: string): number {
-  const d = new Date(iso);
-  return new Date(d.getTime() + 9 * 60 * 60 * 1000).getUTCHours();
+  return parseInt(new Date(iso).toLocaleString('en-US', { timeZone: 'Asia/Seoul', hour: 'numeric', hour12: false }), 10);
 }
 
 function getCurrentKSTHour(): number {
@@ -86,9 +84,9 @@ export function analyzeCoach(params: {
   // 1. 연속 결식 (어제, 그제 모두 기록 없음)
   const todayKST = getTodayKST();
   const getDateKST = (daysAgo: number) => {
-    const d = new Date(new Date().getTime() + 9 * 60 * 60 * 1000);
-    d.setUTCDate(d.getUTCDate() - daysAgo);
-    return d.toISOString().slice(0, 10);
+    const base = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
+    base.setDate(base.getDate() - daysAgo);
+    return base.toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
   };
   const yesterdayMeals = allMeals.filter(m => toKSTDate(m.created_at) === getDateKST(1));
   const dayBeforeMeals = allMeals.filter(m => toKSTDate(m.created_at) === getDateKST(2));

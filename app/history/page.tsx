@@ -81,17 +81,15 @@ function getHealthTip(seed: string) {
 }
 
 function toKSTDateKey(dateStr: string): string {
-  const kst = new Date(new Date(dateStr).getTime() + 9 * 60 * 60 * 1000);
-  return kst.toISOString().slice(0, 10);
+  return new Date(dateStr).toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
 }
 
 function formatDateLabel(dateStr: string): string {
-  const kst = new Date(new Date(dateStr).getTime() + 9 * 60 * 60 * 1000);
-  const todayKST = new Date(Date.now() + 9 * 60 * 60 * 1000);
-  const kstKey = kst.toISOString().slice(0, 10);
-  const todayKey = todayKST.toISOString().slice(0, 10);
-  const yesterdayKST = new Date(todayKST.getTime() - 24 * 60 * 60 * 1000);
-  const yesterdayKey = yesterdayKST.toISOString().slice(0, 10);
+  const kstKey = toKSTDateKey(dateStr);
+  const todayKey = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
+  const yesterday = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayKey = yesterday.toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
   if (kstKey === todayKey) return '오늘';
   if (kstKey === yesterdayKey) return '어제';
   return kst.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });

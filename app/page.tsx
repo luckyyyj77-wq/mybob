@@ -26,7 +26,7 @@ type AIFeedback = {
 
 
 function toKSTDate(iso: string): string {
-  return new Date(new Date(iso).getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  return new Date(iso).toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
 }
 
 function computeTodayStats(meals: Meal[]) {
@@ -47,10 +47,10 @@ function computeTodayStats(meals: Meal[]) {
 
 function buildWeekly(meals: Meal[]): DayStat[] {
   const weekly: DayStat[] = [];
+  const todayKST = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
   for (let i = 6; i >= 0; i--) {
-    const d = new Date(new Date().getTime() + 9 * 60 * 60 * 1000);
-    d.setUTCDate(d.getUTCDate() - i);
-    const dateStr = d.toISOString().slice(0, 10);
+    const d = new Date(todayKST.getTime() - i * 24 * 60 * 60 * 1000);
+    const dateStr = d.toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
     const dayMeals = meals.filter(m => toKSTDate(m.created_at) === dateStr);
     weekly.push({
       date: dateStr,
@@ -111,9 +111,7 @@ export default function Home() {
   }, [token]);
 
   const getKSTDate = () => {
-    const now = new Date();
-    const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-    return kst.toISOString().slice(0, 10).replace(/-/g, '');
+    return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' }).replace(/-/g, '');
   };
 
   const runCoachLocal = (meals: Meal[], currentPersona: Persona, goalRaw: string | null) => {
@@ -136,7 +134,7 @@ export default function Home() {
     let todayAchieved = false;
     try {
       const achieved = JSON.parse(localStorage.getItem('mybob_goal_achieved') || '{}');
-      const todayKey = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const todayKey = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
       todayAchieved = achieved[todayKey] === true;
     } catch { }
     const result = analyzeCoach({ todayMeals: finalStats.todayMeals as any, allMeals: meals as any, goalCalories, goalProtein, persona: currentPersona, todayAchieved });

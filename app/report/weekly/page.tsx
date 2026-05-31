@@ -86,7 +86,7 @@ export default function WeeklyReportPage() {
     return `${s} — ${e}`;
   };
 
-  const toKSTKey = (d: Date) => new Date(d.getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const toKSTKey = (d: Date) => d.toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
   const todayKSTKey = toKSTKey(new Date());
 
   // 7일치 데이터 생성

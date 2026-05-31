@@ -2,7 +2,7 @@ export const TARGET_CALORIES_KEY = 'mybob_target_calories';
 export const GOAL_ACHIEVED_KEY   = 'mybob_goal_achieved';
 
 function kstDateKey(date = new Date()): string {
-  return new Date(date.getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  return date.toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
 }
 
 // 식단 저장/수정 후 호출 — 오늘 합산 칼로리가 목표의 90~110%면 달성 기록
@@ -40,10 +40,10 @@ export function getAchievedStreak(): number {
     const achieved: Record<string, boolean> =
       JSON.parse(localStorage.getItem(GOAL_ACHIEVED_KEY) || '{}');
     let streak = 0;
-    const today = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    const todayKST = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
     for (let i = 0; i < 365; i++) {
-      const d = new Date(today.getTime() - i * 24 * 60 * 60 * 1000);
-      const key = d.toISOString().slice(0, 10);
+      const d = new Date(todayKST.getTime() - i * 24 * 60 * 60 * 1000);
+      const key = d.toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
       if (achieved[key]) streak++;
       else break;
     }
