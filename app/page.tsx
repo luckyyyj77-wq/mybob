@@ -77,9 +77,25 @@ export default function Home() {
   const [loadingFeedback, setLoadingFeedback] = useState(false);
   const [persona, setPersona] = useState<Persona>('dog');
   const syncedRef = useRef(false);
+  const fetchingAIRef = useRef(false); // Gemini 이중호출 방어
+
+  // 캐시 키용 날짜 — YYYY-MM-DD 형식으로 통일
+  const getKSTDateKey = () =>
+    new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
+
+  const VALID_PERSONAS: Persona[] = ['dog', 'cat', 'robot'];
+  const sanitizePersona = (p: string | null): Persona =>
+    VALID_PERSONAS.includes(p as Persona) ? (p as Persona) : 'dog';
 
   useEffect(() => {
-    const savedPersona = (localStorage.getItem('mybob_coach_persona') as Persona) || 'dog';
+    // 구버전 캐시 키(하이픈 없는 YYYYMMDD 형식) 자동 정리
+    for (const key of Object.keys(localStorage)) {
+      if (/^mybob_coach_(dog|cat|robot)_\d{8}$/.test(key)) {
+        localStorage.removeItem(key);
+      }
+    }
+
+    const savedPersona = sanitizePersona(localStorage.getItem('mybob_coach_persona'));
     setPersona(savedPersona);
 
     const localRaw = localStorage.getItem('mybob_meals');
@@ -105,42 +121,61 @@ export default function Home() {
     const localRaw = localStorage.getItem('mybob_meals');
     const localMeals: Meal[] = localRaw ? JSON.parse(localRaw) : [];
     const goalRaw = localStorage.getItem('mybob_goal');
-    const savedPersona = (localStorage.getItem('mybob_coach_persona') as Persona) || 'dog';
+    const savedPersona = sanitizePersona(localStorage.getItem('mybob_coach_persona'));
     syncFromServer(localMeals, savedPersona, goalRaw, token);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
-
-  const getKSTDate = () => {
-    return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' }).replace(/-/g, '');
-  };
 
   const runCoachLocal = (meals: Meal[], currentPersona: Persona, goalRaw: string | null) => {
     const finalStats = computeTodayStats(meals);
     const weekly = buildWeekly(meals);
     const goalData = JSON.parse(goalRaw || '{"goal":"유지"}');
-    let weight = 65, goalCalories = 2000;
-    if (goalRaw) {
-      try {
+
+    let weight = 65;
+    let goalCalories = 0; // 0이면 아래에서 추정값으로 채움
+    try {
+      if (goalRaw) {
         const gd = JSON.parse(goalRaw);
         if (gd.weight) weight = Number(gd.weight) || 65;
-      } catch { }
-    }
+      }
+    } catch { }
+
+    // 저장된 목표칼로리 우선, 없으면 키/몸무게 기반 추정
     const savedTarget = localStorage.getItem('mybob_target_calories');
     if (savedTarget && parseInt(savedTarget) > 0) {
       goalCalories = parseInt(savedTarget);
+    } else {
+      try {
+        const gd = goalRaw ? JSON.parse(goalRaw) : {};
+        const h = Number(gd.height) || 0;
+        const w = Number(gd.weight) || 0;
+        if (h > 0 && w > 0) {
+          const bmr = 10 * w + 6.25 * h - 5 * 30;
+          const tdee = Math.round(bmr * 1.375);
+          const goal = gd.goal || '유지';
+          goalCalories = goal === '다이어트' ? Math.round(tdee * 0.8)
+                       : goal === '증량'     ? Math.round(tdee * 1.15)
+                       : tdee;
+        }
+      } catch { }
+      if (!goalCalories) goalCalories = 2000; // 신체정보 없는 경우 최후 폴백
     }
+
     const goalProtein = weight * 1.5;
-    const kstDate = getKSTDate();
+    const kstDateKey = getKSTDateKey(); // YYYY-MM-DD 형식
+
     let todayAchieved = false;
     try {
       const achieved = JSON.parse(localStorage.getItem('mybob_goal_achieved') || '{}');
-      const todayKey = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
-      todayAchieved = achieved[todayKey] === true;
+      todayAchieved = achieved[kstDateKey] === true;
     } catch { }
+
     const result = analyzeCoach({ todayMeals: finalStats.todayMeals as any, allMeals: meals as any, goalCalories, goalProtein, persona: currentPersona, todayAchieved });
     if (!result.useGemini) {
       // 로컬 규칙 기반 메시지는 상황이 수시로 바뀌므로 캐시 없이 매번 재분석
-      const message = getCoachMessage(result, parseInt(kstDate, 10));
+      // seed: YYYYMMDD 숫자로 하루 단위 고정 (같은 날 같은 메시지)
+      const seed = parseInt(kstDateKey.replace(/-/g, ''), 10);
+      const message = getCoachMessage(result, seed);
       if (message) setCoachComment(message);
     } else {
       fetchAI(finalStats, weekly, goalData, currentPersona);
@@ -177,8 +212,10 @@ export default function Home() {
     goalData: any,
     currentPersona: Persona,
   ) => {
-    const kstDate = getKSTDate();
-    const todayKey = `mybob_coach_${currentPersona}_${kstDate}`;
+    // 이미 Gemini 요청 중이면 중복 호출 차단
+    if (fetchingAIRef.current) return;
+
+    const todayKey = `mybob_coach_${currentPersona}_${getKSTDateKey()}`; // YYYY-MM-DD 형식 통일
 
     const cached = localStorage.getItem(todayKey);
     if (cached) {
@@ -211,13 +248,11 @@ export default function Home() {
       } catch { }
     }
 
+    if (!token) return;
+
+    fetchingAIRef.current = true;
     setLoadingFeedback(true);
     try {
-      if (!token) {
-        setLoadingFeedback(false);
-        return;
-      }
-
       let achievedStreak = 0, totalAchievedDays = 0;
       try {
         const { getAchievedStreak, getTotalAchievedDays } = await import('@/lib/goal-achievement');
@@ -246,6 +281,7 @@ export default function Home() {
       }
     } catch { } finally {
       setLoadingFeedback(false);
+      fetchingAIRef.current = false;
     }
   };
 

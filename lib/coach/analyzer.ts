@@ -44,7 +44,8 @@ function getTodayKST(): string {
 }
 
 function getKSTHour(iso: string): number {
-  return parseInt(new Date(iso).toLocaleString('en-US', { timeZone: 'Asia/Seoul', hour: 'numeric', hour12: false }), 10);
+  const h = parseInt(new Date(iso).toLocaleString('en-US', { timeZone: 'Asia/Seoul', hour: 'numeric', hour12: false }), 10);
+  return h === 24 ? 0 : h; // 일부 브라우저가 자정을 24로 반환
 }
 
 function getCurrentKSTHour(): number {
@@ -110,9 +111,9 @@ export function analyzeCoach(params: {
     return { situation: 'very_few', persona, useGemini: false };
   }
 
-  // 4. few — 목표의 20~45% 범위 (저녁 이후 시간대만 판단, 낮에는 아직 더 먹을 수 있음)
+  // 4. few — 목표의 20~55% 범위 (저녁 이후 시간대만 판단, 낮에는 아직 더 먹을 수 있음)
   const lateSlots: TimeSlot[] = ['evening', 'night'];
-  if (lateSlots.includes(timeSlot) && todayTotal < goalCalories * 0.45) {
+  if (lateSlots.includes(timeSlot) && todayTotal < goalCalories * 0.55) {
     return { situation: 'few', persona, useGemini: false };
   }
 
@@ -121,8 +122,8 @@ export function analyzeCoach(params: {
     return { situation: 'high_calorie', persona, useGemini: false };
   }
 
-  // 6. low_calorie — 저녁 이후 기준, 목표 50% 미만
-  if (lateSlots.includes(timeSlot) && todayTotal < goalCalories * 0.5) {
+  // 6. low_calorie — 저녁 이후, 목표 55~75% 범위 (few보다 위, 정상 범위 미달)
+  if (lateSlots.includes(timeSlot) && todayTotal < goalCalories * 0.75) {
     return { situation: 'low_calorie', persona, useGemini: false };
   }
 
