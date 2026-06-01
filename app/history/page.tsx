@@ -92,7 +92,7 @@ function formatDateLabel(dateStr: string): string {
   const yesterdayKey = yesterday.toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
   if (kstKey === todayKey) return '오늘';
   if (kstKey === yesterdayKey) return '어제';
-  return kst.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
+  return new Date(dateStr).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
 }
 
 function groupByDate(meals: Meal[]): { dateKey: string; label: string; meals: Meal[] }[] {
@@ -130,7 +130,7 @@ function applyFilters(meals: Meal[], query: string, category: string, sort: Sort
 
 // KST 기준 오늘 날짜 YYYY-MM-DD
 function todayKST(): string {
-  return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
 }
 
 // 오늘 식단 요약 (타임라인 카드 공백 채우기)
