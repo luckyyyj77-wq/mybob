@@ -128,12 +128,18 @@ export default function CameraCapturePage() {
 
   // food 카메라 스트림 시작 (직접 video 태그에 연결)
   const startFoodCamera = useCallback(async () => {
-    if (foodStreamRef.current) return;
+    // 스트림이 이미 있고 video에도 연결됐으면 skip
+    if (foodStreamRef.current && foodVideoRef.current?.srcObject === foodStreamRef.current) return;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
-      });
-      foodStreamRef.current = stream;
+      // 스트림이 없으면 새로 요청, 있으면 재사용
+      if (!foodStreamRef.current) {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+        });
+        foodStreamRef.current = stream;
+        localStorage.setItem('mybob_camera_granted', '1');
+      }
+      const stream = foodStreamRef.current;
       if (foodVideoRef.current) {
         const video = foodVideoRef.current;
         video.srcObject = stream;
@@ -143,16 +149,15 @@ export default function CameraCapturePage() {
           video.onloadedmetadata = () => resolve();
         });
         await video.play();
-      }
-      const track = stream.getVideoTracks()[0];
-      if (track) {
-        const caps = track.getCapabilities() as any;
-        if (caps?.focusMode?.includes('continuous')) {
-          track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as any] }).catch(() => {});
+        const track = stream.getVideoTracks()[0];
+        if (track) {
+          const caps = track.getCapabilities() as any;
+          if (caps?.focusMode?.includes('continuous')) {
+            track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as any] }).catch(() => {});
+          }
         }
+        setCameraReady(true);
       }
-      localStorage.setItem('mybob_camera_granted', '1');
-      setCameraReady(true);
     } catch (err) {
       const name = (err as DOMException)?.name ?? '';
       if (name === 'NotAllowedError' || name === 'SecurityError') {
@@ -215,14 +220,14 @@ export default function CameraCapturePage() {
   }, []);
 
   // permState가 granted로 바뀌면 food 카메라 자동 시작
-  // cameraReady가 이미 true면 requestCamera에서 스트림을 직접 연결한 것이므로 중복 호출 방지
+  // startFoodCamera 내부에서 "스트림 있고 video 연결됨" 이면 skip하므로 중복 호출 안전
   useEffect(() => {
-    if (permState === 'granted' && captureMode === 'food' && !imageSrc && !cameraReady) {
+    if (permState === 'granted' && captureMode === 'food' && !imageSrc) {
       startFoodCamera();
     } else if (permState !== 'granted' || captureMode !== 'food' || imageSrc) {
       stopFoodCamera();
     }
-  }, [permState, captureMode, imageSrc, cameraReady, startFoodCamera, stopFoodCamera]);
+  }, [permState, captureMode, imageSrc, startFoodCamera, stopFoodCamera]);
 
   // 페이지 언마운트 시에만 카메라 정리
   useEffect(() => {
@@ -231,42 +236,18 @@ export default function CameraCapturePage() {
 
   // 버튼 클릭 → getUserMedia를 동기 컨텍스트에서 즉시 호출 (안드로이드 user gesture 보장)
   // async/await 사용 금지: await 이후는 user gesture 체인이 끊겨 안드로이드에서 팝업 차단됨
-  // 버튼 클릭 → getUserMedia를 동기 컨텍스트에서 즉시 호출 (안드로이드 user gesture 보장)
-  // async/await 사용 금지: await 이후는 user gesture 체인이 끊겨 안드로이드에서 팝업 차단됨
-  // iOS: getUserMedia 성공 후 onloadedmetadata 대기 후 play() 호출해야 블랙스크린 방지
+  // iOS: permState='prompt' 화면에서는 <video>가 DOM에 없으므로 foodVideoRef.current === null.
+  //       스트림만 foodStreamRef에 저장 후 setPermState('granted') → React 리렌더 → video DOM 생성
+  //       → useEffect → startFoodCamera()가 기존 스트림을 video에 연결 후 play()
   const requestCamera = () => {
     navigator.mediaDevices.getUserMedia({
       video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
     }).then((stream) => {
       foodStreamRef.current = stream;
       localStorage.setItem('mybob_camera_granted', '1');
-      const video = foodVideoRef.current;
-      if (video) {
-        video.srcObject = stream;
-        const doPlay = () => {
-          video.play().then(() => {
-            const track = stream.getVideoTracks()[0];
-            if (track) {
-              const caps = track.getCapabilities() as any;
-              if (caps?.focusMode?.includes('continuous')) {
-                track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as any] }).catch(() => {});
-              }
-            }
-            setCameraReady(true);
-            setPermState('granted');
-          }).catch(() => {});
-        };
-        // iOS Safari: metadata 로드 완료 후 play() 해야 블랙스크린 방지
-        if (video.readyState >= 1) {
-          doPlay();
-        } else {
-          video.onloadedmetadata = doPlay;
-        }
-      } else {
-        // video ref 없는 경우 (렌더 전): permState만 올려주면 useEffect에서 startFoodCamera 호출
-        setCameraReady(false);
-        setPermState('granted');
-      }
+      // video ref가 없으면(prompt 화면 → video 미렌더) permState만 올림
+      // → 리렌더 후 video DOM 생성 → useEffect → startFoodCamera()가 스트림 재사용해서 연결
+      setPermState('granted');
     }).catch((err) => {
       const name = (err as DOMException)?.name ?? '';
       if (name === 'NotAllowedError' || name === 'SecurityError') {
