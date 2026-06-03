@@ -205,6 +205,14 @@ export async function PATCH(request: Request) {
     if (updates.rating !== undefined) patchData.rating = updates.rating ?? null;
     if (updates.portion !== undefined) patchData.portion = updates.portion ?? 1.0;
     if (updates.is_public !== undefined) patchData.is_public = Boolean(updates.is_public);
+    if (updates.visibility !== undefined) {
+      const allowed = ['private', 'neighbors', 'public'];
+      if (allowed.includes(updates.visibility)) {
+        patchData.visibility = updates.visibility;
+        // is_public 동기화 (하위 호환)
+        patchData.is_public = updates.visibility !== 'private';
+      }
+    }
     if (updates.nutrient !== undefined) {
       patchData.nutrient = Object.fromEntries(
         Object.entries(updates.nutrient).map(([k, v]) => {

@@ -39,6 +39,7 @@ type Meal = {
   edited_nutrition?: Nutrient | null;
   is_edited?: boolean;
   is_public?: boolean;
+  visibility?: 'private' | 'neighbors' | 'public';
 };
 
 type GalleryMode = 'detail' | 'grid4' | 'grid16';
@@ -242,22 +243,22 @@ function MealDetailContent() {
     }
   };
 
-  const handleTogglePublic = async () => {
+  const handleVisibilityChange = async (v: 'private' | 'neighbors' | 'public') => {
     if (!meal || !token) return;
-    const newVal = !meal.is_public;
-    setMeal({ ...meal, is_public: newVal });
+    const prev = meal.visibility ?? 'private';
+    setMeal({ ...meal, visibility: v, is_public: v !== 'private' });
     try {
       await fetch('/api/meals', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ mealId: meal.id, updates: { is_public: newVal } }),
+        body: JSON.stringify({ mealId: meal.id, updates: { visibility: v } }),
       });
       const existing: Meal[] = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
       localStorage.setItem('mybob_meals', JSON.stringify(
-        existing.map(m => m.id === meal.id ? { ...m, is_public: newVal } : m)
+        existing.map(m => m.id === meal.id ? { ...m, visibility: v, is_public: v !== 'private' } : m)
       ));
     } catch {
-      setMeal({ ...meal, is_public: !newVal });
+      setMeal({ ...meal, visibility: prev, is_public: prev !== 'private' });
     }
   };
 
@@ -639,44 +640,40 @@ function MealDetailContent() {
               })()}
             </div>
 
-            {/* 이웃 공개 토글 (PRO + UUID 식단만, 로컬 Date.now() id 제외) */}
-            {userPlan !== null && userPlan !== 'free' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(meal.id) && (
-              <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #f3f4f6' }}>
-                <button
-                  onClick={handleTogglePublic}
-                  style={{
-                    width: '100%', padding: '12px 14px',
-                    backgroundColor: meal.is_public ? '#f5f3ff' : 'white',
-                    border: `1px solid ${meal.is_public ? '#a855f7' : '#e5e7eb'}`,
-                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '14px' }}>👥</span>
-                    <div style={{ textAlign: 'left' }}>
-                      <p style={{ fontSize: '13px', color: meal.is_public ? '#6B21A8' : '#374151' }}>
-                        {meal.is_public ? '이웃에게 공개 중' : '이웃 공개'}
-                      </p>
-                      <p style={{ fontSize: '11px', color: '#9ca3af' }}>
-                        {meal.is_public ? '이웃 피드에 표시됩니다' : '이웃 피드에 표시되지 않습니다'}
-                      </p>
-                    </div>
+            {/* 공개 설정 (PRO + UUID 식단만) */}
+            {userPlan !== null && userPlan !== 'free' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(meal.id) && (() => {
+              const vis = meal.visibility ?? 'private';
+              const OPTIONS = [
+                { value: 'private' as const, label: '비공개', emoji: '🔒', desc: '나만 볼 수 있어요' },
+                { value: 'neighbors' as const, label: '이웃만', emoji: '👥', desc: '이웃 피드에 표시' },
+                { value: 'public' as const, label: '전체공개', emoji: '🌏', desc: '추천 피드에 노출' },
+              ];
+              return (
+                <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #f3f4f6' }}>
+                  <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '10px' }}>공개 설정</p>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    {OPTIONS.map(opt => {
+                      const active = vis === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          onClick={() => handleVisibilityChange(opt.value)}
+                          style={{
+                            flex: 1, padding: '10px 6px', border: `1px solid ${active ? '#a855f7' : '#e5e7eb'}`,
+                            backgroundColor: active ? '#f5f3ff' : 'white',
+                            cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
+                          }}
+                        >
+                          <span style={{ fontSize: '16px' }}>{opt.emoji}</span>
+                          <span style={{ fontSize: '11px', fontWeight: active ? 600 : 400, color: active ? '#6B21A8' : '#374151' }}>{opt.label}</span>
+                          <span style={{ fontSize: '9px', color: '#9ca3af', lineHeight: 1.3, textAlign: 'center' }}>{opt.desc}</span>
+                        </button>
+                      );
+                    })}
                   </div>
-                  <div style={{
-                    width: '36px', height: '20px', borderRadius: '10px',
-                    backgroundColor: meal.is_public ? '#6B21A8' : '#d1d5db',
-                    position: 'relative', transition: 'background-color 0.2s', flexShrink: 0,
-                  }}>
-                    <div style={{
-                      position: 'absolute', top: '3px',
-                      left: meal.is_public ? '19px' : '3px',
-                      width: '14px', height: '14px', borderRadius: '50%',
-                      backgroundColor: 'white', transition: 'left 0.2s',
-                    }} />
-                  </div>
-                </button>
-              </div>
-            )}
+                </div>
+              );
+            })()}
 
             {/* 영양성분 추가 — 편집 중일 때만 표시 */}
             {isEditing && (

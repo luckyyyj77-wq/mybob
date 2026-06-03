@@ -111,7 +111,7 @@ export default function CameraCapturePage() {
   const [captureMode, setCaptureMode] = useState<CaptureMode>('food');
   const [ocrMeta, setOcrMeta] = useState<{ barcode?: string | null; serving_size?: string; servings_per_container?: number | null } | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
-  const [shareWithNeighbors, setShareWithNeighbors] = useState(false);
+  const [visibility, setVisibility] = useState<'private' | 'neighbors' | 'public'>('private');
   // TODO: 바코드 재작업 시 복구
   // const [barcodeScanning, setBarcodeScanning] = useState(false);
   // const [barcodeDetected, setBarcodeDetected] = useState<string | null>(null);
@@ -443,6 +443,7 @@ export default function CameraCapturePage() {
           portion,
           original_nutrition: { calories: analysis.calories, nutrients: analysis.nutrients },
           is_public: false,
+          visibility: 'private',
         };
         const existing = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
         localStorage.setItem('mybob_meals', JSON.stringify([localMeal, ...existing]));
@@ -470,7 +471,8 @@ export default function CameraCapturePage() {
             rating,
             portion,
             originalNutrition: { calories: analysis.calories, nutrients: analysis.nutrients },
-            isPublic: shareWithNeighbors,
+            isPublic: visibility !== 'private',
+            visibility,
           }),
         });
         const result = await res.json();
@@ -513,7 +515,8 @@ export default function CameraCapturePage() {
           rating,
           portion,
           original_nutrition: { calories: analysis.calories, nutrients: analysis.nutrients },
-          is_public: shareWithNeighbors,
+          is_public: visibility !== 'private',
+          visibility,
         };
         const existing = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
         localStorage.setItem('mybob_meals', JSON.stringify([localMeal, ...existing]));
@@ -1095,37 +1098,35 @@ export default function CameraCapturePage() {
                       </div>
                     )}
 
-                    {/* 이웃 공유 토글 (PRO만) */}
-                    {uploadStatus?.plan !== 'free' && !saved && (
-                      <button
-                        onClick={() => setShareWithNeighbors(p => !p)}
-                        style={{
-                          width: '100%', padding: '11px 14px',
-                          backgroundColor: shareWithNeighbors ? '#f5f3ff' : 'white',
-                          border: `1px solid ${shareWithNeighbors ? '#a855f7' : '#e5e7eb'}`,
-                          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '14px' }}>👥</span>
-                          <span style={{ fontSize: '12px', color: shareWithNeighbors ? '#6B21A8' : '#6b7280' }}>
-                            이웃에게 공유
-                          </span>
+                    {/* 공개 설정 (PRO만, 저장 전) */}
+                    {uploadStatus?.plan !== 'free' && !saved && (() => {
+                      const VIS_OPTIONS = [
+                        { value: 'private' as const, emoji: '🔒', label: '비공개' },
+                        { value: 'neighbors' as const, emoji: '👥', label: '이웃만' },
+                        { value: 'public' as const, emoji: '🌏', label: '전체공개' },
+                      ];
+                      return (
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          {VIS_OPTIONS.map(opt => {
+                            const active = visibility === opt.value;
+                            return (
+                              <button
+                                key={opt.value}
+                                onClick={() => setVisibility(opt.value)}
+                                style={{
+                                  flex: 1, padding: '8px 4px', border: `1px solid ${active ? '#a855f7' : '#e5e7eb'}`,
+                                  backgroundColor: active ? '#f5f3ff' : 'white',
+                                  cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px',
+                                }}
+                              >
+                                <span style={{ fontSize: '14px' }}>{opt.emoji}</span>
+                                <span style={{ fontSize: '10px', color: active ? '#6B21A8' : '#6b7280', fontWeight: active ? 600 : 400 }}>{opt.label}</span>
+                              </button>
+                            );
+                          })}
                         </div>
-                        <div style={{
-                          width: '36px', height: '20px', borderRadius: '10px',
-                          backgroundColor: shareWithNeighbors ? '#6B21A8' : '#d1d5db',
-                          position: 'relative', transition: 'background-color 0.2s',
-                        }}>
-                          <div style={{
-                            position: 'absolute', top: '3px',
-                            left: shareWithNeighbors ? '19px' : '3px',
-                            width: '14px', height: '14px', borderRadius: '50%',
-                            backgroundColor: 'white', transition: 'left 0.2s',
-                          }} />
-                        </div>
-                      </button>
-                    )}
+                      );
+                    })()}
 
                     {saved && (
                       <div style={{ padding: '9px', backgroundColor: 'black', textAlign: 'center' }}>
