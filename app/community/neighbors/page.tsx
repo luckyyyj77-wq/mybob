@@ -105,7 +105,7 @@ export default function NeighborsPage() {
   const loadFeed = useCallback(async (t: string) => {
     setFeedLoading(true);
     try {
-      const res = await fetch('/api/community', { headers: { Authorization: `Bearer ${t}` } });
+      const res = await fetch('/api/community?type=neighbors', { headers: { Authorization: `Bearer ${t}` } });
       if (res.status === 403) { setIsPro(false); return; }
       const data = await res.json();
       if (res.ok) {
