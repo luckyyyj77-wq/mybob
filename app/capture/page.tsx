@@ -128,8 +128,6 @@ export default function CameraCapturePage() {
 
   // food 카메라 스트림 시작 (직접 video 태그에 연결)
   const startFoodCamera = useCallback(async () => {
-    // 스트림이 이미 있고 video에도 연결됐으면 skip
-    if (foodStreamRef.current && foodVideoRef.current?.srcObject === foodStreamRef.current) return;
     try {
       // 스트림이 없으면 새로 요청, 있으면 재사용
       if (!foodStreamRef.current) {
@@ -140,24 +138,33 @@ export default function CameraCapturePage() {
         localStorage.setItem('mybob_camera_granted', '1');
       }
       const stream = foodStreamRef.current;
-      if (foodVideoRef.current) {
-        const video = foodVideoRef.current;
-        video.srcObject = stream;
-        // iOS Safari: srcObject 세팅 후 metadata 로드 대기 후 play() 호출해야 블랙스크린 방지
-        await new Promise<void>((resolve) => {
-          if (video.readyState >= 1) { resolve(); return; }
-          video.onloadedmetadata = () => resolve();
-        });
-        await video.play();
-        const track = stream.getVideoTracks()[0];
-        if (track) {
-          const caps = track.getCapabilities() as any;
-          if (caps?.focusMode?.includes('continuous')) {
-            track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as any] }).catch(() => {});
-          }
-        }
-        setCameraReady(true);
+
+      // video DOM이 아직 마운트 안 됐을 경우 최대 300ms 대기 (retake 후 리렌더 타이밍)
+      let video = foodVideoRef.current;
+      if (!video) {
+        await new Promise<void>(resolve => setTimeout(resolve, 100));
+        video = foodVideoRef.current;
       }
+      if (!video) return;
+
+      // 이미 같은 스트림이 연결돼 재생 중이면 skip
+      if (video.srcObject === stream && !video.paused) return;
+
+      video.srcObject = stream;
+      // iOS Safari: srcObject 세팅 후 metadata 로드 대기 후 play() 호출해야 블랙스크린 방지
+      await new Promise<void>((resolve) => {
+        if (video!.readyState >= 1) { resolve(); return; }
+        video!.onloadedmetadata = () => resolve();
+      });
+      await video.play();
+      const track = stream.getVideoTracks()[0];
+      if (track) {
+        const caps = track.getCapabilities() as any;
+        if (caps?.focusMode?.includes('continuous')) {
+          track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as any] }).catch(() => {});
+        }
+      }
+      setCameraReady(true);
     } catch (err) {
       const name = (err as DOMException)?.name ?? '';
       if (name === 'NotAllowedError' || name === 'SecurityError') {
