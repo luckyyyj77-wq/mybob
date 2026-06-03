@@ -129,7 +129,7 @@ export default function CameraCapturePage() {
   // food 카메라 스트림 시작 (직접 video 태그에 연결)
   const startFoodCamera = useCallback(async () => {
     try {
-      // 스트림이 없으면 새로 요청, 있으면 재사용
+      // 스트림 없으면 새로 요청, 있으면 재사용 (retake 시 재사용으로 iOS play() 제한 우회)
       if (!foodStreamRef.current) {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
@@ -137,24 +137,17 @@ export default function CameraCapturePage() {
         foodStreamRef.current = stream;
         localStorage.setItem('mybob_camera_granted', '1');
       }
-      const stream = foodStreamRef.current;
-
-      // video DOM이 아직 마운트 안 됐을 경우 최대 300ms 대기 (retake 후 리렌더 타이밍)
-      let video = foodVideoRef.current;
-      if (!video) {
-        await new Promise<void>(resolve => setTimeout(resolve, 100));
-        video = foodVideoRef.current;
-      }
+      const stream = foodStreamRef.current!;
+      const video = foodVideoRef.current;
       if (!video) return;
 
-      // 이미 같은 스트림이 연결돼 재생 중이면 skip
-      if (video.srcObject === stream && !video.paused) return;
+      // 이미 같은 스트림이 연결되어 재생 중이면 완전히 skip
+      if (video.srcObject === stream && !video.paused && video.readyState >= 2) return;
 
       video.srcObject = stream;
-      // iOS Safari: srcObject 세팅 후 metadata 로드 대기 후 play() 호출해야 블랙스크린 방지
       await new Promise<void>((resolve) => {
-        if (video!.readyState >= 1) { resolve(); return; }
-        video!.onloadedmetadata = () => resolve();
+        if (video.readyState >= 1) { resolve(); return; }
+        video.onloadedmetadata = () => resolve();
       });
       await video.play();
       const track = stream.getVideoTracks()[0];
@@ -171,7 +164,6 @@ export default function CameraCapturePage() {
         localStorage.removeItem('mybob_camera_granted');
         setPermState('denied');
       }
-      // NotReadableError 등 일시적 오류는 무시 (cameraReady = false 유지)
     }
   }, []);
 
@@ -226,15 +218,15 @@ export default function CameraCapturePage() {
     return () => { if (permStatus) permStatus.onchange = null; };
   }, []);
 
-  // permState가 granted로 바뀌면 food 카메라 자동 시작
-  // startFoodCamera 내부에서 "스트림 있고 video 연결됨" 이면 skip하므로 중복 호출 안전
+  // food 카메라: 촬영 후 imageSrc가 생겨도 스트림은 유지 (retake 시 재사용)
+  // 스트림을 끊는 조건: 권한 없음 OR food 모드 아님 (OCR 전환 등)
   useEffect(() => {
-    if (permState === 'granted' && captureMode === 'food' && !imageSrc) {
+    if (permState === 'granted' && captureMode === 'food') {
       startFoodCamera();
-    } else if (permState !== 'granted' || captureMode !== 'food' || imageSrc) {
+    } else if (permState !== 'granted' || captureMode !== 'food') {
       stopFoodCamera();
     }
-  }, [permState, captureMode, imageSrc, startFoodCamera, stopFoodCamera]);
+  }, [permState, captureMode, startFoodCamera, stopFoodCamera]);
 
   // 페이지 언마운트 시에만 카메라 정리
   useEffect(() => {
@@ -552,6 +544,12 @@ export default function CameraCapturePage() {
     setCaptureMode('food');
     if (fileInputRef.current) fileInputRef.current.value = '';
     stopOcrCamera();
+    // 스트림이 살아있으면 video에 즉시 재연결 (iOS user gesture 체인 불필요)
+    if (foodStreamRef.current && foodVideoRef.current) {
+      const video = foodVideoRef.current;
+      video.srcObject = foodStreamRef.current;
+      video.play().then(() => setCameraReady(true)).catch(() => {});
+    }
   };
 
   // 확인 중
