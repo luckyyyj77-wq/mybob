@@ -133,7 +133,7 @@ export async function GET(request: Request) {
   }
 }
 
-async function attachProfiles(admin: ReturnType<typeof createClient>, meals: any[]) {
+async function attachProfiles(admin: any, meals: any[]) {
   if (meals.length === 0) return [];
   const userIds = Array.from(new Set(meals.map(m => m.user_id)));
   const { data: profiles } = await admin
