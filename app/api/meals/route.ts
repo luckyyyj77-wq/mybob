@@ -58,7 +58,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { mealData, imageBase64, rating, portion, originalNutrition, isPublic } = await request.json();
+    const { mealData, imageBase64, rating, portion, originalNutrition, isPublic, visibility } = await request.json();
     if (!mealData || !imageBase64) {
       return NextResponse.json({ error: 'mealData and imageBase64 are required.' }, { status: 400 });
     }
@@ -138,6 +138,7 @@ export async function POST(request: Request) {
       portion: portion ?? 1.0,
       original_nutrition: originalNutrition ?? null,
       is_public: Boolean(isPublic),
+      visibility: ['private', 'neighbors', 'public'].includes(visibility) ? visibility : (isPublic ? 'neighbors' : 'private'),
     };
 
     const { data, error } = await adminSupabase
