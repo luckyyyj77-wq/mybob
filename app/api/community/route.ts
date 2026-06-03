@@ -140,7 +140,7 @@ async function attachProfiles(admin: any, meals: any[]) {
     .from('profiles')
     .select('id, nickname, avatar_url')
     .in('id', userIds);
-  const profileMap = Object.fromEntries((profiles ?? []).map(p => [p.id, p]));
+  const profileMap = Object.fromEntries((profiles ?? []).map((p: any) => [p.id, p]));
   return meals.map(m => ({
     ...m,
     nickname: profileMap[m.user_id]?.nickname ?? '익명',
