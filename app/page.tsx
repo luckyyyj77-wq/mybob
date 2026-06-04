@@ -272,6 +272,7 @@ export default function Home() {
           goal: goalData,
           achievedStreak,
           totalAchievedDays,
+          persona: currentPersona,
         }),
       });
       const r = await res.json();
