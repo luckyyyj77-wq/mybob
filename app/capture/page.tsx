@@ -141,7 +141,7 @@ export default function CameraCapturePage() {
       const video = foodVideoRef.current;
       if (!video) return;
 
-      // 이미 같은 스트림이 연결되어 재생 중이면 완전히 skip
+      // 이미 같은 스트림이 연결되어 재생 중이면 skip (retake 후엔 srcObject가 null이라 통과됨)
       if (video.srcObject === stream && !video.paused && video.readyState >= 2) return;
 
       video.srcObject = stream;
@@ -218,15 +218,15 @@ export default function CameraCapturePage() {
     return () => { if (permStatus) permStatus.onchange = null; };
   }, []);
 
-  // food 카메라: 촬영 후 imageSrc가 생겨도 스트림은 유지 (retake 시 재사용)
-  // 스트림을 끊는 조건: 권한 없음 OR food 모드 아님 (OCR 전환 등)
+  // food 카메라: imageSrc=null(뷰파인더 상태)일 때만 startFoodCamera 호출
+  // retake() 후 imageSrc가 null로 바뀌면 이 effect가 재실행되어 video DOM에 스트림을 재연결
   useEffect(() => {
-    if (permState === 'granted' && captureMode === 'food') {
+    if (permState === 'granted' && captureMode === 'food' && !imageSrc) {
       startFoodCamera();
     } else if (permState !== 'granted' || captureMode !== 'food') {
       stopFoodCamera();
     }
-  }, [permState, captureMode, startFoodCamera, stopFoodCamera]);
+  }, [permState, captureMode, imageSrc, startFoodCamera, stopFoodCamera]);
 
   // 페이지 언마운트 시에만 카메라 정리
   useEffect(() => {
@@ -544,12 +544,8 @@ export default function CameraCapturePage() {
     setCaptureMode('food');
     if (fileInputRef.current) fileInputRef.current.value = '';
     stopOcrCamera();
-    // 스트림이 살아있으면 video에 즉시 재연결 (iOS user gesture 체인 불필요)
-    if (foodStreamRef.current && foodVideoRef.current) {
-      const video = foodVideoRef.current;
-      video.srcObject = foodStreamRef.current;
-      video.play().then(() => setCameraReady(true)).catch(() => {});
-    }
+    // imageSrc=null + captureMode='food' 로 상태 변경 → useEffect가 startFoodCamera 호출
+    // (retake 시점에 video DOM이 아직 없을 수 있으므로 직접 play() 시도하지 않음)
   };
 
   // 확인 중
