@@ -218,15 +218,14 @@ export default function CameraCapturePage() {
     return () => { if (permStatus) permStatus.onchange = null; };
   }, []);
 
-  // food 카메라: imageSrc=null(뷰파인더 상태)일 때만 startFoodCamera 호출
-  // retake() 후 imageSrc가 null로 바뀌면 이 effect가 재실행되어 video DOM에 스트림을 재연결
+  // food video가 항상 DOM에 있으므로 권한+모드 조건만 체크
   useEffect(() => {
-    if (permState === 'granted' && captureMode === 'food' && !imageSrc) {
+    if (permState === 'granted' && captureMode === 'food') {
       startFoodCamera();
     } else if (permState !== 'granted' || captureMode !== 'food') {
       stopFoodCamera();
     }
-  }, [permState, captureMode, imageSrc, startFoodCamera, stopFoodCamera]);
+  }, [permState, captureMode, startFoodCamera, stopFoodCamera]);
 
   // 페이지 언마운트 시에만 카메라 정리
   useEffect(() => {
@@ -544,8 +543,8 @@ export default function CameraCapturePage() {
     setCaptureMode('food');
     if (fileInputRef.current) fileInputRef.current.value = '';
     stopOcrCamera();
-    // imageSrc=null + captureMode='food' 로 상태 변경 → useEffect가 startFoodCamera 호출
-    // (retake 시점에 video DOM이 아직 없을 수 있으므로 직접 play() 시도하지 않음)
+    // video가 항상 DOM에 있으므로 스트림 즉시 재연결
+    startFoodCamera();
   };
 
   // 확인 중
@@ -695,6 +694,19 @@ export default function CameraCapturePage() {
   return (
     <div style={{ position: 'fixed', inset: 0, backgroundColor: 'black', display: 'flex', flexDirection: 'column' }}>
       {showLimitModal && <LimitModal />}
+
+      {/* food video — 항상 DOM에 유지 (iOS retake 시 재마운트 없이 스트림 재연결) */}
+      <video
+        ref={foodVideoRef}
+        playsInline
+        muted
+        style={{
+          position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
+          display: (!imageSrc && captureMode === 'food') ? 'block' : 'none',
+          zIndex: 0,
+        }}
+      />
+
       <AnimatePresence mode="wait">
 
         {/* ── 카메라 뷰 ── */}
@@ -704,18 +716,7 @@ export default function CameraCapturePage() {
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             style={{ position: 'absolute', inset: 0 }}
           >
-            {/* 음식 모드 카메라 — startFoodCamera/requestCamera에서 stream을 직접 연결 */}
-            <video
-              ref={foodVideoRef}
-              playsInline
-              muted
-              style={{
-                position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
-                display: captureMode === 'food' ? 'block' : 'none',
-              }}
-            />
-
-            {/* OCR 모드 카메라 — captureMode === 'ocr'일 때만 마운트 (food 카메라 unmount 후 스트림 해제됨) */}
+            {/* OCR 모드 카메라 — captureMode === 'ocr'일 때만 마운트 */}
             {captureMode === 'ocr' && (
               <video
                 ref={ocrVideoRef}
