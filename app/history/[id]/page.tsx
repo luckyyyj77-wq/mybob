@@ -579,9 +579,10 @@ function MealDetailContent() {
                 ];
 
                 const subFields = subAllFields.filter(n => {
-                  const hasOriginalValue = (meal.nutrient as any)?.[n.key] != null;
+                  const val = (displayNutrient as any)?.[n.key];
+                  const hasNonZeroValue = val != null && val !== 0;
                   const hasEditValue = isEditing && editNutrient[n.key] !== undefined;
-                  return hasOriginalValue || hasEditValue;
+                  return hasNonZeroValue || hasEditValue;
                 });
 
                 const subRemainder = subFields.length % 3;
@@ -703,9 +704,10 @@ function MealDetailContent() {
                     </div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                       {STANDARD_NUTRIENTS.filter(n => {
-                        const hasOriginalValue = (meal.nutrient as any)?.[n.key] != null;
-                        const alreadyAdded = editNutrient[n.key] !== undefined;
-                        return !hasOriginalValue && !alreadyAdded;
+                        const origVal = (meal.nutrient as any)?.[n.key];
+                        const isZeroOrMissing = origVal == null || origVal === 0;
+                        const alreadyAdded = editNutrient[n.key] !== undefined && editNutrient[n.key] !== '';
+                        return isZeroOrMissing && !alreadyAdded;
                       }).map(n => (
                         <button
                           key={n.key}
