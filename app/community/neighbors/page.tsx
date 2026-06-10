@@ -85,7 +85,6 @@ export default function NeighborsPage() {
   const [sendResult, setSendResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
   const [feed, setFeed] = useState<FeedMeal[]>([]);
-  const [feedLoading, setFeedLoading] = useState(true);
   const [isPro, setIsPro] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -95,30 +94,43 @@ export default function NeighborsPage() {
   useEffect(() => {
     if (token === null) return;
     if (token) {
-      loadFriends(token);
-      loadFeed(token);
+      loadAll(token);
     } else {
       setLoading(false);
     }
   }, [token]);
 
-  const loadFeed = useCallback(async (t: string) => {
-    setFeedLoading(true);
+  const loadAll = useCallback(async (t: string) => {
+    setLoading(true);
     try {
-      const res = await fetch('/api/community?type=neighbors', { headers: { Authorization: `Bearer ${t}` } });
-      if (res.status === 403) { setIsPro(false); return; }
-      const data = await res.json();
-      if (res.ok) {
+      const [friendsRes, feedRes] = await Promise.all([
+        fetch('/api/friends', { headers: { Authorization: `Bearer ${t}` } }),
+        fetch('/api/community?type=neighbors', { headers: { Authorization: `Bearer ${t}` } }),
+      ]);
+
+      const [friendsData, feedData] = await Promise.all([
+        friendsRes.json(),
+        feedRes.json(),
+      ]);
+
+      if (friendsRes.ok) {
+        setFriends(friendsData.friends ?? []);
+        setIncoming(friendsData.incoming ?? []);
+        setOutgoing(friendsData.outgoing ?? []);
+      }
+
+      if (feedRes.status === 403) {
+        setIsPro(false);
+      } else if (feedRes.ok) {
         setIsPro(true);
-        setFeed(data.data ?? []);
+        setFeed(feedData.data ?? []);
       }
     } catch { } finally {
-      setFeedLoading(false);
+      setLoading(false);
     }
   }, []);
 
-
-  const loadFriends = useCallback(async (t: string) => {
+  const reloadFriends = useCallback(async (t: string) => {
     try {
       const res = await fetch('/api/friends', { headers: { Authorization: `Bearer ${t}` } });
       const data = await res.json();
@@ -128,7 +140,6 @@ export default function NeighborsPage() {
         setOutgoing(data.outgoing ?? []);
       }
     } catch { }
-    setLoading(false);
   }, []);
 
   const withActionLoading = async (id: string, fn: () => Promise<void>) => {
@@ -151,7 +162,7 @@ export default function NeighborsPage() {
       setSendResult({ ok: res.ok, msg: data.message || data.error });
       if (res.ok) {
         setSearchNick('');
-        loadFriends(token);
+        reloadFriends(token);
         setTab('requests');
       }
     } catch {
@@ -283,7 +294,7 @@ export default function NeighborsPage() {
 
         {/* 이웃 피드 */}
         {tab === 'feed' && (
-          isPro === null || feedLoading ? (
+          loading ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', border: '1px solid #e5e7eb' }}>
               {[1, 2, 3].map(i => <SkeletonRow key={i} />)}
             </div>
