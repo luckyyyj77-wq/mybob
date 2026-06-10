@@ -89,23 +89,19 @@ export async function GET(request: Request) {
       .slice(0, 6)
       .map(([name, count]) => ({ name, count }));
 
-    // 최근 7일 일별 기록 수
-    const dailyStats = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const start = new Date(d); start.setHours(0, 0, 0, 0);
-      const end = new Date(d); end.setHours(23, 59, 59, 999);
-      const { count } = await adminSupabase
-        .from('meals')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', start.toISOString())
-        .lte('created_at', end.toISOString());
-      dailyStats.push({
-        date: d.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }),
-        count: count ?? 0,
-      });
-    }
+    // 최근 7일 일별 기록 수 (1개 쿼리로 배치 조회 후 메모리 집계)
+    const week7Start = new Date(); week7Start.setDate(week7Start.getDate() - 6); week7Start.setHours(0, 0, 0, 0);
+    const { data: recentMeals } = await adminSupabase
+      .from('meals')
+      .select('created_at')
+      .gte('created_at', week7Start.toISOString());
+
+    const dailyStats = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(); d.setDate(d.getDate() - (6 - i));
+      const dateStr = d.toISOString().slice(0, 10);
+      const count = (recentMeals ?? []).filter(m => m.created_at.slice(0, 10) === dateStr).length;
+      return { date: d.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }), count };
+    });
 
     return NextResponse.json({
       success: true,

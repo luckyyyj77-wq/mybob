@@ -42,23 +42,19 @@ export async function GET(request: Request) {
     const profiledUsers = (profiles ?? []).length;
     planCount.free += totalUsers - profiledUsers;
 
-    // 최근 14일 일별 식단 기록 수
-    const dailyMeals = [];
-    for (let i = 13; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const start = new Date(d); start.setHours(0, 0, 0, 0);
-      const end = new Date(d); end.setHours(23, 59, 59, 999);
-      const { count } = await adminSupabase
-        .from('meals')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', start.toISOString())
-        .lte('created_at', end.toISOString());
-      dailyMeals.push({
-        date: d.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }),
-        count: count ?? 0,
-      });
-    }
+    // 최근 14일 일별 식단 기록 수 (1개 쿼리로 배치 조회 후 메모리 집계)
+    const since14 = new Date(); since14.setDate(since14.getDate() - 13); since14.setHours(0, 0, 0, 0);
+    const { data: mealsLast14 } = await adminSupabase
+      .from('meals')
+      .select('created_at')
+      .gte('created_at', since14.toISOString());
+
+    const dailyMeals = Array.from({ length: 14 }, (_, i) => {
+      const d = new Date(); d.setDate(d.getDate() - (13 - i));
+      const dateStr = d.toISOString().slice(0, 10);
+      const count = (mealsLast14 ?? []).filter(m => m.created_at.slice(0, 10) === dateStr).length;
+      return { date: d.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }), count };
+    });
 
     // 오늘 활성 분석 사용자 수 (analyses_today > 0)
     const today = new Date().toISOString().slice(0, 10);
@@ -79,11 +75,11 @@ export async function GET(request: Request) {
       .map(([name, count]) => ({ name, count }));
 
     // 토큰 사용량 통계 (최근 14일)
-    const since14 = new Date(); since14.setDate(since14.getDate() - 13); since14.setHours(0, 0, 0, 0);
+    const tokenSince14 = new Date(); tokenSince14.setDate(tokenSince14.getDate() - 13); tokenSince14.setHours(0, 0, 0, 0);
     const { data: usageData } = await adminSupabase
       .from('gemini_usage')
       .select('model, plan, tokens_in, tokens_out, created_at')
-      .gte('created_at', since14.toISOString());
+      .gte('created_at', tokenSince14.toISOString());
 
     const modelTotals: Record<string, { calls: number; tokensIn: number; tokensOut: number }> = {};
     let totalCalls = 0;

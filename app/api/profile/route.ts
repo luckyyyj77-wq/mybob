@@ -71,7 +71,7 @@ export async function PATCH(request: Request) {
     if (profile?.nickname_changed) {
       return NextResponse.json({ error: 'NICKNAME_ALREADY_CHANGED' }, { status: 403 });
     }
-    const nick = body.nickname.trim();
+    const nick = body.nickname.trim().replace(/[<>&"'`]/g, '');
     if (nick.length < 2 || nick.length > 16) {
       return NextResponse.json({ error: '닉네임은 2~16자여야 합니다.' }, { status: 400 });
     }

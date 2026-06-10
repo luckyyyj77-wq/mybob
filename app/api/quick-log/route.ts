@@ -72,6 +72,7 @@ export async function POST(request: Request) {
     };
 
     if (!foodName?.trim()) return NextResponse.json({ error: 'foodName required' }, { status: 400 });
+    if (foodName.trim().length > 100) return NextResponse.json({ error: '음식명은 100자 이내여야 합니다.' }, { status: 400 });
 
     // 업로드 횟수 체크 (AI 분석 횟수는 소모 안 함)
     const supabaseService = createClient(supabaseUrl, supabaseServiceRoleKey);
