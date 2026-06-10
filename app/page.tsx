@@ -273,6 +273,10 @@ export default function Home() {
           achievedStreak,
           totalAchievedDays,
           persona: currentPersona,
+          mealNames: stats.mealNames,
+          currentHour: new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul', hour: 'numeric', hour12: false }) === '24'
+            ? 0
+            : parseInt(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul', hour: 'numeric', hour12: false }), 10),
         }),
       });
       const r = await res.json();

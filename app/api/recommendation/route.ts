@@ -32,7 +32,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' }, { status: 429 });
     }
 
-    const { today, weekly, goal, achievedStreak = 0, totalAchievedDays = 0, persona = 'dog' } = await request.json();
+    const { today, weekly, goal, achievedStreak = 0, totalAchievedDays = 0, persona = 'dog', mealNames = [], currentHour } = await request.json();
     const geminiKey = process.env.GEMINI_API_KEY?.trim();
     const cdbKey = process.env.CDB_API_KEY?.trim();
     if (!geminiKey || !cdbKey) return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
@@ -44,11 +44,24 @@ export async function POST(request: Request) {
     };
     const guide = goalGuide[goal?.goal || '유지'];
 
+    // 시간대 계산 (클라이언트 KST 시간 우선, 없으면 서버 시간)
+    const hour = typeof currentHour === 'number' ? currentHour : new Date().getHours();
+    const timeSlotLabel =
+      hour >= 0  && hour < 6  ? '새벽 (수면 시간대)' :
+      hour >= 6  && hour < 11 ? '아침' :
+      hour >= 11 && hour < 14 ? '점심' :
+      hour >= 14 && hour < 18 ? '오후' :
+      hour >= 18 && hour < 22 ? '저녁' : '야식 시간대 (22시 이후)';
+
     let bmrNote = '';
     if (goal?.height && goal?.weight) {
       const bmr = Math.round(10 * Number(goal.weight) + 6.25 * Number(goal.height) - 5 * 30);
       bmrNote = `키 ${goal.height}cm, 몸무게 ${goal.weight}kg, 기초대사량 약 ${bmr}kcal.`;
     }
+
+    const mealsNote = mealNames.length > 0
+      ? `오늘 먹은 음식: ${mealNames.slice(0, 8).join(', ')}.`
+      : '오늘 먹은 음식 정보 없음.';
 
     const weeklyAvg = weekly && weekly.length > 0 ? {
       calories: Math.round(weekly.reduce((s: number, d: any) => s + d.calories, 0) / weekly.length),
@@ -72,26 +85,28 @@ export async function POST(request: Request) {
     // ── Step 1: Gemini로 식단 맥락 요약 + 구조화 피드백 생성 ──
     const analysisPrompt = `당신은 영양 분석 전문가입니다. 아래 식단 데이터를 분석하여 JSON으로만 응답하세요.
 
+[현재 시간대] ${timeSlotLabel}
 [목표] ${goal?.goal || '유지'} / 권장 ${guide.kcal}kcal / 탄${guide.carbPct}%·단${guide.proteinPct}%·지${guide.fatPct}%
 ${bmrNote}
-[오늘] 칼로리 ${today.calories}kcal, 탄수화물 ${today.carbs}g, 단백질 ${today.protein}g, 지방 ${today.fat}g
+[오늘 먹은 것] ${mealsNote}
+[오늘 영양] 칼로리 ${today.calories}kcal, 탄수화물 ${today.carbs}g, 단백질 ${today.protein}g, 지방 ${today.fat}g
 [주간] ${weeklyNote}
 ${streakNote ? `[연속달성] ${streakNote}` : ''}
 
 다음 JSON 형식으로만 응답하세요:
 {
-  "summary": "오늘 식단 상황을 한 문장으로 객관적으로 요약 (코치 코멘트 생성용 input으로 쓸 텍스트)",
-  "goodPoint": "오늘 식단에서 영양학적으로 잘 된 점 한 문장",
-  "improvement": "내일 개선할 구체적인 팁 한 문장",
+  "summary": "오늘 먹은 음식과 시간대를 반영한 식단 상황 한 문장 요약 (코치 코멘트 생성용 input, 구체적인 음식명 포함)",
+  "goodPoint": "오늘 식단에서 영양학적으로 잘 된 점 한 문장 (구체적인 음식명 언급)",
+  "improvement": "${timeSlotLabel} 기준으로 지금 당장 실천할 수 있는 개선 팁 한 문장",
   "weeklyInsight": "주간 트렌드 한 줄 코멘트",
   "recommendation": {
-    "menu": "부족한 영양소를 채울 구체적인 식단",
+    "menu": "부족한 영양소를 채울 구체적인 식단 (현재 시간대에 맞는 음식)",
     "reason": "해당 메뉴가 필요한 이유 한 문장"
   }
 }
 반드시 한국어로 작성하세요.`;
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`;
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
     const geminiRes = await fetch(geminiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -109,27 +124,40 @@ ${streakNote ? `[연속달성] ${streakNote}` : ''}
     const geminiResult = await geminiRes.json();
     const analysis = JSON.parse(geminiResult.candidates[0].content.parts[0].text);
 
-    // ── Step 2: cdbapi로 페르소나 코멘트 생성 ──
+    // ── Step 2: cdbapi로 페르소나 코멘트 생성 (4초 타임아웃) ──
+    const CDB_FALLBACK: Record<string, string[]> = {
+      dog:   ['오늘도 기록 잘 하셨어요! 저 너무 기뻐요! 내일도 같이해요!', '주인님 최고예요! 오늘 식단 정말 잘 보셨어요! 저 응원할게요!', '오늘도 열심히 드셨군요! 저 행복해요! 내일도 같이해요!'],
+      cat:   ['뭐, 오늘 식단은 그럭저럭이네요. 내일은 좀 더 신경 써봐요.', '분석은 끝났어요. 결과는 스스로 판단하세요. 저는 할 말 다 했어요.', '오늘 하루 기록했군요. 그것만으로도 충분히 했어요. 내일도 그렇게 하세요.'],
+      robot: ['오늘 식단 분석 완료. 데이터를 바탕으로 내일 식단을 조정하세요.', '기록된 데이터를 확인했습니다. 꾸준한 기록이 정확한 분석을 만듭니다.', '오늘 섭취 데이터 수집 완료. 목표 달성을 위한 패턴을 유지하세요.'],
+    };
+
     const cdbPersona = PERSONA_MAP[persona] ?? PERSONA_MAP['dog'];
-    const cdbRes = await fetch('https://cdbapi.vercel.app/api/v1/comment', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': cdbKey,
-      },
-      body: JSON.stringify({
-        input: analysis.summary,
-        persona: cdbPersona.persona,
-        level: cdbPersona.level,
-      }),
-    });
+    const cdbController = new AbortController();
+    const cdbTimeout = setTimeout(() => cdbController.abort(), 4000);
 
     let feedback = analysis.summary;
-    if (cdbRes.ok) {
-      const cdbResult = await cdbRes.json();
-      if (cdbResult.comment) feedback = cdbResult.comment;
-    } else {
-      console.error('[recommendation] cdbapi error');
+    try {
+      const cdbRes = await fetch('https://cdbapi.vercel.app/api/v1/comment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': cdbKey },
+        body: JSON.stringify({ input: analysis.summary, persona: cdbPersona.persona, level: cdbPersona.level }),
+        signal: cdbController.signal,
+      });
+      if (cdbRes.ok) {
+        const cdbResult = await cdbRes.json();
+        if (cdbResult.comment) feedback = cdbResult.comment;
+      } else {
+        console.error('[recommendation] cdbapi error', cdbRes.status);
+        const pool = CDB_FALLBACK[persona] ?? CDB_FALLBACK['dog'];
+        feedback = pool[Math.floor(Math.random() * pool.length)];
+      }
+    } catch (e: any) {
+      const isTimeout = e?.name === 'AbortError';
+      console.error('[recommendation] cdbapi', isTimeout ? 'timeout' : e?.message);
+      const pool = CDB_FALLBACK[persona] ?? CDB_FALLBACK['dog'];
+      feedback = pool[Math.floor(Math.random() * pool.length)];
+    } finally {
+      clearTimeout(cdbTimeout);
     }
 
     return NextResponse.json({
