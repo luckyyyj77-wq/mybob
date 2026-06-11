@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { LS_PRODUCTS, PLAN_PRICE, PLAN_DESCRIPTION, getLSCheckoutUrl, type LSPlan } from '@/lib/lemonsqueezy';
+import { LS_VARIANT_IDS, PLAN_LABEL, PLAN_PRICE, PLAN_PER_MONTH, PLAN_DESCRIPTION, getLSCheckoutUrl, type LSPlan } from '@/lib/lemonsqueezy';
 
 type Props = {
   userEmail: string;
@@ -9,9 +9,10 @@ type Props = {
   onClose: () => void;
 };
 
-const PLANS: { key: LSPlan; label: string; badge?: string }[] = [
-  { key: 'pro_monthly', label: 'PRO 월간', badge: PLAN_PRICE.pro_monthly },
-  { key: 'lifetime',    label: '평생 이용권', badge: PLAN_PRICE.lifetime },
+const PLANS: { key: LSPlan; highlight?: string }[] = [
+  { key: 'pro_monthly' },
+  { key: 'pro_6months', highlight: '미끼' },
+  { key: 'pro_yearly',  highlight: '최저가' },
 ];
 
 const FEATURES = [
@@ -24,10 +25,11 @@ const FEATURES = [
 
 export default function UpgradeModal({ userEmail, userId, onClose }: Props) {
   const [selected, setSelected] = useState<LSPlan>('pro_monthly');
+  const [autoCancel, setAutoCancel] = useState(false);
 
   function handleCheckout() {
-    const variantId = LS_PRODUCTS[selected];
-    const url = getLSCheckoutUrl(variantId, userEmail, userId);
+    const variantId = LS_VARIANT_IDS[selected];
+    const url = getLSCheckoutUrl(variantId, userEmail, userId, autoCancel);
     window.open(url, '_blank');
   }
 
@@ -69,8 +71,8 @@ export default function UpgradeModal({ userEmail, userId, onClose }: Props) {
 
         {/* 플랜 선택 */}
         <p style={{ fontSize: '11px', letterSpacing: '1px', color: '#9ca3af', marginBottom: '10px' }}>플랜 선택</p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
-          {PLANS.map(({ key, label, badge }) => (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+          {PLANS.map(({ key, highlight }) => (
             <button
               key={key}
               onClick={() => setSelected(key)}
@@ -79,6 +81,7 @@ export default function UpgradeModal({ userEmail, userId, onClose }: Props) {
                 padding: '14px 16px', border: `2px solid ${selected === key ? '#6B21A8' : '#e5e7eb'}`,
                 backgroundColor: selected === key ? '#faf5ff' : 'white',
                 cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s',
+                position: 'relative',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -90,20 +93,56 @@ export default function UpgradeModal({ userEmail, userId, onClose }: Props) {
                 }} />
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ fontSize: '14px', fontWeight: 500, color: 'black' }}>{label}</span>
-                    {badge && (
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: 'black' }}>{PLAN_LABEL[key]}</span>
+                    {highlight && (
                       <span style={{
-                        fontSize: '10px', padding: '2px 6px',
-                        backgroundColor: '#6B21A8', color: 'white', letterSpacing: '0.5px',
-                      }}>{badge}</span>
+                        fontSize: '9px', padding: '2px 5px',
+                        backgroundColor: highlight === '최저가' ? '#6B21A8' : '#e5e7eb',
+                        color: highlight === '최저가' ? 'white' : '#9ca3af',
+                        letterSpacing: '0.5px',
+                      }}>{highlight}</span>
                     )}
                   </div>
                   <span style={{ fontSize: '11px', color: '#9ca3af' }}>{PLAN_DESCRIPTION[key]}</span>
                 </div>
               </div>
+              <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: selected === key ? '#6B21A8' : '#374151' }}>
+                  {PLAN_PRICE[key]}
+                </div>
+                <div style={{ fontSize: '10px', color: '#9ca3af' }}>{PLAN_PER_MONTH[key]}</div>
+              </div>
             </button>
           ))}
         </div>
+
+        {/* 30일 자동해지 옵션 */}
+        <button
+          onClick={() => setAutoCancel(v => !v)}
+          style={{
+            display: 'flex', alignItems: 'flex-start', gap: '10px',
+            width: '100%', padding: '12px 14px', marginBottom: '20px',
+            backgroundColor: autoCancel ? '#faf5ff' : '#f9fafb',
+            border: `1px solid ${autoCancel ? '#a855f7' : '#e5e7eb'}`,
+            cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s',
+          }}
+        >
+          <div style={{
+            width: '16px', height: '16px', border: `2px solid ${autoCancel ? '#6B21A8' : '#d1d5db'}`,
+            backgroundColor: autoCancel ? '#6B21A8' : 'transparent',
+            flexShrink: 0, marginTop: '1px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            {autoCancel && <span style={{ color: 'white', fontSize: '10px', lineHeight: 1 }}>✓</span>}
+          </div>
+          <div>
+            <div style={{ fontSize: '12px', fontWeight: 500, color: 'black', marginBottom: '2px' }}>
+              30일 후 자동 해지
+            </div>
+            <div style={{ fontSize: '11px', color: '#9ca3af', lineHeight: 1.5 }}>
+              구독했다가 잊어버려도 괜찮아요. 30일 후 자동으로 끝납니다.
+            </div>
+          </div>
+        </button>
 
         {/* 결제 버튼 */}
         <button
