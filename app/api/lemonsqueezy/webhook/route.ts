@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getPlanFromVariantId } from '@/lib/lemonsqueezy';
+import { getPlanFromVariantId, getAutoCancelDate, type LSPlan, LS_VARIANT_IDS } from '@/lib/lemonsqueezy';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -27,9 +27,17 @@ async function verifySignature(body: string, signature: string): Promise<boolean
   }
 }
 
-// 30일 후 구독 취소 예약
-async function scheduleCancelAt(subscriptionId: string): Promise<void> {
-  const cancelAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+function getPlanKeyFromVariantId(variantId: string | number): LSPlan {
+  const id = String(variantId);
+  for (const [key, val] of Object.entries(LS_VARIANT_IDS)) {
+    if (val === id) return key as LSPlan;
+  }
+  return 'pro_monthly';
+}
+
+// 플랜 기간 후 구독 취소 예약
+async function scheduleCancelAt(subscriptionId: string, plan: LSPlan): Promise<void> {
+  const cancelAt = getAutoCancelDate(plan).toISOString();
   await fetch(`https://api.lemonsqueezy.com/v1/subscriptions/${subscriptionId}`, {
     method: 'PATCH',
     headers: {
@@ -41,7 +49,7 @@ async function scheduleCancelAt(subscriptionId: string): Promise<void> {
       data: {
         type: 'subscriptions',
         id: String(subscriptionId),
-        attributes: { cancelled: true },
+        attributes: { cancelled: true, ends_at: cancelAt },
       },
     }),
   });
@@ -80,6 +88,7 @@ export async function POST(request: Request) {
 
     const subscriptionId = String(data.id);
     const autoCancel = customData.auto_cancel === '1';
+    const planKey = getPlanKeyFromVariantId(attrs.variant_id);
 
     await admin.from('profiles').update({
       plan,
@@ -87,9 +96,9 @@ export async function POST(request: Request) {
       ls_auto_cancel: autoCancel,
     }).eq('id', userId);
 
-    // 30일 자동해지 옵션 선택 시 즉시 취소 예약
+    // 자동해지 옵션 선택 시 플랜 기간에 맞춰 취소 예약
     if (autoCancel) {
-      await scheduleCancelAt(subscriptionId);
+      await scheduleCancelAt(subscriptionId, planKey);
     }
   }
 

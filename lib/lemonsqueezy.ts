@@ -19,16 +19,50 @@ export const PLAN_PRICE: Record<LSPlan, string> = {
 };
 
 export const PLAN_PER_MONTH: Record<LSPlan, string> = {
-  pro_monthly: '월 ₩900',
-  pro_6months: '월 ₩1,317',
+  pro_monthly: '',
+  pro_6months: '',
   pro_yearly:  '월 ₩742',
 };
 
 export const PLAN_DESCRIPTION: Record<LSPlan, string> = {
   pro_monthly: '매월 자동 결제 · 언제든 해지 가능',
   pro_6months: '6개월마다 자동 결제',
-  pro_yearly:  '연간 결제 · 월간 대비 18% 절약',
+  pro_yearly:  '연간 결제',
 };
+
+// 플랜별 자동해지 기간 레이블
+export const PLAN_CANCEL_LABEL: Record<LSPlan, string> = {
+  pro_monthly: '1개월',
+  pro_6months: '6개월',
+  pro_yearly:  '1년',
+};
+
+// 플랜별 자동해지 날짜 계산 (말일 초과 시 해당 달의 마지막 날로 클램프)
+export function getAutoCancelDate(plan: LSPlan): Date {
+  const now = new Date();
+  const day = now.getDate();
+
+  let y = now.getFullYear();
+  let m = now.getMonth(); // 0-indexed
+
+  if (plan === 'pro_monthly') {
+    m += 1;
+  } else if (plan === 'pro_6months') {
+    m += 6;
+  } else {
+    y += 1;
+  }
+
+  // 월 오버플로 처리
+  y += Math.floor(m / 12);
+  m = m % 12;
+
+  // 해당 달의 마지막 날 (2월 28/29일 등)
+  const lastDay = new Date(y, m + 1, 0).getDate();
+  const safeDay = Math.min(day, lastDay);
+
+  return new Date(y, m, safeDay, now.getHours(), now.getMinutes(), now.getSeconds());
+}
 
 export function getLSCheckoutUrl(variantId: string, userEmail: string, userId: string, autoCancel: boolean): string {
   const storeSlug = process.env.NEXT_PUBLIC_LS_STORE_SLUG!;
