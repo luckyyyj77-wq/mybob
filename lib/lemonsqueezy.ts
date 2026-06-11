@@ -66,12 +66,14 @@ export function getAutoCancelDate(plan: LSPlan): Date {
 
 export function getLSCheckoutUrl(variantId: string, userEmail: string, userId: string, autoCancel: boolean): string {
   const storeSlug = process.env.NEXT_PUBLIC_LS_STORE_SLUG!;
+  const testMode = process.env.NEXT_PUBLIC_LS_TEST_MODE === '1';
+  const subdomain = testMode ? `test.${storeSlug}` : storeSlug;
   const params = new URLSearchParams({
     'checkout[email]': userEmail,
     'checkout[custom][user_id]': userId,
     'checkout[custom][auto_cancel]': autoCancel ? '1' : '0',
   });
-  return `https://${storeSlug}.lemonsqueezy.com/buy/${variantId}?${params.toString()}`;
+  return `https://${subdomain}.lemonsqueezy.com/buy/${variantId}?${params.toString()}`;
 }
 
 export function getVariantIdFromPlan(plan: LSPlan): string {
