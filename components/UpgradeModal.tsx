@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { initializePaddle, type Paddle } from '@paddle/paddle-js';
-import { PADDLE_PRODUCTS, PLAN_PRICE, PLAN_DESCRIPTION, type PaddlePlan } from '@/lib/paddle';
+import { useState } from 'react';
+import { LS_PRODUCTS, PLAN_PRICE, PLAN_DESCRIPTION, getLSCheckoutUrl, type LSPlan } from '@/lib/lemonsqueezy';
 
 type Props = {
   userEmail: string;
@@ -10,8 +9,9 @@ type Props = {
   onClose: () => void;
 };
 
-const PLANS: { key: PaddlePlan; label: string; badge?: string }[] = [
-  { key: 'pro_monthly', label: 'PRO 월간', badge: '월 ₩900' },
+const PLANS: { key: LSPlan; label: string; badge?: string }[] = [
+  { key: 'pro_monthly', label: 'PRO 월간', badge: PLAN_PRICE.pro_monthly },
+  { key: 'lifetime',    label: '평생 이용권', badge: PLAN_PRICE.lifetime },
 ];
 
 const FEATURES = [
@@ -23,37 +23,12 @@ const FEATURES = [
 ];
 
 export default function UpgradeModal({ userEmail, userId, onClose }: Props) {
-  const [paddle, setPaddle] = useState<Paddle | null>(null);
-  const [selected, setSelected] = useState<PaddlePlan>('pro_monthly');
-  const [loading, setLoading] = useState(false);
+  const [selected, setSelected] = useState<LSPlan>('pro_monthly');
 
-  useEffect(() => {
-    const env = process.env.NEXT_PUBLIC_PADDLE_ENV as 'sandbox' | 'production' ?? 'sandbox';
-    const token = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN!;
-    initializePaddle({ environment: env, token })
-      .then(p => { if (p) setPaddle(p); })
-      .catch(() => {});
-  }, []);
-
-  async function handleCheckout() {
-    if (!paddle || loading) return;
-    setLoading(true);
-    try {
-      paddle.Checkout.open({
-        items: [{ priceId: PADDLE_PRODUCTS[selected], quantity: 1 }],
-        customer: { email: userEmail },
-        customData: { user_id: userId },
-        settings: {
-          displayMode: 'overlay',
-          locale: 'ko',
-          successUrl: `${window.location.origin}/settings?upgraded=1`,
-        },
-      });
-    } catch {
-      // ignore
-    } finally {
-      setLoading(false);
-    }
+  function handleCheckout() {
+    const variantId = LS_PRODUCTS[selected];
+    const url = getLSCheckoutUrl(variantId, userEmail, userId);
+    window.open(url, '_blank');
   }
 
   return (
@@ -126,9 +101,6 @@ export default function UpgradeModal({ userEmail, userId, onClose }: Props) {
                   <span style={{ fontSize: '11px', color: '#9ca3af' }}>{PLAN_DESCRIPTION[key]}</span>
                 </div>
               </div>
-              <span style={{ fontSize: '14px', fontWeight: 600, color: selected === key ? '#6B21A8' : '#374151' }}>
-                {PLAN_PRICE[key]}
-              </span>
             </button>
           ))}
         </div>
@@ -136,21 +108,18 @@ export default function UpgradeModal({ userEmail, userId, onClose }: Props) {
         {/* 결제 버튼 */}
         <button
           onClick={handleCheckout}
-          disabled={loading || !paddle}
           style={{
             width: '100%', padding: '16px',
-            backgroundColor: loading || !paddle ? '#e5e7eb' : '#6B21A8',
-            color: loading || !paddle ? '#9ca3af' : 'white',
+            backgroundColor: '#6B21A8', color: 'white',
             border: 'none', fontSize: '14px', fontWeight: 600,
-            cursor: loading || !paddle ? 'not-allowed' : 'pointer',
-            letterSpacing: '0.5px', transition: 'all 0.2s',
+            cursor: 'pointer', letterSpacing: '0.5px', transition: 'all 0.2s',
           }}
         >
-          {loading ? '처리 중...' : !paddle ? '로딩 중...' : `${PLAN_PRICE[selected]} 결제하기`}
+          {PLAN_PRICE[selected]} 결제하기
         </button>
 
         <p style={{ fontSize: '10px', color: '#9ca3af', textAlign: 'center', marginTop: '12px', lineHeight: 1.6 }}>
-          Paddle을 통해 안전하게 처리됩니다 · 구독은 언제든 해지 가능
+          Lemon Squeezy를 통해 안전하게 처리됩니다 · 구독은 언제든 해지 가능
         </p>
       </div>
     </div>

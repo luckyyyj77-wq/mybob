@@ -25,6 +25,8 @@ export default function PlanPage() {
   const [planLoaded, setPlanLoaded] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [userEmail, setUserEmail] = useState('');
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelMsg, setCancelMsg] = useState('');
 
   useEffect(() => {
     if (session?.user?.email) setUserEmail(session.user.email);
@@ -34,6 +36,29 @@ export default function PlanPage() {
       .then(data => { if (data) setPlanStatus(data); })
       .finally(() => setPlanLoaded(true));
   }, [token, session]);
+
+  async function handleCancel() {
+    if (!token || cancelling) return;
+    if (!confirm('구독을 해지하면 다음 결제일 이후 PRO 기능이 종료됩니다. 해지하시겠습니까?')) return;
+    setCancelling(true);
+    setCancelMsg('');
+    try {
+      const res = await fetch('/api/lemonsqueezy/cancel', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = await res.json();
+      if (res.ok) {
+        setCancelMsg('해지 신청이 완료되었습니다. 다음 결제일 이후 FREE로 전환됩니다.');
+      } else {
+        setCancelMsg(json.error === 'NO_SUBSCRIPTION' ? '활성 구독이 없습니다.' : '해지 중 오류가 발생했습니다.');
+      }
+    } catch {
+      setCancelMsg('네트워크 오류가 발생했습니다.');
+    } finally {
+      setCancelling(false);
+    }
+  }
 
   useEffect(() => {
     if (searchParams.get('upgraded') !== '1' || !token) return;
@@ -123,6 +148,23 @@ export default function PlanPage() {
                   <p style={{ fontSize: '10px', color: '#9ca3af', lineHeight: 1.5 }}>
                     PRO로 업그레이드하면 하루 25회 + 광고 없음 + 프리미엄 기능을 이용할 수 있습니다.
                   </p>
+                )}
+                {planStatus.plan === 'pro' && (
+                  <div style={{ marginTop: '8px' }}>
+                    <button
+                      onClick={handleCancel}
+                      disabled={cancelling}
+                      style={{
+                        padding: '6px 12px', backgroundColor: 'white', color: '#9ca3af',
+                        border: '1px solid #e5e7eb', fontSize: '11px', cursor: cancelling ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      {cancelling ? '처리 중...' : '구독 해지'}
+                    </button>
+                    {cancelMsg && (
+                      <p style={{ fontSize: '11px', color: '#6B21A8', marginTop: '8px', lineHeight: 1.5 }}>{cancelMsg}</p>
+                    )}
+                  </div>
                 )}
               </>
             ) : (
