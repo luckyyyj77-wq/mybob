@@ -1,5 +1,5 @@
 export const LS_VARIANT_IDS = {
-  pro_monthly:  '1775704',
+  pro_monthly:  '1774219',
   pro_6months:  '1774231',
   pro_yearly:   '1774232',
 } as const;
