@@ -134,7 +134,7 @@ export default function SettingsPage() {
 
         {/* 메뉴 목록 */}
         <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>설정 항목</p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: '#e5e7eb', border: '1px solid #e5e7eb' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: '#e5e7eb', border: '1px solid #e5e7eb', marginBottom: '28px' }}>
           {MENU_ITEMS.map(item => (
             <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }}>
               <div style={{
@@ -151,6 +151,19 @@ export default function SettingsPage() {
                 </div>
                 <span style={{ fontSize: '18px', color: '#d1d5db' }}>›</span>
               </div>
+            </Link>
+          ))}
+        </div>
+
+        {/* 약관/정책 링크 */}
+        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', paddingBottom: '8px' }}>
+          {[
+            { href: '/legal/terms',   label: '이용약관' },
+            { href: '/legal/privacy', label: '개인정보처리방침' },
+            { href: '/legal/refund',  label: '환불정책' },
+          ].map(link => (
+            <Link key={link.href} href={link.href} style={{ fontSize: '11px', color: '#9ca3af', textDecoration: 'none' }}>
+              {link.label}
             </Link>
           ))}
         </div>

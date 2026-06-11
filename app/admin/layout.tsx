@@ -7,16 +7,17 @@ import { supabase } from '@/lib/supabase/client';
 import { clearAllPhotos } from '@/lib/indexed-db';
 import {
   FaChartBar, FaUsers, FaUtensils, FaFileAlt,
-  FaHandshake, FaCog, FaBars, FaTimes, FaSignOutAlt,
+  FaHandshake, FaCog, FaBars, FaTimes, FaSignOutAlt, FaCreditCard,
 } from 'react-icons/fa';
 
 const NAV_ITEMS = [
-  { href: '/admin',          icon: FaChartBar,  label: '대시보드',     implemented: true },
-  { href: '/admin/users',    icon: FaUsers,     label: '회원 관리',    implemented: true },
-  { href: '/admin/meals',    icon: FaUtensils,  label: '식단 데이터',  implemented: true },
-  { href: '/admin/reports',  icon: FaFileAlt,   label: '통계 리포트',  implemented: true },
-  { href: '/admin/feedback', icon: FaHandshake, label: '제휴/문의',    implemented: false },
-  { href: '/admin/settings', icon: FaCog,       label: '앱 설정',      implemented: false },
+  { href: '/admin',                  icon: FaChartBar,   label: '대시보드',    implemented: true },
+  { href: '/admin/users',            icon: FaUsers,      label: '회원 관리',   implemented: true },
+  { href: '/admin/meals',            icon: FaUtensils,   label: '식단 데이터', implemented: true },
+  { href: '/admin/subscriptions',    icon: FaCreditCard, label: '구독 관리',   implemented: true },
+  { href: '/admin/reports',          icon: FaFileAlt,    label: '통계 리포트', implemented: true },
+  { href: '/admin/feedback',         icon: FaHandshake,  label: '제휴/문의',   implemented: false },
+  { href: '/admin/settings',         icon: FaCog,        label: '앱 설정',     implemented: false },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
