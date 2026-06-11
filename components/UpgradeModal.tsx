@@ -149,9 +149,15 @@ export default function UpgradeModal({ userEmail, userId, onClose }: Props) {
           {PLAN_PRICE[selected]} 결제하기
         </button>
 
-        <p style={{ fontSize: '10px', color: '#9ca3af', textAlign: 'center', marginTop: '12px', lineHeight: 1.6 }}>
-          Lemon Squeezy를 통해 안전하게 처리됩니다 · 구독은 언제든 해지 가능
-        </p>
+        <div style={{ marginTop: '14px', padding: '12px', backgroundColor: '#f9fafb', border: '1px solid #f3f4f6' }}>
+          <p style={{ fontSize: '10px', color: '#9ca3af', lineHeight: 1.8, margin: 0 }}>
+            · 결제는 Lemon Squeezy(Merchant of Record)를 통해 안전하게 처리됩니다.<br />
+            · 구독은 각 플랜 기간 종료 시 자동 갱신되며, 언제든지 해지할 수 있습니다.<br />
+            · 해지 후에도 구독 기간 종료일까지 PRO 기능을 이용할 수 있습니다.<br />
+            · 이미 결제된 구독 기간에 대한 환불은 제공되지 않습니다.<br />
+            · 자동 해지 옵션 선택 시 재결제 없이 해당 기간 후 자동 종료됩니다.
+          </p>
+        </div>
       </div>
     </div>
   );

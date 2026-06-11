@@ -13,6 +13,7 @@ type PlanStatus = {
   plan: 'free' | 'pro' | 'lifetime';
   upload: { used: number; limit: number; remaining: number };
   analysis: { used: number; limit: number; remaining: number };
+  autoCancel: boolean;
 };
 
 const PLAN_LABEL: Record<string, string> = { free: '무료', pro: '구독 PRO', lifetime: '평생 이용권' };
@@ -27,6 +28,7 @@ export default function PlanPage() {
   const [userEmail, setUserEmail] = useState('');
   const [cancelling, setCancelling] = useState(false);
   const [cancelMsg, setCancelMsg] = useState('');
+  const [cancelStep, setCancelStep] = useState<0 | 1 | 2>(0); // 0=기본 1=1차확인 2=처리중
 
   useEffect(() => {
     if (session?.user?.email) setUserEmail(session.user.email);
@@ -37,10 +39,10 @@ export default function PlanPage() {
       .finally(() => setPlanLoaded(true));
   }, [token, session]);
 
-  async function handleCancel() {
+  async function handleCancelConfirm() {
     if (!token || cancelling) return;
-    if (!confirm('구독을 해지하면 다음 결제일 이후 PRO 기능이 종료됩니다. 해지하시겠습니까?')) return;
     setCancelling(true);
+    setCancelStep(2);
     setCancelMsg('');
     try {
       const res = await fetch('/api/lemonsqueezy/cancel', {
@@ -49,12 +51,19 @@ export default function PlanPage() {
       });
       const json = await res.json();
       if (res.ok) {
-        setCancelMsg('해지 신청이 완료되었습니다. 다음 결제일 이후 FREE로 전환됩니다.');
+        setCancelMsg('해지 신청이 완료되었습니다. 현재 구독 기간 종료 후 FREE로 전환됩니다.');
+        setCancelStep(0);
+        // 플랜 상태 새로고침
+        fetch('/api/upload-status', { headers: { Authorization: `Bearer ${token}` } })
+          .then(r => r.ok ? r.json() : null)
+          .then(data => { if (data) setPlanStatus(data); });
       } else {
         setCancelMsg(json.error === 'NO_SUBSCRIPTION' ? '활성 구독이 없습니다.' : '해지 중 오류가 발생했습니다.');
+        setCancelStep(0);
       }
     } catch {
       setCancelMsg('네트워크 오류가 발생했습니다.');
+      setCancelStep(0);
     } finally {
       setCancelling(false);
     }
@@ -149,18 +158,61 @@ export default function PlanPage() {
                     PRO로 업그레이드하면 하루 25회 + 광고 없음 + 프리미엄 기능을 이용할 수 있습니다.
                   </p>
                 )}
+                {planStatus.plan === 'pro' && planStatus.autoCancel && (
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '10px 12px', backgroundColor: '#faf5ff', border: '1px solid #e9d5ff', marginBottom: '0', marginTop: '10px' }}>
+                    <span style={{ fontSize: '13px', flexShrink: 0 }}>⏱️</span>
+                    <p style={{ fontSize: '11px', color: '#6B21A8', lineHeight: 1.6, margin: 0 }}>
+                      자동 해지가 예약되어 있습니다. 구독 기간 종료 후 자동으로 FREE로 전환됩니다.
+                    </p>
+                  </div>
+                )}
                 {planStatus.plan === 'pro' && (
-                  <div style={{ marginTop: '8px' }}>
-                    <button
-                      onClick={handleCancel}
-                      disabled={cancelling}
-                      style={{
-                        padding: '6px 12px', backgroundColor: 'white', color: '#9ca3af',
-                        border: '1px solid #e5e7eb', fontSize: '11px', cursor: cancelling ? 'not-allowed' : 'pointer',
-                      }}
-                    >
-                      {cancelling ? '처리 중...' : '구독 해지'}
-                    </button>
+                  <div style={{ marginTop: '12px', borderTop: '1px solid #f3f4f6', paddingTop: '12px' }}>
+                    {cancelStep === 0 && (
+                      <button
+                        onClick={() => setCancelStep(1)}
+                        style={{
+                          padding: '6px 12px', backgroundColor: 'white', color: '#9ca3af',
+                          border: '1px solid #e5e7eb', fontSize: '11px', cursor: 'pointer',
+                        }}
+                      >
+                        구독 해지
+                      </button>
+                    )}
+                    {cancelStep === 1 && (
+                      <div style={{ backgroundColor: '#fff7ed', border: '1px solid #fed7aa', padding: '14px' }}>
+                        <p style={{ fontSize: '12px', fontWeight: 500, color: '#92400e', marginBottom: '6px' }}>
+                          정말 해지하시겠습니까?
+                        </p>
+                        <p style={{ fontSize: '11px', color: '#b45309', lineHeight: 1.6, marginBottom: '12px' }}>
+                          현재 구독 기간이 끝나는 시점에 PRO 기능이 종료됩니다.{'\n'}
+                          해지 후에도 기간 내에는 PRO를 계속 이용할 수 있습니다.
+                        </p>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            onClick={handleCancelConfirm}
+                            style={{
+                              padding: '7px 14px', backgroundColor: '#ef4444', color: 'white',
+                              border: 'none', fontSize: '11px', cursor: 'pointer', fontWeight: 500,
+                            }}
+                          >
+                            해지 확정
+                          </button>
+                          <button
+                            onClick={() => setCancelStep(0)}
+                            style={{
+                              padding: '7px 14px', backgroundColor: 'white', color: '#374151',
+                              border: '1px solid #d1d5db', fontSize: '11px', cursor: 'pointer',
+                            }}
+                          >
+                            취소
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {cancelStep === 2 && (
+                      <p style={{ fontSize: '11px', color: '#9ca3af' }}>처리 중...</p>
+                    )}
                     {cancelMsg && (
                       <p style={{ fontSize: '11px', color: '#6B21A8', marginTop: '8px', lineHeight: 1.5 }}>{cancelMsg}</p>
                     )}

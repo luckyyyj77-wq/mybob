@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const lsApiKey = process.env.LS_API_KEY!;
 
 export async function DELETE(request: Request) {
   try {
@@ -22,6 +23,23 @@ export async function DELETE(request: Request) {
     const adminSupabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
+
+    // 0. Lemon Squeezy 구독 해지 (있는 경우)
+    const { data: profile } = await adminSupabase
+      .from('profiles')
+      .select('ls_subscription_id, plan')
+      .eq('id', user.id)
+      .single();
+
+    if (profile?.ls_subscription_id && profile.plan === 'pro' && lsApiKey) {
+      await fetch(`https://api.lemonsqueezy.com/v1/subscriptions/${profile.ls_subscription_id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${lsApiKey}`,
+          Accept: 'application/vnd.api+json',
+        },
+      }).catch(() => {}); // 실패해도 탈퇴는 계속 진행
+    }
 
     // 1. Supabase Storage 사진 삭제
     const { data: files } = await adminSupabase.storage
