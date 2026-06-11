@@ -14,20 +14,20 @@ export const PLAN_LABEL: Record<LSPlan, string> = {
 
 export const PLAN_PRICE: Record<LSPlan, string> = {
   pro_monthly: '₩900/월',
-  pro_6months: '₩7,900/6개월',
-  pro_yearly:  '₩8,900/년',
+  pro_6months: '₩4,500/6개월',
+  pro_yearly:  '₩8,100/년',
 };
 
 export const PLAN_PER_MONTH: Record<LSPlan, string> = {
   pro_monthly: '',
-  pro_6months: '',
-  pro_yearly:  '월 ₩742',
+  pro_6months: '월 ₩750 · 1개월 무료',
+  pro_yearly:  '월 ₩675 · 3개월 무료',
 };
 
 export const PLAN_DESCRIPTION: Record<LSPlan, string> = {
   pro_monthly: '매월 자동 결제 · 언제든 해지 가능',
-  pro_6months: '6개월마다 자동 결제',
-  pro_yearly:  '연간 결제',
+  pro_6months: '6개월마다 자동 결제 · 17% 절약',
+  pro_yearly:  '연간 결제 · 25% 절약',
 };
 
 // 플랜별 자동해지 기간 레이블
