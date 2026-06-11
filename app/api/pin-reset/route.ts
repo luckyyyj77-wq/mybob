@@ -6,7 +6,6 @@ import { rateLimit } from '@/lib/rate-limit';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const resend = new Resend(process.env.RESEND_API_KEY!);
 
 async function getUser(request: Request) {
   const auth = request.headers.get('Authorization');
@@ -49,6 +48,7 @@ export async function POST(request: Request) {
   }
 
   // Resend로 이메일 발송
+  const resend = new Resend(process.env.RESEND_API_KEY!);
   const { error: mailError } = await resend.emails.send({
     from: 'MyBob <onboarding@resend.dev>',
     to: user.email,
