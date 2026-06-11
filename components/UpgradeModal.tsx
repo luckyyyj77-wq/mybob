@@ -154,7 +154,7 @@ export default function UpgradeModal({ userEmail, userId, onClose }: Props) {
             · 결제는 Lemon Squeezy(Merchant of Record)를 통해 안전하게 처리됩니다.<br />
             · 구독은 각 플랜 기간 종료 시 자동 갱신되며, 언제든지 해지할 수 있습니다.<br />
             · 해지 후에도 구독 기간 종료일까지 PRO 기능을 이용할 수 있습니다.<br />
-            · 이미 결제된 구독 기간에 대한 환불은 제공되지 않습니다.<br />
+            · 결제 후 7일 이내 미사용 시 전액 환불 가능하며, 이후에는 환불이 제공되지 않습니다.<br />
             · 자동 해지 옵션 선택 시 재결제 없이 해당 기간 후 자동 종료됩니다.
           </p>
         </div>
