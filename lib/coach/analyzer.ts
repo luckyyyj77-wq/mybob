@@ -53,11 +53,13 @@ function getCurrentKSTHour(): number {
 }
 
 function getTimeSlot(hour: number): TimeSlot {
-  if (hour >= 0 && hour < 6)   return 'dawn';
-  if (hour >= 6 && hour < 11)  return 'morning';
+  if (hour >= 0  && hour < 5)  return 'early_dawn';
+  if (hour >= 5  && hour < 7)  return 'dawn';
+  if (hour >= 7  && hour < 11) return 'morning';
   if (hour >= 11 && hour < 14) return 'lunch';
-  if (hour >= 14 && hour < 18) return 'afternoon';
-  if (hour >= 18 && hour < 22) return 'evening';
+  if (hour >= 14 && hour < 17) return 'afternoon';
+  if (hour >= 17 && hour < 19) return 'late_afternoon';
+  if (hour >= 19 && hour < 22) return 'evening';
   return 'night';
 }
 
@@ -105,14 +107,14 @@ export function analyzeCoach(params: {
 
   // 3. very_few — 칼로리 기반으로 판단 (목표의 20% 미만)
   // 아직 하루가 덜 지난 아침/점심 시간대는 기준 완화
-  const earlyDaySlots: TimeSlot[] = ['dawn', 'morning', 'lunch'];
+  const earlyDaySlots: TimeSlot[] = ['early_dawn', 'dawn', 'morning', 'lunch'];
   const calThresholdVeryFew = earlyDaySlots.includes(timeSlot) ? goalCalories * 0.15 : goalCalories * 0.2;
   if (todayTotal > 0 && todayTotal < calThresholdVeryFew) {
     return { situation: 'very_few', persona, useGemini: false };
   }
 
   // 4. few — 목표의 20~55% 범위 (저녁 이후 시간대만 판단, 낮에는 아직 더 먹을 수 있음)
-  const lateSlots: TimeSlot[] = ['evening', 'night'];
+  const lateSlots: TimeSlot[] = ['evening', 'night', 'late_afternoon'];
   if (lateSlots.includes(timeSlot) && todayTotal < goalCalories * 0.55) {
     return { situation: 'few', persona, useGemini: false };
   }

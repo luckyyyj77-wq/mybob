@@ -79,18 +79,22 @@ export default function Home() {
   const syncedRef = useRef(false);
   const fetchingAIRef = useRef(false); // Gemini 이중호출 방어
 
-  // 캐시 키용 날짜 — YYYY-MM-DD 형식으로 통일
-  const getKSTDateKey = () =>
-    new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
+  // 캐시 키 — YYYY-MM-DD-HH 형식, 3시간 블록 단위 (0,3,6,9,12,15,18,21)
+  const getKSTDateKey = () => {
+    const kstHour = (new Date().getUTCHours() + 9) % 24;
+    const block = Math.floor(kstHour / 3) * 3; // 0,3,6,...,21
+    const date = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
+    return `${date}-${String(block).padStart(2, '0')}`;
+  };
 
   const VALID_PERSONAS: Persona[] = ['dog', 'cat', 'robot'];
   const sanitizePersona = (p: string | null): Persona =>
     VALID_PERSONAS.includes(p as Persona) ? (p as Persona) : 'dog';
 
   useEffect(() => {
-    // 구버전 캐시 키(하이픈 없는 YYYYMMDD 형식) 자동 정리
+    // 구버전 캐시 키 자동 정리 (YYYYMMDD 형식 또는 날짜만 있는 형식)
     for (const key of Object.keys(localStorage)) {
-      if (/^mybob_coach_(dog|cat|robot)_\d{8}$/.test(key)) {
+      if (/^mybob_coach_(dog|cat|robot)_(\d{8}|\d{4}-\d{2}-\d{2})$/.test(key)) {
         localStorage.removeItem(key);
       }
     }

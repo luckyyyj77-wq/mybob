@@ -47,11 +47,13 @@ export async function POST(request: Request) {
     // 시간대 계산 (클라이언트 KST 시간 우선, 없으면 서버 시간)
     const hour = typeof currentHour === 'number' ? currentHour : new Date().getHours();
     const timeSlotLabel =
-      hour >= 0  && hour < 6  ? '새벽 (수면 시간대)' :
-      hour >= 6  && hour < 11 ? '아침' :
-      hour >= 11 && hour < 14 ? '점심' :
-      hour >= 14 && hour < 18 ? '오후' :
-      hour >= 18 && hour < 22 ? '저녁' : '야식 시간대 (22시 이후)';
+      hour >= 0  && hour < 5  ? '새벽 (수면 시간대, 0~4시)' :
+      hour >= 5  && hour < 7  ? '이른 아침 (5~6시, 일찍 일어나신 시간대)' :
+      hour >= 7  && hour < 11 ? '아침 (7~10시)' :
+      hour >= 11 && hour < 14 ? '점심 (11~13시)' :
+      hour >= 14 && hour < 17 ? '오후 (14~16시)' :
+      hour >= 17 && hour < 19 ? '늦은 오후/퇴근 시간대 (17~18시)' :
+      hour >= 19 && hour < 22 ? '저녁 (19~21시)' : '야식 시간대 (22시 이후)';
 
     let bmrNote = '';
     if (goal?.height && goal?.weight) {
