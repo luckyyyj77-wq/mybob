@@ -24,7 +24,7 @@ export async function GET(request: Request) {
 
   const { data: profile } = await adminSupabase
     .from('profiles')
-    .select('plan, uploads_today, last_upload_date, analyses_today, last_analysis_date, ls_auto_cancel')
+    .select('plan, uploads_today, last_upload_date, analyses_today, last_analysis_date')
     .eq('id', user.id)
     .single();
 
@@ -40,6 +40,6 @@ export async function GET(request: Request) {
     plan,
     upload: { used: uploadUsed, limit: uploadLimit, remaining: uploadLimit - uploadUsed },
     analysis: { used: analysisUsed, limit: analysisLimit, remaining: analysisLimit - analysisUsed },
-    autoCancel: profile?.ls_auto_cancel ?? false,
+    autoCancel: false,
   });
 }
