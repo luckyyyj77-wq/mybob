@@ -38,12 +38,11 @@ async function getOrCreateProfile(adminSupabase: AnySupabaseClient, userId: stri
     const today = getKSTDateString();
     await adminSupabase.from('profiles').upsert({
       id: userId,
-      plan: 'free',
       uploads_today: 0,
       last_upload_date: today,
       analyses_today: 0,
       last_analysis_date: today,
-    });
+    }, { onConflict: 'id', ignoreDuplicates: false });
     return { plan: 'free' as Plan, uploads_today: 0, last_upload_date: today, analyses_today: 0, last_analysis_date: today };
   }
   return profile;
