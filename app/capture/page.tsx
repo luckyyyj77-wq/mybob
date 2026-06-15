@@ -403,8 +403,8 @@ export default function CameraCapturePage() {
           } : null);
         }
       }
-    } catch (err: any) {
-      setAnalysisError(`분석 실패: ${err.message}`);
+    } catch {
+      setAnalysisError('분석에 실패했습니다. 잠시 후 다시 시도해주세요.');
     } finally {
       setLoadingAnalysis(false);
     }
@@ -487,7 +487,7 @@ export default function CameraCapturePage() {
         }
 
         if (!res.ok) {
-          throw new Error(result.error || result.stack || `서버 저장 실패 (${res.status})`);
+          throw new Error('SAVE_FAILED');
         }
 
         let serverId = mealId;
@@ -523,8 +523,8 @@ export default function CameraCapturePage() {
       }
 
       setSaved(true);
-    } catch (err: any) {
-      alert(`저장 실패: ${err.message}`);
+    } catch {
+      alert('저장에 실패했습니다. 잠시 후 다시 시도해주세요.');
     } finally {
       setLoadingSave(false);
     }
