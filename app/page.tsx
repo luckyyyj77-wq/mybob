@@ -126,6 +126,19 @@ export default function Home() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
+  // 캡처 페이지 갔다 돌아올 때 로컬스토리지 재읽기 → 통계 즉시 갱신
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      const localRaw = localStorage.getItem('mybob_meals');
+      const localMeals: Meal[] = localRaw ? JSON.parse(localRaw) : [];
+      setTodayStats(computeTodayStats(localMeals));
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const runCoachLocal = (meals: Meal[], currentPersona: Persona, goalRaw: string | null) => {
     const finalStats = computeTodayStats(meals);
     const weekly = buildWeekly(meals);
