@@ -685,7 +685,7 @@ export default function HistoryPage() {
 
       {/* ── Quick Log 바텀시트 ── */}
       {showQuickLog && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 10002 }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 10002, overscrollBehavior: 'contain' }}>
           {/* 배경 딤 — touchmove 막아서 뒤 스크롤 차단 */}
           <div
             onClick={closeQuickLog}
@@ -719,9 +719,9 @@ export default function HistoryPage() {
               </button>
             </div>
 
-            {/* Step 1: 식사 시간 선택 (스크롤 불필요) */}
+            {/* Step 1: 식사 시간 선택 */}
             {qlStep === 'time' && (
-              <div style={{ padding: '0 24px 32px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ padding: '0 24px 32px', display: 'flex', flexDirection: 'column', gap: '8px', overflowY: 'auto' }}>
                 {MEAL_TIMES.map(mt => (
                   <button
                     key={mt.value}
