@@ -274,9 +274,7 @@ export default function Home() {
           totalAchievedDays,
           persona: currentPersona,
           mealNames: stats.mealNames,
-          currentHour: new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul', hour: 'numeric', hour12: false }) === '24'
-            ? 0
-            : parseInt(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul', hour: 'numeric', hour12: false }), 10),
+          currentHour: (new Date().getUTCHours() + 9) % 24,
         }),
       });
       const r = await res.json();
