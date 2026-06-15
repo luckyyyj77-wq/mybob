@@ -27,6 +27,25 @@ const HEAD_META = (
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="MyBob" />
     <meta name="mobile-web-app-capable" content="yes" />
+
+    <title>MyBob — AI 식단 기록</title>
+    <meta name="description" content="사진 한 장으로 끝나는 AI 식단 기록. 칼로리·영양소 자동 분석, 일간·주간·월간 리포트까지." />
+    <meta name="keywords" content="식단기록, 칼로리계산, AI분석, 다이어트, 영양관리, 헬스" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://mybob.kr" />
+    <meta property="og:title" content="MyBob — AI 식단 기록" />
+    <meta property="og:description" content="사진 한 장으로 끝나는 AI 식단 기록. 칼로리·영양소 자동 분석, 일간·주간·월간 리포트까지." />
+    <meta property="og:image" content="https://mybob.kr/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="ko_KR" />
+    <meta property="og:site_name" content="MyBob" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="MyBob — AI 식단 기록" />
+    <meta name="twitter:description" content="사진 한 장으로 끝나는 AI 식단 기록. 칼로리·영양소 자동 분석, 일간·주간·월간 리포트까지." />
+    <meta name="twitter:image" content="https://mybob.kr/og.png" />
   </>
 );
 
