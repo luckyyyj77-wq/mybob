@@ -50,7 +50,7 @@ export async function POST(request: Request) {
   }
 }
 
-// GET /api/likes?mealIds=id1,id2 — 여러 식단의 좋아요 수 + 내 좋아요 여부 조회
+// GET /api/likes?mealIds=id1,id2 — 여러 식단의 좋아요 수 + 내 좋아요 여부 조회 (레거시, body 방식 권장)
 export async function GET(request: Request) {
   try {
     const user = await getAuthenticatedUser(request);

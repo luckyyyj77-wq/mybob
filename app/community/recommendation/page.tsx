@@ -329,8 +329,10 @@ export default function CommunityRecommendationPage() {
         // 좋아요 초기값 로드 (전체공개 식단만)
         const publicIds = realPosts.filter(p => p.visibility === 'public').map(p => p.id);
         if (publicIds.length > 0) {
-          const likesRes = await fetch(`/api/likes?mealIds=${publicIds.join(',')}`, {
-            headers: { Authorization: `Bearer ${token}` },
+          const likesRes = await fetch('/api/likes/bulk', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ mealIds: publicIds }),
           });
           if (likesRes.ok) {
             const likesData = await likesRes.json();
