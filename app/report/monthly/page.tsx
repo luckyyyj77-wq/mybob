@@ -33,6 +33,13 @@ function calcTargetCalories(height: number, weight: number, goal: string): numbe
 
 const PIE_COLORS = ['#000000', '#6B21A8', '#9ca3af'];
 
+function toKSTDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
+}
+function toKSTDay(iso: string): number {
+  return parseInt(toKSTDate(iso).slice(8), 10);
+}
+
 export default function MonthlyReportPage() {
   const { token } = useAuth();
   const [allMeals, setAllMeals] = useState<Meal[]>([]);
@@ -65,17 +72,16 @@ export default function MonthlyReportPage() {
       }).catch(() => {});
   }, [token]);
 
-  const monthMeals = useMemo(() =>
-    allMeals.filter(m => {
-      const d = new Date(m.created_at);
-      return d.getFullYear() === year && d.getMonth() === month;
-    }), [allMeals, year, month]);
+  const monthMeals = useMemo(() => {
+    const prefix = `${year}-${String(month + 1).padStart(2, '0')}`;
+    return allMeals.filter(m => toKSTDate(m.created_at).startsWith(prefix));
+  }, [allMeals, year, month]);
 
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
   const dailyData = useMemo(() => {
     const map: Record<number, number> = {};
-    monthMeals.forEach(m => { const day = new Date(m.created_at).getDate(); map[day] = (map[day] || 0) + m.calories; });
+    monthMeals.forEach(m => { const day = toKSTDay(m.created_at); map[day] = (map[day] || 0) + m.calories; });
     return Array.from({ length: daysInMonth }, (_, i) => ({
       day: i + 1, label: `${i + 1}`,
       calories: map[i + 1] || 0,
@@ -86,7 +92,7 @@ export default function MonthlyReportPage() {
   const stats = useMemo(() => {
     if (monthMeals.length === 0) return null;
     const totalCal = monthMeals.reduce((s, m) => s + m.calories, 0);
-    const recordedDays = new Set(monthMeals.map(m => new Date(m.created_at).toDateString())).size;
+    const recordedDays = new Set(monthMeals.map(m => toKSTDate(m.created_at))).size;
     const avgCal = recordedDays > 0 ? Math.round(totalCal / recordedDays) : 0;
     const carbs   = monthMeals.reduce((s, m) => s + (m.nutrient?.carbohydrates || 0), 0);
     const protein = monthMeals.reduce((s, m) => s + (m.nutrient?.protein || 0), 0);
@@ -250,8 +256,8 @@ export default function MonthlyReportPage() {
             <p style={{ fontSize: '9px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '12px' }}>주차별 평균 칼로리</p>
             {Array.from({ length: Math.ceil(daysInMonth / 7) }, (_, w) => {
               const s = w * 7 + 1, e = Math.min(s + 6, daysInMonth);
-              const wm = monthMeals.filter(m => { const d = new Date(m.created_at).getDate(); return d >= s && d <= e; });
-              const wd = new Set(wm.map(m => new Date(m.created_at).toDateString())).size;
+              const wm = monthMeals.filter(m => { const d = toKSTDay(m.created_at); return d >= s && d <= e; });
+              const wd = new Set(wm.map(m => toKSTDate(m.created_at))).size;
               const wa = wd > 0 ? Math.round(wm.reduce((sum, m) => sum + m.calories, 0) / wd) : 0;
               return (
                 <div key={w} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
