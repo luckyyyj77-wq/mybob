@@ -19,6 +19,13 @@ CREATE TABLE IF NOT EXISTS founding_slots (
 
 ALTER TABLE founding_slots ENABLE ROW LEVEL SECURITY;
 
+-- 기존 정책 삭제 후 재생성 (중복 실행 방지)
+DROP POLICY IF EXISTS "founding_slots_read_all"        ON founding_slots;
+DROP POLICY IF EXISTS "founding_slots_write_service"   ON founding_slots;
+DROP POLICY IF EXISTS "founding_slots_update_service"  ON founding_slots;
+DROP POLICY IF EXISTS "founding_slots_insert_service"  ON founding_slots;
+DROP POLICY IF EXISTS "founding_slots_delete_service"  ON founding_slots;
+
 -- 누구나 읽기 가능 (남은 슬롯 수 공개 표시용)
 CREATE POLICY "founding_slots_read_all"
   ON founding_slots FOR SELECT
