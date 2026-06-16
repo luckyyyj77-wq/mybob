@@ -382,6 +382,11 @@ export default function CameraCapturePage() {
         return;
       }
 
+      if (res.status === 429) {
+        setAnalysisError('AI가 잠깐 바쁩니다.\n5분 후 다시 시도해주세요. 📸');
+        return;
+      }
+
       if (res.status === 422 && result.error === 'OCR_NOT_READABLE') {
         setAnalysisError('영양성분표를 인식하지 못했습니다.\n표가 화면에 가득 차도록 다시 촬영해주세요.');
         return;
@@ -644,13 +649,13 @@ export default function CameraCapturePage() {
           <div style={{ textAlign: 'center', marginBottom: '20px' }}>
             <p style={{ fontSize: '28px', marginBottom: '8px' }}>{isAnalysis ? '🤖' : '📸'}</p>
             <p style={{ fontSize: '16px', color: 'black', marginBottom: '6px' }}>
-              오늘 {isAnalysis ? 'AI 분석' : '저장'} 한도에 도달했습니다
+              오늘 {isAnalysis ? 'AI 분석' : '저장'} 횟수를 다 쓰셨어요
             </p>
             <p style={{ fontSize: '13px', color: '#9ca3af', lineHeight: 1.6 }}>
               {isFree
-                ? `무료 플랜은 하루 ${current?.limit}회까지 ${isAnalysis ? '분석' : '저장'}할 수 있습니다.`
-                : `오늘 ${current?.limit}회를 모두 사용했습니다.`}
-              {'\n'}내일 자정에 초기화됩니다.
+                ? `지금은 하루 ${current?.limit}회까지 무료로 ${isAnalysis ? '분석' : '저장'}할 수 있어요.`
+                : `오늘 ${current?.limit}회를 모두 사용했어요.`}
+              {' '}자정이 지나면 다시 초기화됩니다.
             </p>
           </div>
 
@@ -670,9 +675,9 @@ export default function CameraCapturePage() {
                   backgroundColor: '#6B21A8', color: 'white', border: 'none',
                   fontSize: '13px', cursor: 'pointer', letterSpacing: '1px',
                 }}
-                onClick={() => setShowLimitModal(false)}
+                onClick={() => { setShowLimitModal(false); window.location.href = '/settings/plan'; }}
               >
-                업그레이드 (준비 중)
+                PRO로 업그레이드
               </button>
             )}
             <button
