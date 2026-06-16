@@ -665,26 +665,13 @@ export default function CameraCapturePage() {
           </div>
 
           {isFree && (
-            <div style={{ backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', padding: '16px', marginBottom: '16px', textAlign: 'center' }}>
-              <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '8px' }}>PRO 플랜으로 업그레이드</p>
-              <p style={{ fontSize: '22px', color: '#6B21A8', marginBottom: '4px' }}>하루 25회</p>
-              <p style={{ fontSize: '11px', color: '#9ca3af' }}>월 900원 · 광고 없음 · 프리미엄 기능</p>
+            <div style={{ backgroundColor: '#f5f3ff', border: '1px solid #e9d5ff', padding: '16px', marginBottom: '16px', textAlign: 'center' }}>
+              <p style={{ fontSize: '12px', color: '#6B21A8', marginBottom: '4px' }}>🎖️ 천인회 프로모션 진행 중</p>
+              <p style={{ fontSize: '11px', color: '#9ca3af', lineHeight: 1.5 }}>오늘 무료 한도를 모두 사용했어요.<br />자정이 되면 다시 초기화됩니다.</p>
             </div>
           )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {isFree && (
-              <button
-                style={{
-                  width: '100%', padding: '14px',
-                  backgroundColor: '#6B21A8', color: 'white', border: 'none',
-                  fontSize: '13px', cursor: 'pointer', letterSpacing: '1px',
-                }}
-                onClick={() => { setShowLimitModal(false); window.location.href = '/settings/plan'; }}
-              >
-                PRO로 업그레이드
-              </button>
-            )}
             <button
               onClick={() => { setShowLimitModal(false); window.location.href = '/'; }}
               style={{

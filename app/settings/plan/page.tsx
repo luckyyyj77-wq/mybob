@@ -126,13 +126,10 @@ export default function PlanPage() {
                     )}
                     <span style={{ fontSize: '13px', color: 'black' }}>이용 중</span>
                   </div>
-                  {planStatus.plan === 'free' && !planStatus.isFoundingMember && (
-                    <button
-                      style={{ padding: '6px 12px', backgroundColor: '#6B21A8', color: 'white', border: 'none', fontSize: '11px', cursor: 'pointer', letterSpacing: '0.5px' }}
-                      onClick={() => setShowUpgradeModal(true)}
-                    >
-                      업그레이드
-                    </button>
+                  {planStatus.plan === 'free' && !planStatus.isFoundingMember && planStatus.remainingSlots != null && planStatus.remainingSlots > 0 && (
+                    <span style={{ fontSize: '11px', color: '#6B21A8', letterSpacing: '0.3px' }}>
+                      🎖️ 천인회 {planStatus.remainingSlots}석
+                    </span>
                   )}
                 </div>
 
@@ -198,9 +195,9 @@ export default function PlanPage() {
                   </div>
                 </div>
 
-                {planStatus.plan === 'free' && (
+                {planStatus.plan === 'free' && !planStatus.isFoundingMember && (
                   <p style={{ fontSize: '10px', color: '#9ca3af', lineHeight: 1.5 }}>
-                    PRO로 업그레이드하면 하루 25회 + 광고 없음 + 프리미엄 기능을 이용할 수 있습니다.
+                    현재 천인회 프로모션 진행 중입니다. 자리가 남아있는 동안 무료로 PRO를 이용해보세요.
                   </p>
                 )}
                 {planStatus.plan === 'pro' && planStatus.autoCancel && (

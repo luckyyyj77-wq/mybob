@@ -88,26 +88,35 @@ export default function PricingPage() {
           </div>
         </div>
 
-        {/* 안내 */}
-        <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {/* 천인회 프로모션 배너 */}
+        <div style={{ backgroundColor: '#f5f3ff', border: '1px solid #e9d5ff', padding: '20px', textAlign: 'center' }}>
+          <p style={{ fontSize: '20px', marginBottom: '8px' }}>🎖️</p>
+          <p style={{ fontSize: '14px', color: '#6B21A8', fontWeight: 600, marginBottom: '6px' }}>천인회 프로모션 진행 중</p>
           <p style={{ fontSize: '12px', color: '#9ca3af', lineHeight: 1.7 }}>
-            · 구독은 매월 자동 결제되며 언제든 해지할 수 있습니다.<br />
-            · 해지 후에도 현재 결제 기간 종료일까지 PRO 기능이 유지됩니다.<br />
-            · 결제는 Paddle을 통해 안전하게 처리됩니다.<br />
-            · 환불 정책은 <Link href="/refund" style={{ color: '#6B21A8' }}>환불 정책</Link> 페이지를 참고해 주세요.
+            선착순 1,000명은 2026년 12월 31일까지<br />PRO 기능을 무료로 이용할 수 있어요.<br />
+            지금 가입하면 자동으로 천인회 멤버가 됩니다.
           </p>
         </div>
 
         {/* CTA */}
-        <Link href="/settings" style={{ textDecoration: 'none' }}>
+        <Link href="/" style={{ textDecoration: 'none' }}>
           <div style={{
             width: '100%', padding: '16px', backgroundColor: '#6B21A8',
             color: 'white', textAlign: 'center', fontSize: '14px', fontWeight: 600,
             letterSpacing: '0.5px', cursor: 'pointer',
           }}>
-            앱에서 업그레이드하기
+            앱 시작하기
           </div>
         </Link>
+
+        {/* 추후 결제 안내 */}
+        <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '16px' }}>
+          <p style={{ fontSize: '11px', color: '#9ca3af', lineHeight: 1.7, textAlign: 'center' }}>
+            프로모션 종료 후 결제 시스템이 오픈됩니다.<br />
+            · 구독은 매월 자동 결제되며 언제든 해지 가능<br />
+            · 환불 정책은 <Link href="/legal/refund" style={{ color: '#6B21A8' }}>환불 정책</Link> 페이지를 참고해 주세요.
+          </p>
+        </div>
 
       </div>
     </div>
