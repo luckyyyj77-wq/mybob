@@ -9,11 +9,15 @@ export default function CallbackComplete() {
   const router = useRouter();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) {
         router.replace('/auth/login');
         return;
       }
+      // 프로필 초기화 + 천인회 슬롯 선점 (fire-and-forget)
+      fetch('/api/upload-status', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      }).catch(() => {});
       router.replace(isOnboardingDone() ? '/' : '/onboarding');
     });
   }, [router]);

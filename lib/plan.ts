@@ -67,7 +67,7 @@ export function getEffectivePlan(profile: {
 export async function getOrCreateProfile(adminSupabase: AnySupabaseClient, userId: string) {
   const { data: profile, error } = await adminSupabase
     .from('profiles')
-    .select('plan, uploads_today, last_upload_date, analyses_today, last_analysis_date, is_founding_member, founding_joined_at, pro_credit_expires_at')
+    .select('plan, uploads_today, last_upload_date, analyses_today, last_analysis_date, is_founding_member, founding_joined_at, pro_credit_expires_at, ls_auto_cancel')
     .eq('id', userId)
     .single();
 
