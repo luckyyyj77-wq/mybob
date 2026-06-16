@@ -25,8 +25,16 @@ CREATE POLICY "founding_slots_read_all"
   USING (true);
 
 -- 쓰기는 service_role만 (백엔드에서만 수정)
-CREATE POLICY "founding_slots_write_service"
-  ON founding_slots FOR INSERT, UPDATE, DELETE
+CREATE POLICY "founding_slots_update_service"
+  ON founding_slots FOR UPDATE
+  USING (auth.role() = 'service_role');
+
+CREATE POLICY "founding_slots_insert_service"
+  ON founding_slots FOR INSERT
+  WITH CHECK (auth.role() = 'service_role');
+
+CREATE POLICY "founding_slots_delete_service"
+  ON founding_slots FOR DELETE
   USING (auth.role() = 'service_role');
 
 -- 초기 row 삽입
