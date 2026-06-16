@@ -9,11 +9,22 @@ import dynamic from 'next/dynamic';
 
 const UpgradeModal = dynamic(() => import('@/components/UpgradeModal'), { ssr: false });
 
+type FoundingInfo = {
+  joinedAt: string;
+  daysUsed: number;
+  rewardMonths: number;
+  daysLeft: number;
+  promotionEndsAt: string;
+};
+
 type PlanStatus = {
   plan: 'free' | 'pro' | 'lifetime';
   upload: { used: number; limit: number; remaining: number };
   analysis: { used: number; limit: number; remaining: number };
   autoCancel: boolean;
+  isFoundingMember?: boolean;
+  foundingInfo?: FoundingInfo | null;
+  remainingSlots?: number | null;
 };
 
 const PLAN_LABEL: Record<string, string> = { free: '무료', pro: '구독 PRO', lifetime: '평생 이용권' };
@@ -104,12 +115,18 @@ export default function PlanPage() {
               <>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '11px', letterSpacing: '1.5px', textTransform: 'uppercase', color: 'white', backgroundColor: PLAN_COLOR[planStatus.plan], padding: '3px 8px' }}>
-                      {PLAN_LABEL[planStatus.plan]}
-                    </span>
+                    {planStatus.isFoundingMember ? (
+                      <span style={{ fontSize: '11px', letterSpacing: '1.5px', textTransform: 'uppercase', color: 'white', backgroundColor: '#6B21A8', padding: '3px 8px' }}>
+                        🎖️ 천인회 PRO
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: '11px', letterSpacing: '1.5px', textTransform: 'uppercase', color: 'white', backgroundColor: PLAN_COLOR[planStatus.plan], padding: '3px 8px' }}>
+                        {PLAN_LABEL[planStatus.plan]}
+                      </span>
+                    )}
                     <span style={{ fontSize: '13px', color: 'black' }}>이용 중</span>
                   </div>
-                  {planStatus.plan === 'free' && (
+                  {planStatus.plan === 'free' && !planStatus.isFoundingMember && (
                     <button
                       style={{ padding: '6px 12px', backgroundColor: '#6B21A8', color: 'white', border: 'none', fontSize: '11px', cursor: 'pointer', letterSpacing: '0.5px' }}
                       onClick={() => setShowUpgradeModal(true)}
@@ -118,6 +135,34 @@ export default function PlanPage() {
                     </button>
                   )}
                 </div>
+
+                {/* 천인회 멤버 정보 */}
+                {planStatus.isFoundingMember && planStatus.foundingInfo && (
+                  <div style={{ backgroundColor: '#f5f3ff', border: '1px solid #e9d5ff', padding: '12px', marginBottom: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                      <span style={{ fontSize: '11px', color: '#6B21A8', letterSpacing: '0.5px' }}>프로모션 종료까지</span>
+                      <span style={{ fontSize: '11px', color: '#6B21A8', fontWeight: 600 }}>D-{planStatus.foundingInfo.daysLeft}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                      <span style={{ fontSize: '11px', color: '#9ca3af' }}>지금까지 사용일수</span>
+                      <span style={{ fontSize: '11px', color: 'black' }}>{planStatus.foundingInfo.daysUsed}일</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: '11px', color: '#9ca3af' }}>종료 후 예상 보상</span>
+                      <span style={{ fontSize: '11px', color: planStatus.foundingInfo.rewardMonths > 0 ? '#6B21A8' : '#9ca3af' }}>
+                        {planStatus.foundingInfo.rewardMonths > 0 ? `PRO ${planStatus.foundingInfo.rewardMonths}개월 크레딧` : '30일 이상 사용 시 보상 시작'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* 비멤버 + 자리 있음 */}
+                {!planStatus.isFoundingMember && planStatus.remainingSlots != null && planStatus.remainingSlots > 0 && planStatus.plan === 'free' && (
+                  <div style={{ backgroundColor: '#f5f3ff', border: '1px solid #e9d5ff', padding: '12px', marginBottom: '12px' }}>
+                    <p style={{ fontSize: '12px', color: '#6B21A8', marginBottom: '4px' }}>✨ 천인회 {planStatus.remainingSlots}석 남음</p>
+                    <p style={{ fontSize: '11px', color: '#9ca3af', lineHeight: 1.5 }}>지금 가입하면 2026년 12월 31일까지 PRO 기능을 무료로 이용할 수 있어요.</p>
+                  </div>
+                )}
 
                 <div style={{ marginBottom: '10px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>

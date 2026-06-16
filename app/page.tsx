@@ -78,6 +78,11 @@ export default function Home() {
   const [persona, setPersona] = useState<Persona>('dog');
   const syncedRef = useRef(false);
   const fetchingAIRef = useRef(false); // Gemini 이중호출 방어
+  const [foundingBanner, setFoundingBanner] = useState<{
+    type: 'member' | 'available' | null;
+    daysLeft?: number;
+    remainingSlots?: number;
+  }>({ type: null });
 
   // 캐시 키 — YYYY-MM-DD-HH 형식, 3시간 블록 단위 (0,3,6,9,12,15,18,21)
   const getKSTDateKey = () => {
@@ -127,6 +132,21 @@ export default function Home() {
     const goalRaw = localStorage.getItem('mybob_goal');
     const savedPersona = sanitizePersona(localStorage.getItem('mybob_coach_persona'));
     syncFromServer(localMeals, savedPersona, goalRaw, token);
+
+    // 천인회 배너 정보 fetch
+    if (token) {
+      fetch('/api/upload-status', { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (!data) return;
+          if (data.isFoundingMember && data.foundingInfo) {
+            setFoundingBanner({ type: 'member', daysLeft: data.foundingInfo.daysLeft });
+          } else if (!data.isFoundingMember && data.remainingSlots > 0) {
+            setFoundingBanner({ type: 'available', remainingSlots: data.remainingSlots });
+          }
+        })
+        .catch(() => {});
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
@@ -309,6 +329,20 @@ export default function Home() {
 
   return (
     <div style={{ height: 'calc(100svh - 65px)', display: 'flex', flexDirection: 'column', backgroundColor: 'white', overflow: 'hidden' }}>
+
+      {/* 천인회 배너 */}
+      {foundingBanner.type === 'member' && (
+        <div style={{ flexShrink: 0, backgroundColor: '#6B21A8', color: 'white', padding: '10px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: '12px', letterSpacing: '0.3px' }}>🎖️ 천인회 멤버 · PRO 무료 이용 중</span>
+          <span style={{ fontSize: '11px', opacity: 0.8 }}>D-{foundingBanner.daysLeft}</span>
+        </div>
+      )}
+      {foundingBanner.type === 'available' && (
+        <a href="/settings/plan" style={{ flexShrink: 0, backgroundColor: '#f5f3ff', borderBottom: '1px solid #e9d5ff', padding: '10px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', textDecoration: 'none' }}>
+          <span style={{ fontSize: '12px', color: '#6B21A8', letterSpacing: '0.3px' }}>✨ 천인회 {foundingBanner.remainingSlots}석 남음 · 지금 가입하면 PRO 무료</span>
+          <span style={{ fontSize: '11px', color: '#a855f7' }}>자세히 →</span>
+        </a>
+      )}
 
       {/* Section 1: 인삿말 */}
       <motion.section

@@ -24,12 +24,20 @@ export async function DELETE(request: Request) {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // 0. Lemon Squeezy 구독 해지 (있는 경우)
+    // 0. Lemon Squeezy 구독 해지 + 천인회 슬롯 반환
     const { data: profile } = await adminSupabase
       .from('profiles')
-      .select('ls_subscription_id, plan')
+      .select('ls_subscription_id, plan, is_founding_member')
       .eq('id', user.id)
       .single();
+
+    // 천인회 멤버 탈퇴 시 슬롯 반환 (종료일 이전만)
+    if (profile?.is_founding_member) {
+      const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
+      if (today <= '2026-12-31') {
+        try { await adminSupabase.rpc('decrement_founding_slot'); } catch { /* 슬롯 반환 실패는 무시 */ }
+      }
+    }
 
     if (profile?.ls_subscription_id && profile.plan === 'pro' && lsApiKey) {
       await fetch(`https://api.lemonsqueezy.com/v1/subscriptions/${profile.ls_subscription_id}`, {
