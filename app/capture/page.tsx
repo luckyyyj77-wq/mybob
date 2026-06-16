@@ -387,6 +387,11 @@ export default function CameraCapturePage() {
         return;
       }
 
+      if (res.status === 422 && result.error === 'NOT_FOOD') {
+        setAnalysisError('음식 사진이 아닌 것 같아요.\n음식이나 음료 사진을 찍어주세요. 🍽️');
+        return;
+      }
+
       if (res.status === 422 && result.error === 'OCR_NOT_READABLE') {
         setAnalysisError('영양성분표를 인식하지 못했습니다.\n표가 화면에 가득 차도록 다시 촬영해주세요.');
         return;

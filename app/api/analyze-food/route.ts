@@ -596,7 +596,7 @@ export async function POST(request: Request) {
       });
     }
 
-    // Step 1: 음식명 인식 (빠른 텍스트 전용 호출)
+    // Step 1: 음식 여부 판단 + 음식명 인식 (flash-lite 단일 호출)
     let foodName = '';
     try {
       const nameRes = await fetch(
@@ -606,7 +606,7 @@ export async function POST(request: Request) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [{ parts: [
-              { text: '이 음식 사진에서 음식 이름만 한국어로 짧게 답하세요. 음식 이름만, 다른 텍스트 없이. 예: 된장찌개' },
+              { text: '이 사진이 먹을 수 있는 음식이나 음료이면 음식 이름만 한국어로 짧게 답하세요. 음식이 아니면 "NOT_FOOD"라고만 답하세요. 예: 된장찌개 / NOT_FOOD' },
               { inline_data: { mime_type: 'image/jpeg', data: base64Data } },
             ]}],
             generationConfig: { temperature: 0.1 },
@@ -615,7 +615,11 @@ export async function POST(request: Request) {
       );
       const nameResult = await nameRes.json();
       if (nameRes.ok) {
-        foodName = (nameResult.candidates?.[0]?.content?.parts?.[0]?.text || '').replace(/["\n]/g, '').trim();
+        const raw = (nameResult.candidates?.[0]?.content?.parts?.[0]?.text || '').replace(/["\n]/g, '').trim();
+        if (raw === 'NOT_FOOD') {
+          return NextResponse.json({ error: 'NOT_FOOD' }, { status: 422 });
+        }
+        foodName = raw;
       }
     } catch { /* 실패 시 DB 조회 생략하고 Gemini 전체 분석으로 진행 */ }
 
