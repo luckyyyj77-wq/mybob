@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { LS_VARIANT_IDS, PLAN_LABEL, PLAN_PRICE, PLAN_PER_MONTH, PLAN_DESCRIPTION, PLAN_CANCEL_LABEL, getLSCheckoutUrl, type LSPlan } from '@/lib/lemonsqueezy';
+import { LS_VARIANT_IDS, getLSCheckoutUrl, type LSPlan } from '@/lib/lemonsqueezy';
+import { useTranslations } from 'next-intl';
 
 type Props = {
   userEmail: string;
@@ -15,23 +16,20 @@ const PLANS: { key: LSPlan }[] = [
   { key: 'pro_yearly' },
 ];
 
-const FEATURES = [
-  '하루 AI 분석 25회',
-  '클라우드 저장 & 다기기 동기화',
-  'AI 정밀 진단 리포트',
-  '닉네임 & 아바타 커스텀',
-  '광고 없음',
-];
-
 export default function UpgradeModal({ userEmail, userId, onClose }: Props) {
   const [selected, setSelected] = useState<LSPlan>('pro_monthly');
   const [autoCancel, setAutoCancel] = useState(false);
+  const t = useTranslations('Upgrade');
+  const tl = useTranslations('LSP');
 
   function handleCheckout() {
     const variantId = LS_VARIANT_IDS[selected];
     const url = getLSCheckoutUrl(variantId, userEmail, userId, autoCancel);
     window.open(url, '_blank');
   }
+
+  const features = t.raw('features') as string[];
+  const notes = t.raw('notes') as string[];
 
   return (
     <div
@@ -54,14 +52,14 @@ export default function UpgradeModal({ userEmail, userId, onClose }: Props) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <div>
             <p style={{ fontSize: '11px', letterSpacing: '2px', color: '#6B21A8', marginBottom: '4px' }}>UPGRADE</p>
-            <h2 style={{ fontSize: '18px', fontWeight: 600, color: 'black' }}>PRO로 업그레이드</h2>
+            <h2 style={{ fontSize: '18px', fontWeight: 600, color: 'black' }}>{t('title')}</h2>
           </div>
           <button onClick={onClose} style={{ fontSize: '20px', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af' }}>✕</button>
         </div>
 
         {/* 혜택 목록 */}
         <div style={{ backgroundColor: '#faf5ff', padding: '16px', marginBottom: '20px' }}>
-          {FEATURES.map(f => (
+          {features.map(f => (
             <div key={f} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
               <span style={{ color: '#6B21A8', fontSize: '14px' }}>✓</span>
               <span style={{ fontSize: '13px', color: '#374151' }}>{f}</span>
@@ -70,7 +68,7 @@ export default function UpgradeModal({ userEmail, userId, onClose }: Props) {
         </div>
 
         {/* 플랜 선택 */}
-        <p style={{ fontSize: '11px', letterSpacing: '1px', color: '#9ca3af', marginBottom: '10px' }}>플랜 선택</p>
+        <p style={{ fontSize: '11px', letterSpacing: '1px', color: '#9ca3af', marginBottom: '10px' }}>{t('planSelect')}</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
           {PLANS.map(({ key }) => (
             <button
@@ -92,16 +90,16 @@ export default function UpgradeModal({ userEmail, userId, onClose }: Props) {
                   flexShrink: 0,
                 }} />
                 <div>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: 'black' }}>{PLAN_LABEL[key]}</span>
-                  <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>{PLAN_DESCRIPTION[key]}</div>
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: 'black' }}>{tl(`labels.${key}`)}</span>
+                  <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>{tl(`descriptions.${key}`)}</div>
                 </div>
               </div>
               <div style={{ textAlign: 'right', flexShrink: 0 }}>
                 <div style={{ fontSize: '13px', fontWeight: 600, color: selected === key ? '#6B21A8' : '#374151' }}>
-                  {PLAN_PRICE[key]}
+                  {tl(`prices.${key}`)}
                 </div>
-                {PLAN_PER_MONTH[key] && (
-                  <div style={{ fontSize: '10px', color: '#9ca3af' }}>{PLAN_PER_MONTH[key]}</div>
+                {tl(`perMonth.${key}`) && (
+                  <div style={{ fontSize: '10px', color: '#9ca3af' }}>{tl(`perMonth.${key}`)}</div>
                 )}
               </div>
             </button>
@@ -128,10 +126,10 @@ export default function UpgradeModal({ userEmail, userId, onClose }: Props) {
           </div>
           <div>
             <div style={{ fontSize: '12px', fontWeight: 500, color: 'black', marginBottom: '2px' }}>
-              {PLAN_CANCEL_LABEL[selected]} 후 자동 해지
+              {t('autoCancel.title', { label: tl(`cancelLabels.${selected}`) })}
             </div>
             <div style={{ fontSize: '11px', color: '#9ca3af', lineHeight: 1.5 }}>
-              구독했다가 잊어버려도 괜찮아요. {PLAN_CANCEL_LABEL[selected]} 후 자동으로 끝납니다.
+              {t('autoCancel.desc', { label: tl(`cancelLabels.${selected}`) })}
             </div>
           </div>
         </button>
@@ -146,17 +144,15 @@ export default function UpgradeModal({ userEmail, userId, onClose }: Props) {
             cursor: 'pointer', letterSpacing: '0.5px', transition: 'all 0.2s',
           }}
         >
-          {PLAN_PRICE[selected]} 결제하기
+          {t('payBtn', { price: tl(`prices.${selected}`) })}
         </button>
 
         <div style={{ marginTop: '14px', padding: '12px', backgroundColor: '#f9fafb', border: '1px solid #f3f4f6' }}>
-          <p style={{ fontSize: '10px', color: '#9ca3af', lineHeight: 1.8, margin: 0 }}>
-            · 결제는 Lemon Squeezy(Merchant of Record)를 통해 안전하게 처리됩니다.<br />
-            · 구독은 각 플랜 기간 종료 시 자동 갱신되며, 언제든지 해지할 수 있습니다.<br />
-            · 해지 후에도 구독 기간 종료일까지 PRO 기능을 이용할 수 있습니다.<br />
-            · 결제 후 7일 이내 미사용 시 전액 환불 가능하며, 이후에는 환불이 제공되지 않습니다.<br />
-            · 자동 해지 옵션 선택 시 재결제 없이 해당 기간 후 자동 종료됩니다.
-          </p>
+          {notes.map((note, i) => (
+            <p key={i} style={{ fontSize: '10px', color: '#9ca3af', lineHeight: 1.8, margin: 0 }}>
+              · {note}
+            </p>
+          ))}
         </div>
       </div>
     </div>

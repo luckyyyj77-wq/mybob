@@ -1,0 +1,727 @@
+{
+  "Metadata": {
+    "title": "MyBob — AI 식단 기록",
+    "description": "사진 한 장으로 끝나는 AI 식단 기록. 칼로리·영양소 자동 분석, 일간·주간·월간 리포트까지.",
+    "keywords": "식단기록, 칼로리계산, AI분석, 다이어트, 영양관리, 헬스"
+  },
+  "Common": {
+    "save": "저장",
+    "cancel": "취소",
+    "close": "닫기",
+    "loading": "로딩 중...",
+    "error": "오류가 발생했습니다",
+    "retry": "재시도",
+    "confirm": "확인",
+    "delete": "삭제",
+    "edit": "수정",
+    "back": "뒤로",
+    "next": "다음",
+    "skip": "건너뛰기",
+    "free": "무료",
+    "pro": "프로",
+    "upgrade": "업그레이드"
+  },
+  "Nav": {
+    "home": "홈",
+    "report": "리포트",
+    "community": "커뮤니티",
+    "settings": "설정",
+    "partnership": "제휴문의",
+    "install": "앱 설치",
+    "installed": "설치됨",
+    "login": "로그인",
+    "myAccount": "내 계정",
+    "capture": "촬영"
+  },
+  "Plan": {
+    "free": "무료",
+    "pro": "PRO",
+    "lifetime": "평생 PRO",
+    "founding": "천인회",
+    "upgradeToPro": "PRO로 업그레이드",
+    "limitReached": "오늘 사용 한도에 도달했습니다"
+  },
+  "Storage": {
+    "title": "저장 방식 변경",
+    "local": {
+      "title": "이 기기에만 저장",
+      "tag": "무료",
+      "desc": "개인정보 보호 최우선",
+      "current": "현재",
+      "detail": "서버 데이터를 이 기기에 다운로드합니다.\n서버 데이터는 15일 후 자동 삭제됩니다."
+    },
+    "cloud": {
+      "title": "클라우드 동기화",
+      "tag": "추후 구독",
+      "desc": "여러 기기 · 커뮤니티 · 챌린지",
+      "current": "현재",
+      "detail": "로컬 데이터를 서버로 업로드합니다.\nWi-Fi 환경 권장",
+      "beta": "베타 기간 중 무료 제공"
+    },
+    "wifi": {
+      "title": "모바일 데이터 사용 중",
+      "desc": "현재 네트워크: {type}\n사진 업로드 시 데이터 요금이 발생할 수 있습니다.\nWi-Fi 연결 후 진행을 권장합니다.",
+      "continue": "데이터 요금을 감수하고 계속",
+      "cancel": "취소 (나중에 Wi-Fi에서)"
+    },
+    "migrating": {
+      "uploading": "클라우드로 업로드 중",
+      "downloading": "기기로 다운로드 중",
+      "dontClose": "앱을 닫지 마세요"
+    },
+    "done": {
+      "title": "전환 완료",
+      "localDetail": "서버 데이터는 15일 후 자동 삭제됩니다.\n설정에서 언제든지 취소할 수 있습니다."
+    },
+    "error": {
+      "title": "전환 실패"
+    }
+  },
+  "Upgrade": {
+    "title": "PRO로 업그레이드",
+    "features": [
+      "하루 AI 분석 25회",
+      "클라우드 저장 & 다기기 동기화",
+      "AI 정밀 진단 리포트",
+      "닉네임 & 아바타 커스텀",
+      "광고 없음"
+    ],
+    "planSelect": "플랜 선택",
+    "autoCancel": {
+      "title": "{label} 후 자동 해지",
+      "desc": "구독했다가 잊어버려도 괜찮아요. {label} 후 자동으로 끝납니다."
+    },
+    "payBtn": "{price} 결제하기",
+    "notes": [
+      "결제는 Lemon Squeezy(Merchant of Record)를 통해 안전하게 처리됩니다.",
+      "구독은 각 플랜 기간 종료 시 자동 갱신되며, 언제든지 해지할 수 있습니다.",
+      "해지 후에도 구독 기간 종료일까지 PRO 기능을 이용할 수 있습니다.",
+      "결제 후 7일 이내 미사용 시 전액 환불 가능하며, 이후에는 환불이 제공되지 않습니다.",
+      "자동 해지 옵션 선택 시 재결제 없이 해당 기간 후 자동 종료됩니다."
+    ]
+  },
+  "LSP": {
+    "labels": {
+      "pro_monthly": "PRO 월간",
+      "pro_6months": "PRO 6개월",
+      "pro_yearly": "PRO 연간"
+    },
+    "prices": {
+      "pro_monthly": "₩900/월",
+      "pro_6months": "₩4,500/6개월",
+      "pro_yearly": "₩8,100/년"
+    },
+    "perMonth": {
+      "pro_monthly": "",
+      "pro_6months": "월 ₩750 · 1개월 무료",
+      "pro_yearly": "월 ₩675 · 3개월 무료"
+    },
+    "descriptions": {
+      "pro_monthly": "매월 자동 결제 · 언제든 해지 가능",
+      "pro_6months": "6개월마다 자동 결제 · 17% 절약",
+      "pro_yearly": "연간 결제 · 25% 절약"
+    },
+    "cancelLabels": {
+      "pro_monthly": "1개월",
+      "pro_6months": "6개월",
+      "pro_yearly": "1년"
+    }
+  },
+  "Home": {
+    "greeting": "안녕하세요",
+    "question": "무엇을 드시나요?",
+    "todayMeals": "오늘 {count}개의 식단이 기록되었습니다.",
+    "noMeals": "식단을 기록하고 분석을 시작하세요.",
+    "coachComment": "코치 코멘트",
+    "startCapture": "첫 식단 촬영하기",
+    "todayCalories": "오늘 섭취 칼로리",
+    "nutrientBalance": "영양 밸런스",
+    "noHistory": "기록이 쌓이면 코칭이 시작됩니다.",
+    "foundingMember": "🎖️ 천인회 멤버 · PRO 무료 이용 중",
+    "foundingAvailable": "✨ 천인회 {count}석 남음 · 지금 가입하면 PRO 무료",
+    "viewDetail": "자세히 →",
+    "carbs": "탄",
+    "protein": "단",
+    "fat": "지"
+  },
+  "Capture": {
+    "title": "식단 촬영",
+    "modes": {
+      "camera": "카메라",
+      "gallery": "갤러리",
+      "ocr": "영양성분표",
+      "manual": "직접 입력"
+    },
+    "analyzing": "AI 분석 중...",
+    "analyzed": "분석 완료",
+    "saveBtn": "기록에 저장",
+    "saving": "저장 중...",
+    "saved": "저장됨",
+    "ratingLabel": "AI 추론 평가",
+    "ratings": {
+      "excellent": "좋음",
+      "good": "보통",
+      "poor": "나쁨"
+    },
+    "mealTime": {
+      "breakfast": "아침",
+      "lunch": "점심",
+      "dinner": "저녁",
+      "snack": "간식"
+    },
+    "sourceLabel": {
+      "gemini": "AI추론",
+      "korean_db": "한식DB",
+      "korean_db_gemini": "한식DB+AI",
+      "global_db": "글로벌DB",
+      "global_db_gemini": "글로벌DB+AI",
+      "ocr": "영양표 직접 인식",
+      "barcode_db": "바코드 DB",
+      "barcode_ocr": "바코드+영양표",
+      "manual": "직접 입력"
+    },
+    "permDenied": "카메라 권한이 차단되어 있습니다",
+    "permDeniedDetail": "브라우저 주소창 왼쪽의 자물쇠 아이콘을 탭한 후\n카메라 권한을 허용으로 변경하세요.",
+    "permPrompt": "카메라 접근 권한이 필요합니다",
+    "permPromptDetail": "허용을 누르면 이후 다시 묻지 않습니다.",
+    "permRetry": "다시 시도",
+    "gallerySelect": "갤러리에서 선택",
+    "ocrGuide": "영양성분표에서 직접 읽은 값",
+    "servingSize": "1회 제공량: {size}",
+    "totalServings": " · 총 {count}회분",
+    "portionLabel": "식사량",
+    "portionLabelOCR": "섭취량 (1회 제공량 기준)",
+    "nutrients": {
+      "carbohydrates": "탄수화물",
+      "protein": "단백질",
+      "fat": "지방",
+      "fiber": "식이섬유",
+      "sugar": "당류",
+      "sodium": "나트륨",
+      "caffeine": "카페인",
+      "vitamins": "비타민 · 무기질"
+    },
+    "visibility": {
+      "private": "비공개",
+      "neighbors": "이웃만",
+      "public": "전체공개"
+    },
+    "analysisBtn": "AI 분석 시작",
+    "ocrBtn": "📋 영양표 읽기",
+    "retake": "추가 촬영",
+    "goHome": "홈으로",
+    "errors": {
+      "busy": "AI가 잠깐 바쁩니다.\n5분 후 다시 시도해주세요. 📸",
+      "notFood": "음식 사진이 아닌 것 같아요.\n음식이나 음료 사진을 찍어주세요. 🍽️",
+      "ocrFailed": "영양성분표를 인식하지 못했습니다.\n표가 화면에 가득 차도록 다시 촬영해주세요.",
+      "general": "분석 중 오류가 발생했습니다."
+    },
+    "limit": {
+      "title": "오늘 {type} 횟수를 다 쓰셨어요",
+      "desc": "{limit}회를 모두 사용했어요. 자정이 지나면 다시 초기화됩니다.",
+      "freeDesc": "지금은 하루 {limit}회까지 무료로 {type}할 수 있어요. 자정이 지나면 다시 초기화됩니다.",
+      "analysis": "AI 분석",
+      "upload": "저장"
+    }
+  },
+  "Settings": {
+    "title": "설정",
+    "storageMode": "저장 방식",
+    "goal": "목표 설정",
+    "export": "데이터 내보내기",
+    "profile": "프로필",
+    "profileEdit": "프로필 수정",
+    "coachStyle": "코치 스타일",
+    "apply": "적용",
+    "coachChanged": "{emoji} 코치가 변경되었습니다.",
+    "menu": {
+      "plan": "이용 플랜",
+      "planDesc": "플랜 현황 및 업그레이드",
+      "goal": "목표 설정",
+      "goalDesc": "신체정보 · 목표 칼로리",
+      "account": "계정",
+      "accountDesc": "프로필 · 개인정보 · 위험구역",
+      "storage": "저장 방식",
+      "storageDesc": "로컬 / 클라우드",
+      "data": "기록 데이터",
+      "dataDesc": "통계 · 내보내기"
+    },
+    "coach": {
+      "robot": { "name": "분석형", "desc": "수치와 데이터로 말합니다" },
+      "cat": { "name": "직관형", "desc": "예상 못한 한마디를 던집니다" },
+      "dog": { "name": "응원형", "desc": "무조건 당신 편이에요" }
+    },
+    "legal": {
+      "terms": "이용약관",
+      "privacy": "개인정보처리방침",
+      "refund": "환불정책"
+    },
+    "dangerZone": "위험 구역",
+    "deleteAccount": "계정 삭제",
+    "deleteAllData": "모든 데이터 삭제",
+    "account": {
+      "title": "내 계정",
+      "email": "이메일",
+      "nickname": "닉네임",
+      "plan": "이용 중인 플랜",
+      "joinDate": "가입일",
+      "logoutBtn": "로그아웃",
+      "deleteBtn": "회원 탈퇴",
+      "deleteConfirm": "정말 탈퇴하시겠습니까?\n모든 데이터가 즉시 삭제되며 복구할 수 없습니다."
+    }
+  },
+  "PIN": {
+    "enter": "PIN 입력",
+    "set": "PIN 설정",
+    "confirm": "PIN 확인",
+    "enterDesc": "4자리 PIN을 입력하세요",
+    "setDesc": "사용할 4자리 PIN을 입력하세요",
+    "confirmDesc": "한 번 더 입력하세요",
+    "mismatch": "PIN이 일치하지 않습니다",
+    "wrong": "PIN이 올바르지 않습니다",
+    "reset": "PIN 재설정",
+    "forgot": "PIN을 잊으셨나요?",
+    "locked": "10회 오류 — 신체정보가 초기화됩니다",
+    "lockedWarn": "{count}회 더 틀리면 신체정보가 초기화됩니다",
+    "willReset": "PIN이 올바르지 않습니다 · {count}회 남으면 초기화됩니다"
+  },
+  "Account": {
+    "title": "계정",
+    "profile": "프로필",
+    "privacy": "개인정보",
+    "logout": "로그아웃",
+    "dangerZone": "위험 구역",
+    "nickname": "닉네임",
+    "noNickname": "닉네임 없음",
+    "statusMsg": "상태메시지",
+    "suggestedMsg": "추천 문구",
+    "otherMsg": "다른 메시지 →",
+    "save": "저장",
+    "saving": "저장 중...",
+    "saved": "저장됨",
+    "changePhoto": "사진 변경",
+    "photoChanged": "오늘 변경 완료",
+    "uploading": "업로드 중...",
+    "nickRule": "닉네임은 2~16자여야 합니다.",
+    "nickOnce": "닉네임은 1회만 변경할 수 있습니다.",
+    "nickWarning": "저장 후 다시 변경할 수 없습니다",
+    "privacyPolicy": "개인정보 처리방침",
+    "resetPassword": "비밀번호 재설정",
+    "logoutTitle": "로그아웃",
+    "logoutDesc": "이 기기에 저장된 식단 기록과 사진을 어떻게 할까요?",
+    "logoutKeep": "데이터 유지 후 로그아웃",
+    "logoutKeepDesc": "다음에 로그인하면 그대로 사용 가능",
+    "logoutDelete": "데이터 삭제 후 로그아웃",
+    "logoutDeleteDesc": "이 기기의 로컬 데이터만 삭제 (서버 데이터는 유지)",
+    "withdraw": "회원 탈퇴",
+    "withdrawConfirm": "정말 탈퇴하시겠습니까?",
+    "withdrawWarn": "⚠️ 탈퇴 시 아래 정보가 즉시 삭제됩니다",
+    "withdrawList": [
+      "계정 및 로그인 정보",
+      "모든 식단 기록 및 사진",
+      "AI 분석 기록",
+      "이웃 및 커뮤니티 정보",
+      "이 기기의 로컬 데이터"
+    ],
+    "withdrawNoRecover": "삭제된 데이터는 복구할 수 없습니다.",
+    "withdrawBtn": "모두 삭제하고 탈퇴",
+    "withdrawing": "처리 중...",
+    "dangerUnlock": "잠금 해제됨",
+    "dangerLock": "잠금",
+    "deleteLocal": "로컬 기록 전체 삭제",
+    "deleteLocalDesc": "이 기기에 저장된 모든 식단 기록을 삭제합니다. 되돌릴 수 없습니다.",
+    "deleteLocalConfirm": "한 번 더 누르면 삭제됩니다",
+    "withdrawDesc": "계정과 모든 개인정보가 즉시 영구 삭제됩니다.",
+    "emailLabel": "이메일 주소",
+    "loginRequired": "로그인 필요",
+    "otp": {
+      "title": "이메일로 인증",
+      "titleVerify": "인증 코드 입력",
+      "desc": "가입한 이메일로 6자리 인증 코드를 보내드립니다. 인증 후 위험구역 PIN이 초기화됩니다.",
+      "descVerify": "{email}으로 발송된 6자리 코드를 입력하세요.",
+      "send": "인증 코드 발송",
+      "sending": "발송 중...",
+      "verify": "확인",
+      "verifying": "확인 중...",
+      "resend": "코드 재발송",
+      "wrong": "인증 코드가 올바르지 않습니다",
+      "expired": "인증 코드가 만료됐습니다. 다시 발송해 주세요",
+      "fail": "인증에 실패했습니다"
+    },
+    "privacyModal": {
+      "title": "개인정보 처리방침",
+      "items": [
+        { "icon": "📁", "title": "사진 저장 위치", "cloud": "사진은 암호화된 서버에 안전하게 저장됩니다. 본인 계정 외 접근이 불가합니다.", "local": "사진은 이 기기의 브라우저 저장소(IndexedDB)에만 보관됩니다. 서버로 전송되지 않습니다." },
+        { "icon": "🔐", "title": "인증 방식", "content": "JWT 토큰 기반 인증을 사용합니다. 로그인하지 않은 상태에서는 클라우드 저장이 이루어지지 않으며, 모든 기록은 이 기기에만 보관됩니다." },
+        { "icon": "🗄️", "title": "영양 데이터 저장", "cloud": "영양 기록은 암호화된 서버에 안전하게 저장됩니다. 본인 계정에 귀속되며 타인이 접근할 수 없습니다.", "local": "영양 기록은 이 기기의 로컬 스토리지(mybob_meals)에만 저장됩니다. 서버로 전송되지 않습니다." },
+        { "icon": "🤖", "title": "AI 분석 데이터", "content": "음식 사진은 Google Gemini API로 전송되어 분석됩니다. 분석 후 원본 이미지는 Gemini 서버에 저장되지 않습니다(Google 정책 기준)." },
+        { "icon": "🚫", "title": "제3자 제공", "content": "이름·이메일·식단 기록 등 개인 식별 정보는 제3자에게 제공되지 않습니다." }
+      ]
+    }
+  },
+  "History": {
+    "title": "기록",
+    "viewTimeline": "타임라인",
+    "viewGrid": "그리드",
+    "viewGallery": "갤러리",
+    "searchPlaceholder": "음식 이름 검색",
+    "results": "{count}개 결과",
+    "zoomIn": "크게",
+    "zoomOut": "작게",
+    "noResults": "검색 결과가 없습니다.",
+    "noHistory": "기록된 식단이 없습니다.",
+    "startFirst": "지금 기록 시작하기 →",
+    "loadMore": "+{count}일 더 보기",
+    "today": "오늘",
+    "yesterday": "어제",
+    "manualTag": "수동입력",
+    "calories": "칼로리",
+    "sort": {
+      "date_desc": "최신순",
+      "date_asc": "오래된순",
+      "cal_desc": "칼로리 높은순",
+      "cal_asc": "칼로리 낮은순"
+    },
+    "categories": {
+      "all": "전체",
+      "korean": "한식",
+      "western": "양식",
+      "japanese": "일식",
+      "chinese": "중식",
+      "fast_food": "패스트푸드",
+      "snack": "간식",
+      "drink": "음료",
+      "etc": "기타"
+    },
+    "mealTime": {
+      "breakfast": "아침",
+      "lunch": "점심",
+      "dinner": "저녁",
+      "snack": "간식",
+      "latenight": "야식"
+    },
+    "quickLog": {
+      "title": "QUICK LOG",
+      "stepTime": "식사 시간 선택",
+      "stepInput": "음식 이름 입력",
+      "defaultTime": "기본 {time}",
+      "changeTime": "← 시간 변경",
+      "dateTime": "날짜 · 시간",
+      "foodName": "음식 이름",
+      "placeholder": "예: 된장찌개, 바나나 1개, 아메리카노",
+      "guide": "AI가 칼로리와 영양소를 자동으로 계산해요. 분석 횟수는 차감되지 않아요.",
+      "adding": "AI 계산 중...",
+      "addBtn": "기록에 추가",
+      "limitError": "오늘 저장 한도에 도달했습니다.",
+      "saveError": "저장 실패. 다시 시도해주세요."
+    },
+    "tips": [
+      "천천히 씹을수록 포만감이 높아져요",
+      "식사 30분 전 물 한 잔이 과식을 줄여줘요",
+      "단백질은 근육을 지키는 최고의 친구예요",
+      "식이섬유가 풍부한 식사는 혈당 급등을 막아요",
+      "규칙적인 식사 시간이 신진대사를 높여요",
+      "채소를 먼저 먹으면 칼로리 흡수가 줄어요",
+      "나트륨을 줄이면 붓기가 빠져요",
+      "야식은 수면의 질을 낮춰요",
+      "아침 식사는 하루 에너지의 시작이에요",
+      "식사 일기를 쓰면 과식이 20% 줄어요"
+    ]
+  },
+  "MealDetail": {
+    "title": "식단 상세",
+    "noImage": "이미지 없음",
+    "aiRating": "AI 평가",
+    "ratingLabels": {
+      "excellent": "좋음",
+      "good": "보통",
+      "poor": "나쁨"
+    },
+    "edited": "수정됨",
+    "editBtn": "편집",
+    "saveBtn": "저장",
+    "cancelBtn": "취소",
+    "nutritionalInfo": "영양 정보",
+    "editing": "편집 중",
+    "aiOriginal": "AI 원본",
+    "showOriginal": "AI 원본으로 보기",
+    "showEdited": "수정값으로 보기",
+    "proRequired": "PRO 플랜에서만 편집 가능합니다.",
+    "cloudRequired": "클라우드 모드에서만 편집 가능합니다.\n설정 > 저장 방식에서 전환해주세요.",
+    "saveFail": "저장 실패: {error}",
+    "visibility": {
+      "title": "공개 설정",
+      "private": "비공개",
+      "privateDesc": "나만 볼 수 있어요",
+      "neighbors": "이웃만",
+      "neighborsDesc": "이웃 피드에 표시",
+      "public": "전체공개",
+      "publicDesc": "추천 피드에 노출"
+    },
+    "addNutrient": "+ 영양성분 추가",
+    "selectNutrient": "영양성분 선택",
+    "view4": "4분할 보기",
+    "view16": "16분할 보기",
+    "notFound": "기록을 찾을 수 없습니다.",
+    "goBack": "목록으로 돌아가기"
+  },
+  "Report": {
+    "title": "리포트",
+    "daily": "일간",
+    "weekly": "주간",
+    "monthly": "월간",
+    "diagnosis": "정밀 진단",
+    "noData": "데이터가 충분하지 않습니다",
+    "totalCalories": "총 섭취 칼로리",
+    "nutrientRatio": "영양 섭취 비율",
+    "goalAchieved": "목표 달성",
+    "streak": "{count}일 연속 달성 중!",
+    "totalAchieved": "총 {count}일 달성",
+    "carbs": "탄수화물",
+    "protein": "단백질",
+    "fat": "지방",
+    "insight": "AI 분석 인사이트",
+    "loading": "리포트 생성 중...",
+    "calorieStats": "칼로리 통계",
+    "avgCalories": "평균 섭취",
+    "maxCalories": "최대 섭취",
+    "nutrientStats": "영양 성분 통계",
+    "achieveStats": "달성 기록",
+    "achieveRate": "달성률"
+  },
+  "Community": {
+    "title": "커뮤니티",
+    "recommendation": "추천",
+    "neighbors": "이웃",
+    "challenge": "챌린지",
+    "noNeighbors": "아직 이웃이 없습니다",
+    "findNeighbors": "새로운 이웃 찾아보기",
+    "follow": "이웃 맺기",
+    "following": "이웃",
+    "unfollow": "이웃 끊기",
+    "challengeJoin": "챌린지 참여하기",
+    "challengeJoined": "참여 중",
+    "mealCard": {
+      "like": "좋아요",
+      "comment": "댓글",
+      "share": "공유"
+    },
+    "searchNeighbors": "이웃 검색",
+    "neighborRequests": "받은 요청",
+    "sentRequests": "보낸 요청",
+    "noRequests": "요청이 없습니다",
+    "accept": "수락",
+    "reject": "거절",
+    "cancel": "거절"
+    },
+    "Terms": {
+    "title": "이용약관",
+    "lastUpdated": "최종 수정일: 2026년 5월 26일",
+    "sections": [
+      {
+        "title": "제1조 (목적)",
+        "content": "이 약관은 MyBob(이하 \"서비스\")이 제공하는 AI 기반 식단 기록 및 분석 서비스의 이용과 관련하여 서비스와 이용자 간의 권리, 의무 및 책임사항을 규정함을 목적으로 합니다."
+      },
+      {
+        "title": "제2조 (정의)",
+        "content": "① \"서비스\"란 mybob.kr 도메인을 통해 제공되는 모든 기능을 의미합니다.\n② \"이용자\"란 이 약관에 동의하고 서비스를 이용하는 자를 의미합니다.\n③ \"PRO 회원\"이란 유료 구독 플랜을 결제한 이용자를 의미합니다."
+      },
+      {
+        "title": "제3조 (약관의 효력 및 변경)",
+        "content": "① 이 약관은 서비스를 이용하고자 하는 모든 이용자에게 적용됩니다.\n② 서비스는 관련 법령을 위반하지 않는 범위 내에서 이 약관을 변경할 수 있으며, 변경 시 앱 내 공지를 통해 사전 안내합니다."
+      },
+      {
+        "title": "제4조 (서비스 이용)",
+        "content": "① 서비스는 Google 계정을 통한 소셜 로그인 방식으로 회원가입이 가능합니다.\n② 이용자는 타인의 정보를 도용하거나 서비스를 불법적인 목적으로 사용할 수 없습니다.\n③ 서비스는 AI 음식 분석, 식단 기록, 영양 리포트 등의 기능을 제공하며, 의료적 진단을 대체하지 않습니다."
+      },
+      {
+        "title": "제5조 (유료 서비스)",
+        "content": "① PRO 플랜은 월 ₩900의 구독료가 자동 결제됩니다.\n② 결제는 Paddle(paddle.com)을 통해 처리되며, 카드 정보는 서비스가 저장하지 않습니다.\n③ 구독 해지는 앱 설정 내 또는 Paddle 고객센터를 통해 가능하며, 해지 후 현재 구독 기간 종료 시까지 PRO 기능이 유지됩니다."
+      },
+      {
+        "title": "제6조 (서비스 중단)",
+        "content": "서비스는 시스템 점검, 천재지변, 기술적 문제 등 불가피한 사유로 서비스 제공이 일시 중단될 수 있으며, 이 경우 사전 공지를 통해 이용자에게 안내합니다."
+      },
+      {
+        "title": "제7조 (이용자 의무)",
+        "content": "① 이용자는 서비스를 이용함에 있어 관계 법령, 이 약관의 규정을 준수해야 합니다.\n② 타인의 개인정보를 무단으로 수집·저장·공개하는 행위를 금지합니다.\n③ 서비스의 정상적인 운영을 방해하는 행위를 금지합니다."
+      },
+      {
+        "title": "제8조 (책임 제한)",
+        "content": "① 서비스가 제공하는 AI 분석 결과는 참고용이며, 의료적 판단의 근거로 사용해서는 안 됩니다.\n② 이용자의 귀책 사유로 발생한 서비스 이용 장애에 대해 서비스는 책임을 지지 않습니다."
+      },
+      {
+        "title": "제9조 (개인정보 보호)",
+        "content": "이용자의 개인정보는 개인정보처리방침에 따라 수집·이용·보호됩니다. 자세한 내용은 개인정보처리방침을 확인해 주세요."
+      },
+      {
+        "title": "제10조 (분쟁 해결)",
+        "content": "서비스 이용과 관련하여 분쟁이 발생한 경우, 서비스와 이용자는 상호 협의를 통해 해결을 위해 노력합니다. 합의가 이루어지지 않을 경우 관계 법령에 따라 처리됩니다."
+      },
+      {
+        "title": "문의",
+        "content": "이용약관에 대한 문의는 luckyyyj77@gmail.com으로 연락해 주세요."
+      }
+    ]
+    },
+    "Privacy": {
+    "title": "개인정보처리방침",
+    "lastUpdated": "최종 수정일: 2026년 5월 26일",
+    "sections": [
+      {
+        "title": "1. 수집하는 개인정보",
+        "content": "MyBob은 서비스 제공을 위해 다음의 개인정보를 수집합니다.\n\n· 이메일 주소 (Google 소셜 로그인)\n· 닉네임 (자동 생성 또는 PRO 회원 직접 입력)\n· 프로필 사진 (PRO 회원, 선택)\n· 식단 사진 및 분석 데이터 (클라우드 저장 선택 시)\n· 신체 정보 (키, 몸무게, 나이, 성별 — 기기 내 암호화 저장)\n· 결제 정보 (Paddle이 처리, MyBob은 저장하지 않음)"
+      },
+      {
+        "title": "2. 수집 목적",
+        "content": "· 회원 인증 및 계정 관리\n· AI 음식 분석 및 식단 기록 서비스 제공\n· 영양 리포트 및 코치 코멘트 생성\n· 구독 플랜 관리 및 기능 제한 적용\n· 서비스 개선 및 통계 분석"
+      },
+      {
+        "title": "3. 저장 방식",
+        "content": "MyBob은 두 가지 저장 방식을 제공합니다.\n\n[로컬 저장]\n사진 및 식단 데이터가 기기 내(IndexedDB)에만 저장됩니다. 서버에는 인증 정보 외 데이터가 전송되지 않습니다.\n\n[클라우드 저장]\n사진 및 식단 데이터가 Supabase(미국 소재) 서버에 암호화 전송 및 저장됩니다. 다기기 동기화가 가능합니다.\n\n신체 정보(키, 몸무게 등)는 저장 방식과 무관하게 기기 내 AES-256-GCM으로 암호화 저장됩니다."
+      },
+      {
+        "title": "4. 제3자 제공",
+        "content": "MyBob은 다음의 외부 서비스를 이용하며, 서비스 운영에 필요한 최소한의 데이터만 전달됩니다.\n\n· Google (인증): 이메일\n· Google Gemini API (AI 분석): 식단 사진 (분석 후 저장하지 않음)\n· Supabase (데이터베이스·스토리지): 식단 데이터, 사진 (클라우드 저장 선택 시)\n· Paddle (결제): 이메일, 구독 정보 (카드 정보는 MyBob이 저장하지 않음)\n\n위 목적 외 제3자에게 개인정보를 제공하지 않습니다."
+      },
+      {
+        "title": "5. 보유 및 파기",
+        "content": "· 회원 탈퇴 시 서버에 저장된 모든 개인정보 및 식단 데이터를 즉시 삭제합니다.\n· 클라우드→로컬 전환 시, 서버 데이터는 15일 후 자동 삭제 예약됩니다.\n· 로컬 데이터는 이용자가 직접 설정 > 위험구역에서 삭제할 수 있습니다.\n· 결제 관련 기록은 관계 법령에 따라 일정 기간 보관될 수 있습니다."
+      },
+      {
+        "title": "6. 이용자 권리",
+        "content": "이용자는 언제든지 다음의 권리를 행사할 수 있습니다.\n\n· 본인 데이터 열람 및 내보내기 (설정 > 내보내기)\n· 개인정보 수정 (설정 > 프로필)\n· 서비스 탈퇴 및 전체 삭제 (설정 > 위험구역 > 회원탈퇴)\n· 개인정보 처리에 대한 문의 (luckyyyj77@gmail.com)"
+      },
+      {
+        "title": "7. 쿠키 및 추적",
+        "content": "MyBob은 별도의 마케팅 쿠키나 서드파티 추적 도구를 사용하지 않습니다. 세션 유지를 위한 인증 토큰만 로컬스토리지에 저장됩니다."
+      },
+      {
+        "title": "8. 개인정보 보호책임자",
+        "content": "개인정보 처리에 관한 문의는 아래로 연락주세요.\n\n이메일: luckyyyj77@gmail.com\n처리 기간: 영업일 기준 3일 이내"
+      },
+      {
+        "title": "9. 방침 변경",
+        "content": "개인정보처리방침이 변경되는 경우 앱 내 공지를 통해 사전 안내합니다. 변경된 방침은 공지 후 7일이 경과한 날부터 효력이 발생합니다."
+      }
+    ]
+    },
+    "Refund": {
+    "title": "환불 정책",
+    "lastUpdated": "최종 수정일: 2026년 5월 26일",
+    "summary": {
+      "title": "핵심 요약",
+      "items": [
+        "결제 후 7일 이내: 미사용 시 전액 환불",
+        "구독 해지: 다음 결제일부터 청구 중단, 당월 이용 가능",
+        "문의: luckyyyj77@gmail.com"
+      ]
+    },
+    "sections": [
+      {
+        "title": "1. 구독 해지",
+        "content": "PRO 월간 구독은 언제든지 해지할 수 있습니다.\n\n· 앱 설정 > 구독 관리에서 해지하거나, luckyyyj77@gmail.com으로 요청하시면 됩니다.\n· 해지 후에는 현재 결제 기간(월말)까지 PRO 기능이 유지됩니다.\n· 해지 다음 달부터 자동 결제가 중단됩니다."
+      },
+      {
+        "title": "2. 환불 조건",
+        "content": "[전액 환불 가능]\n· 최초 결제 후 7일 이내에 서비스를 실질적으로 이용하지 않은 경우\n· 서비스 장애로 PRO 기능을 7일 이상 연속으로 이용하지 못한 경우\n\n[환불 불가]\n· 결제 후 7일 초과 시\n· PRO 기능(AI 분석, 클라우드 저장 등)을 이미 사용한 경우\n· 단순 변심으로 구독 해지를 원하는 경우 (해지 후 당월 이용 가능)"
+      },
+      {
+        "title": "3. 환불 신청 방법",
+        "content": "환불을 원하시면 아래 이메일로 연락해 주세요.\n\n이메일: luckyyyj77@gmail.com\n제목: [환불 요청] MyBob PRO 구독\n내용: 결제일, 결제 이메일 주소, 환불 사유\n\n접수 후 영업일 기준 3일 이내 확인 후 처리됩니다."
+      },
+      {
+        "title": "4. 환불 처리",
+        "content": "환불은 결제 수단인 Paddle을 통해 처리되며, 카드사에 따라 환불 반영까지 3~5 영업일이 소요될 수 있습니다."
+      },
+      {
+        "title": "5. 결제 오류",
+        "content": "중복 결제, 시스템 오류 등으로 발생한 잘못된 청구는 확인 즉시 전액 환불해 드립니다. 동일한 이메일 주소로 문의해 주세요."
+      },
+      {
+        "title": "6. 소비자 보호",
+        "content": "본 환불 정책은 전자상거래 등에서의 소비자보호에 관한 법률 및 관계 법령을 준수합니다. 법령에서 정한 소비자 권리는 본 정책보다 우선 적용됩니다."
+      }
+    ]
+    },
+    "Partnership": {
+    "title": "제휴문의",
+    "about": {
+      "title": "ABOUT",
+      "content": "MyBob은 AI 기반 식단 분석 및 건강 관리 플랫폼입니다.\n광고 제휴, 브랜드 콜라보, 서비스 파트너십 등\n다양한 형태의 협업을 환영합니다."
+    },
+    "inquiryType": {
+      "title": "INQUIRY TYPE",
+      "items": [
+        "광고 & 스폰서십",
+        "브랜드 콜라보레이션",
+        "데이터 파트너십",
+        "기타 비즈니스 문의"
+      ]
+    },
+    "email": {
+      "title": "EMAIL",
+      "copy": "복사",
+      "copied": "복사됨",
+      "guide": "메일 제목에 [제휴문의]를 포함해 보내주세요."
+    }
+    },
+    "Onboarding": {
+    "welcome": "환영합니다",
+    "intro": [
+      {
+        "icon": "📱",
+        "title": "내 기록은 내 것",
+        "desc": "MyBob은 기본적으로 모든 데이터를 이 기기에만 저장합니다. 사진, 식단 기록, 영양 정보 — 서버로 보내지 않습니다."
+      },
+      {
+        "icon": "☁️",
+        "title": "클라우드는 선택 사항",
+        "desc": "여러 기기에서 사용하거나 커뮤니티 기능을 원한다면 클라우드 저장을 선택할 수 있습니다. 추후 구독 서비스로 제공될 예정입니다."
+      },
+      {
+        "icon": "🔄",
+        "title": "언제든지 변경 가능",
+        "desc": "설정 > 저장 방식에서 로컬 ↔ 클라우드를 자유롭게 전환할 수 있습니다. 데이터는 전환 시 함께 이동됩니다."
+      },
+      {
+        "icon": "🗑️",
+        "title": "완전한 삭제 권리",
+        "desc": "클라우드 사용 중 언제든지 서버 데이터 삭제를 요청할 수 있습니다. 15일의 유예 기간 후 완전히 삭제됩니다."
+      }
+    ],
+    "chooseBtn": "저장 방식 선택하기 →",
+    "step1": "STEP 1 OF 1",
+    "howToUse": "어떻게 사용하실 건가요?",
+    "changeLater": "나중에 설정에서 언제든 바꿀 수 있습니다.",
+    "local": {
+      "title": "이 기기에만 저장",
+      "tag": "LOCAL · 무료",
+      "items": [
+        { "text": "개인정보 보호 최우선 — 서버 전송 없음", "warn": false },
+        { "text": "이 기기에서만 사용 가능", "warn": false },
+        { "text": "이웃·피드 공유 등 커뮤니티 기능 제한", "warn": false },
+        { "text": "기기 분실 시 데이터 복구 불가", "warn": true }
+      ]
+    },
+    "cloud": {
+      "title": "클라우드 동기화",
+      "tag": "CLOUD · 추후 구독",
+      "items": [
+        "여러 기기에서 동기화",
+        "이웃 추가 및 피드 공유 가능 (PRO)",
+        "커뮤니티·챌린지 참여 가능",
+        "기기 분실 시 복구 가능"
+      ]
+    },
+    "next": "다음 →",
+    "back": "뒤로",
+    "confirmTitle": "{mode}으로 시작합니다",
+    "confirmLocal": "모든 데이터는 이 기기에만 저장됩니다.\n설정에서 언제든지 클라우드로 전환할 수 있습니다.",
+    "confirmCloud": "식단 기록이 서버에 동기화됩니다.\n설정에서 언제든지 로컬로 전환하고 서버 데이터를 삭제할 수 있습니다.",
+    "cloudConsent": "개인정보 동의: 클라우드 저장을 선택하면 식단 사진 및 영양 기록이 서버에 전송됩니다.\n커뮤니티 기능 활성화 시 일부 데이터가 다른 사용자에게 표시될 수 있습니다.\n언제든지 설정에서 삭제 요청할 수 있습니다.",
+    "startBtn": "시작하기",
+    "reselect": "다시 선택하기"
+    }
+    }
+
