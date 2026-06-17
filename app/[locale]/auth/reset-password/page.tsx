@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter } from '@/i18n/routing';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
+import { useTranslations } from 'next-intl';
 
 function ResetPasswordContent() {
   const [step, setStep] = useState<'request' | 'update'>('request');
@@ -14,13 +15,12 @@ function ResetPasswordContent() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
+  const t = useTranslations('Auth');
 
   useEffect(() => {
-    // Supabase가 이메일 링크 클릭 후 #access_token 또는 type=recovery 쿼리로 리다이렉트
     const type = searchParams.get('type');
     if (type === 'recovery') setStep('update');
 
-    // hash fragment 방식 처리
     const hash = window.location.hash;
     if (hash.includes('type=recovery') || hash.includes('access_token')) setStep('update');
   }, [searchParams]);
@@ -33,9 +33,9 @@ function ResetPasswordContent() {
       redirectTo: `${window.location.origin}/auth/reset-password?type=recovery`,
     });
     if (error) {
-      setMessage({ type: 'error', text: '이메일 전송에 실패했습니다. 다시 시도해주세요.' });
+      setMessage({ type: 'error', text: t('errSendFailed') });
     } else {
-      setMessage({ type: 'success', text: '이메일을 확인해주세요. 재설정 링크를 보내드렸습니다.' });
+      setMessage({ type: 'success', text: t('errResetSuccess') });
     }
     setLoading(false);
   }
@@ -43,20 +43,20 @@ function ResetPasswordContent() {
   async function handleUpdate(e: React.FormEvent) {
     e.preventDefault();
     if (password !== confirm) {
-      setMessage({ type: 'error', text: '비밀번호가 일치하지 않습니다.' });
+      setMessage({ type: 'error', text: t('errPwMismatch') });
       return;
     }
     if (password.length < 6) {
-      setMessage({ type: 'error', text: '비밀번호는 6자 이상이어야 합니다.' });
+      setMessage({ type: 'error', text: t('errPwTooShort') });
       return;
     }
     setLoading(true);
     setMessage(null);
     const { error } = await supabase.auth.updateUser({ password });
     if (error) {
-      setMessage({ type: 'error', text: '비밀번호 변경에 실패했습니다. 링크가 만료되었을 수 있습니다.' });
+      setMessage({ type: 'error', text: t('errChangeFailed') });
     } else {
-      setMessage({ type: 'success', text: '비밀번호가 변경되었습니다.' });
+      setMessage({ type: 'success', text: t('errChangeSuccess') });
       setTimeout(() => router.push('/'), 1500);
     }
     setLoading(false);
@@ -69,25 +69,23 @@ function ResetPasswordContent() {
           MYBOB
         </h1>
         <p style={{ fontSize: '12px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', paddingBottom: '24px' }}>
-          식단 기록 & AI 분석
+          {t('tagline')}
         </p>
       </div>
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '40px 32px' }}>
         <h2 style={{ fontSize: '22px', fontWeight: 400, color: 'black', marginBottom: '8px' }}>
-          {step === 'request' ? '비밀번호 재설정' : '새 비밀번호 입력'}
+          {step === 'request' ? t('resetTitle') : t('newPasswordTitle')}
         </h2>
         <p style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '32px' }}>
-          {step === 'request'
-            ? '가입한 이메일을 입력하면 재설정 링크를 보내드립니다.'
-            : '새로 사용할 비밀번호를 입력해주세요.'}
+          {step === 'request' ? t('resetDesc') : t('newPasswordDesc')}
         </p>
 
         {step === 'request' ? (
           <form onSubmit={handleRequest} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div>
               <label style={{ display: 'block', fontSize: '11px', color: '#6b7280', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px' }}>
-                이메일
+                {t('email')}
               </label>
               <input
                 type="email"
@@ -124,19 +122,19 @@ function ResetPasswordContent() {
                 letterSpacing: '1px', textTransform: 'uppercase', marginTop: '8px',
               }}
             >
-              {loading ? '전송 중...' : '재설정 링크 보내기'}
+              {loading ? t('sendingLink') : t('sendLink')}
             </button>
           </form>
         ) : (
           <form onSubmit={handleUpdate} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div>
               <label style={{ display: 'block', fontSize: '11px', color: '#6b7280', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px' }}>
-                새 비밀번호
+                {t('newPassword')}
               </label>
               <input
                 type="password"
                 required
-                placeholder="6자 이상"
+                placeholder={t('passwordPlaceholder')}
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 style={{
@@ -148,12 +146,12 @@ function ResetPasswordContent() {
             </div>
             <div>
               <label style={{ display: 'block', fontSize: '11px', color: '#6b7280', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px' }}>
-                비밀번호 확인
+                {t('confirmPassword')}
               </label>
               <input
                 type="password"
                 required
-                placeholder="동일하게 입력"
+                placeholder={t('confirmPlaceholder')}
                 value={confirm}
                 onChange={e => setConfirm(e.target.value)}
                 style={{
@@ -185,14 +183,14 @@ function ResetPasswordContent() {
                 letterSpacing: '1px', textTransform: 'uppercase', marginTop: '8px',
               }}
             >
-              {loading ? '변경 중...' : '비밀번호 변경'}
+              {loading ? t('changingPw') : t('changePw')}
             </button>
           </form>
         )}
 
         <p style={{ marginTop: '28px', fontSize: '14px', color: '#6b7280', textAlign: 'center' }}>
           <a href="/auth/login" style={{ color: '#6B21A8', textDecoration: 'none' }}>
-            로그인으로 돌아가기
+            {t('backToLogin')}
           </a>
         </p>
       </div>

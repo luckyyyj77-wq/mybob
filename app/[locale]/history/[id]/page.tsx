@@ -52,7 +52,6 @@ function MealDetailContent() {
   const { token } = useAuth();
   const t = useTranslations('MealDetail');
   const tc = useTranslations('Common');
-  const th = useTranslations('History');
   const locale = useLocale();
 
   const id = params?.id as string;
@@ -82,23 +81,6 @@ function MealDetailContent() {
     { value: 0, emoji: '😞', label: t('ratingLabels.poor') },
   ], [t]);
 
-  const STANDARD_NUTRIENTS = useMemo(() => [
-    { key: 'carbohydrates', label: th('categories.korean'), unit: 'g' }, // Fixed below
-    { key: 'carbohydrates', label: '탄수화물', unit: 'g' },
-    { key: 'protein', label: '단백질', unit: 'g' },
-    { key: 'fat', label: '지방', unit: 'g' },
-    { key: 'fiber', label: '식이섬유', unit: 'g' },
-    { key: 'sugar', label: '당류', unit: 'g' },
-    { key: 'sodium', label: '나트륨', unit: 'mg' },
-    { key: 'caffeine', label: '카페인', unit: 'mg' },
-    { key: 'vitaminA', label: '비타민A', unit: 'μg' },
-    { key: 'vitaminC', label: '비타민C', unit: 'mg' },
-    { key: 'vitaminD', label: '비타민D', unit: 'μg' },
-    { key: 'calcium', label: '칼슘', unit: 'mg' },
-    { key: 'iron', label: '철분', unit: 'mg' },
-    { key: 'potassium', label: '칼륨', unit: 'mg' },
-  ], []);
-  // Use actual translated keys from Capture.nutrients instead
   const tNutrients = useTranslations('Capture.nutrients');
   const NUTRIENT_LABELS: Record<string, string> = useMemo(() => ({
     carbohydrates: tNutrients('carbohydrates'),

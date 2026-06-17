@@ -37,11 +37,15 @@ export async function POST(request: Request) {
     if (!geminiKey || !cdbKey) return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
 
     const goalGuide: Record<string, { kcal: number; carbPct: number; proteinPct: number; fatPct: number }> = {
+      'diet':     { kcal: 1600, carbPct: 40, proteinPct: 35, fatPct: 25 },
+      'maintain': { kcal: 2000, carbPct: 50, proteinPct: 25, fatPct: 25 },
+      'bulk':     { kcal: 2500, carbPct: 55, proteinPct: 25, fatPct: 20 },
+      // Legacy Korean values (backward compat)
       '다이어트': { kcal: 1600, carbPct: 40, proteinPct: 35, fatPct: 25 },
       '유지':     { kcal: 2000, carbPct: 50, proteinPct: 25, fatPct: 25 },
       '증량':     { kcal: 2500, carbPct: 55, proteinPct: 25, fatPct: 20 },
     };
-    const guide = goalGuide[goal?.goal || '유지'];
+    const guide = goalGuide[goal?.goal || 'maintain'] ?? goalGuide['maintain'];
 
     const hour = typeof currentHour === 'number' ? currentHour : new Date().getHours();
     

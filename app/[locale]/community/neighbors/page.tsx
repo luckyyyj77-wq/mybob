@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useRouter } from '@/i18n/routing';
 import { FaUserPlus, FaCheck, FaTimes, FaUserMinus, FaUndo } from 'react-icons/fa';
 import { getStorageMode } from '@/lib/storage-mode';
+import { useTranslations } from 'next-intl';
 
 interface Profile { id: string; nickname: string; avatar_url?: string }
 interface Friend { friendshipId: string; id: string; nickname: string; avatar_url?: string }
@@ -62,17 +63,19 @@ function SkeletonRow() {
   );
 }
 
-function timeAgo(iso: string) {
-  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
-  if (diff < 60) return '방금 전';
-  if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
-  return `${Math.floor(diff / 86400)}일 전`;
-}
-
 export default function NeighborsPage() {
   const { token } = useAuth();
   const router = useRouter();
+  const t = useTranslations('Community');
+  const timeAgoRaw = t.raw('timeAgo') as { justNow: string; minutes: string; hours: string; days: string };
+
+  const timeAgo = useCallback((iso: string) => {
+    const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+    if (diff < 60) return timeAgoRaw.justNow;
+    if (diff < 3600) return timeAgoRaw.minutes.replace('{n}', String(Math.floor(diff / 60)));
+    if (diff < 86400) return timeAgoRaw.hours.replace('{n}', String(Math.floor(diff / 3600)));
+    return timeAgoRaw.days.replace('{n}', String(Math.floor(diff / 86400)));
+  }, [timeAgoRaw]);
   const [isLocalMode, setIsLocalMode] = useState(false);
   const [tab, setTab] = useState<'feed' | 'friends' | 'requests' | 'add'>('feed');
   const [friends, setFriends] = useState<Friend[]>([]);
@@ -166,7 +169,7 @@ export default function NeighborsPage() {
         setTab('requests');
       }
     } catch {
-      setSendResult({ ok: false, msg: '요청 실패. 다시 시도해주세요.' });
+      setSendResult({ ok: false, msg: t('requestFailed') });
     }
     setSendLoading(false);
   };
@@ -238,11 +241,9 @@ export default function NeighborsPage() {
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 32px', textAlign: 'center', height: '100%' }}>
         <p style={{ fontSize: '40px', marginBottom: '20px' }}>☁️</p>
         <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '8px' }}>CLOUD ONLY</p>
-        <p style={{ fontSize: '18px', fontWeight: 500, color: 'black', marginBottom: '12px' }}>이웃 기능은 클라우드 모드 전용입니다</p>
+        <p style={{ fontSize: '18px', fontWeight: 500, color: 'black', marginBottom: '12px' }}>{t('cloudOnlyTitle')}</p>
         <p style={{ fontSize: '13px', color: '#6b7280', lineHeight: 1.8, marginBottom: '32px' }}>
-          현재 로컬 모드로 사용 중입니다.<br />
-          이웃 추가, 피드 공유 등 커뮤니티 기능은<br />
-          클라우드 모드에서만 사용할 수 있습니다.
+          {t('cloudOnlyDesc')}
         </p>
         <button
           onClick={() => router.push('/settings/storage')}
@@ -252,11 +253,10 @@ export default function NeighborsPage() {
             marginBottom: '12px', width: '100%', maxWidth: '280px',
           }}
         >
-          클라우드 모드로 전환하기
+          {t('switchToCloud')}
         </button>
         <p style={{ fontSize: '11px', color: '#9ca3af', lineHeight: 1.7 }}>
-          기존 식단 데이터는 그대로 유지됩니다.<br />
-          설정 {'>'} 저장 방식에서도 변경할 수 있습니다.
+          {t('switchNote')}
         </p>
       </div>
     );
@@ -270,22 +270,21 @@ export default function NeighborsPage() {
         }
       `}</style>
 
-      {/* 서브탭 */}
       <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb', backgroundColor: 'white', position: 'sticky', top: 0, zIndex: 1 }}>
         {([
-          { key: 'feed', label: '피드' },
-          { key: 'friends', label: `이웃${!loading ? ` ${friends.length}` : ''}` },
-          { key: 'requests', label: `요청${incomingCount > 0 ? ` · ${incomingCount}` : ''}` },
-          { key: 'add', label: '+ 추가' },
-        ] as { key: typeof tab; label: string }[]).map((t) => (
-          <button key={t.key} onClick={() => { setTab(t.key); setConfirmRemoveId(null); }} style={{
+          { key: 'feed', label: t('feedTab') },
+          { key: 'friends', label: `${t('friendsTab')}${!loading ? ` ${friends.length}` : ''}` },
+          { key: 'requests', label: `${t('requestsTab')}${incomingCount > 0 ? ` · ${incomingCount}` : ''}` },
+          { key: 'add', label: t('addTab') },
+        ] as { key: typeof tab; label: string }[]).map((item) => (
+          <button key={item.key} onClick={() => { setTab(item.key); setConfirmRemoveId(null); }} style={{
             flex: 1, padding: '12px 0', fontSize: '12px', letterSpacing: '0.5px',
             border: 'none', cursor: 'pointer', backgroundColor: 'white',
-            color: tab === t.key ? '#6B21A8' : '#9ca3af',
-            borderBottom: tab === t.key ? '2px solid #6B21A8' : '2px solid transparent',
+            color: tab === item.key ? '#6B21A8' : '#9ca3af',
+            borderBottom: tab === item.key ? '2px solid #6B21A8' : '2px solid transparent',
             transition: 'all 0.15s',
           }}>
-            {t.label}
+            {item.label}
           </button>
         ))}
       </div>
@@ -295,23 +294,22 @@ export default function NeighborsPage() {
         {/* 이웃 피드 */}
         {tab === 'feed' && (
           loading ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', border: '1px solid #e5e7eb' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', border: '1px solid #e5e7eb', backgroundColor: '#e5e7eb' }}>
               {[1, 2, 3].map(i => <SkeletonRow key={i} />)}
             </div>
           ) : !isPro ? (
             <div style={{ textAlign: 'center', paddingTop: '60px' }}>
               <p style={{ fontSize: '28px', marginBottom: '12px' }}>👥</p>
-              <p style={{ fontSize: '15px', color: 'black', marginBottom: '6px' }}>PRO 전용 기능</p>
+              <p style={{ fontSize: '15px', color: 'black', marginBottom: '6px' }}>{t('proFeedTitle')}</p>
               <p style={{ fontSize: '13px', color: '#9ca3af', lineHeight: 1.7 }}>
-                PRO 플랜에서 이웃의 식단을<br />피드로 확인할 수 있습니다.
+                {t('proFeedDesc')}
               </p>
             </div>
           ) : feed.length === 0 ? (
             <div style={{ textAlign: 'center', paddingTop: '60px' }}>
               <p style={{ fontSize: '28px', marginBottom: '12px' }}>🍽️</p>
               <p style={{ fontSize: '14px', color: '#9ca3af', lineHeight: 1.7 }}>
-                이웃이 공유한 식단이 없습니다.<br />
-                이웃을 추가하거나 공유를 기다려보세요.
+                {t('noFeedNeighbors')}
               </p>
             </div>
           ) : (
@@ -378,9 +376,9 @@ export default function NeighborsPage() {
             </div>
           ) : friends.length === 0 ? (
             <div style={{ textAlign: 'center', paddingTop: '60px' }}>
-              <p style={{ fontSize: '14px', color: '#9ca3af', marginBottom: '8px' }}>아직 이웃이 없습니다.</p>
+              <p style={{ fontSize: '14px', color: '#9ca3af', marginBottom: '8px' }}>{t('noFriends')}</p>
               <button onClick={() => setTab('add')} style={{ fontSize: '12px', color: '#6B21A8', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
-                이웃 추가하기
+                {t('addNeighbors')}
               </button>
             </div>
           ) : (
@@ -393,19 +391,19 @@ export default function NeighborsPage() {
                   </div>
                   {confirmRemoveId === f.friendshipId ? (
                     <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                      <span style={{ fontSize: '11px', color: '#ef4444', marginRight: '2px' }}>삭제할까요?</span>
+                      <span style={{ fontSize: '11px', color: '#ef4444', marginRight: '2px' }}>{t('confirmRemove')}</span>
                       <button
                         onClick={() => handleRemove(f.friendshipId)}
                         disabled={!!actionLoading[f.friendshipId]}
                         style={{ padding: '5px 10px', backgroundColor: '#ef4444', color: 'white', border: 'none', cursor: 'pointer', fontSize: '11px', opacity: actionLoading[f.friendshipId] ? 0.5 : 1 }}
                       >
-                        {actionLoading[f.friendshipId] ? '...' : '확인'}
+                        {actionLoading[f.friendshipId] ? '...' : t('confirmBtn')}
                       </button>
                       <button
                         onClick={() => setConfirmRemoveId(null)}
                         style={{ padding: '5px 10px', background: 'none', border: '1px solid #e5e7eb', cursor: 'pointer', fontSize: '11px', color: '#9ca3af' }}
                       >
-                        취소
+                        {t('cancelBtn')}
                       </button>
                     </div>
                   ) : (
@@ -414,7 +412,7 @@ export default function NeighborsPage() {
                       disabled={!!actionLoading[f.friendshipId]}
                       style={{ background: 'none', border: '1px solid #e5e7eb', padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', color: '#9ca3af', fontSize: '11px', opacity: actionLoading[f.friendshipId] ? 0.5 : 1 }}
                     >
-                      <FaUserMinus size={11} /> 삭제
+                      <FaUserMinus size={11} /> {t('removeBtn')}
                     </button>
                   )}
                 </div>
@@ -428,11 +426,11 @@ export default function NeighborsPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
             <div>
               <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>
-                받은 요청 {incomingCount > 0 && <span style={{ color: '#6B21A8' }}>{incomingCount}</span>}
+                {t('incomingRequests')} {incomingCount > 0 && <span style={{ color: '#6B21A8' }}>{incomingCount}</span>}
               </p>
               {loading ? <div style={{ border: '1px solid #e5e7eb' }}><SkeletonRow /></div>
                 : incoming.length === 0 ? (
-                  <p style={{ fontSize: '13px', color: '#d1d5db' }}>받은 요청이 없습니다.</p>
+                  <p style={{ fontSize: '13px', color: '#d1d5db' }}>{t('noIncoming')}</p>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', border: '1px solid #e5e7eb' }}>
                     {incoming.map((req) => (
@@ -440,7 +438,7 @@ export default function NeighborsPage() {
                         <Avatar nickname={req.requester.nickname} avatarUrl={req.requester.avatar_url} />
                         <div style={{ flex: 1 }}>
                           <p style={{ fontSize: '14px', color: 'black' }}>{req.requester.nickname}</p>
-                          <p style={{ fontSize: '11px', color: '#9ca3af' }}>이웃 요청</p>
+                          <p style={{ fontSize: '11px', color: '#9ca3af' }}>{t('neighborRequest')}</p>
                         </div>
                         <div style={{ display: 'flex', gap: '6px' }}>
                           <button
@@ -448,14 +446,14 @@ export default function NeighborsPage() {
                             disabled={!!actionLoading[req.id]}
                             style={{ padding: '7px 12px', backgroundColor: '#6B21A8', color: 'white', border: 'none', cursor: 'pointer', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', opacity: actionLoading[req.id] ? 0.5 : 1 }}
                           >
-                            <FaCheck size={10} /> {actionLoading[req.id] ? '...' : '수락'}
+                            <FaCheck size={10} /> {actionLoading[req.id] ? '...' : t('accept')}
                           </button>
                           <button
                             onClick={() => handleReject(req.id)}
                             disabled={!!actionLoading[req.id]}
                             style={{ padding: '7px 12px', backgroundColor: 'white', color: '#9ca3af', border: '1px solid #e5e7eb', cursor: 'pointer', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', opacity: actionLoading[req.id] ? 0.5 : 1 }}
                           >
-                            <FaTimes size={10} /> 거절
+                            <FaTimes size={10} /> {t('reject')}
                           </button>
                         </div>
                       </div>
@@ -465,10 +463,10 @@ export default function NeighborsPage() {
             </div>
 
             <div>
-              <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>보낸 요청</p>
+              <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>{t('outgoingRequests')}</p>
               {loading ? <div style={{ border: '1px solid #e5e7eb' }}><SkeletonRow /></div>
                 : outgoing.length === 0 ? (
-                  <p style={{ fontSize: '13px', color: '#d1d5db' }}>보낸 요청이 없습니다.</p>
+                  <p style={{ fontSize: '13px', color: '#d1d5db' }}>{t('noOutgoing')}</p>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', border: '1px solid #e5e7eb' }}>
                     {outgoing.map((req) => (
@@ -476,14 +474,14 @@ export default function NeighborsPage() {
                         <Avatar nickname={req.receiver.nickname} avatarUrl={req.receiver.avatar_url} />
                         <div style={{ flex: 1 }}>
                           <p style={{ fontSize: '14px', color: 'black' }}>{req.receiver.nickname}</p>
-                          <p style={{ fontSize: '11px', color: '#9ca3af' }}>수락 대기 중</p>
+                          <p style={{ fontSize: '11px', color: '#9ca3af' }}>{t('pending')}</p>
                         </div>
                         <button
                           onClick={() => handleCancelRequest(req.id)}
                           disabled={!!actionLoading[req.id]}
                           style={{ background: 'none', border: '1px solid #e5e7eb', padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', color: '#9ca3af', fontSize: '11px', opacity: actionLoading[req.id] ? 0.5 : 1 }}
                         >
-                          <FaUndo size={10} /> {actionLoading[req.id] ? '...' : '취소'}
+                          <FaUndo size={10} /> {actionLoading[req.id] ? '...' : t('cancelRequest')}
                         </button>
                       </div>
                     ))}
@@ -496,14 +494,14 @@ export default function NeighborsPage() {
         {/* 이웃 추가 */}
         {tab === 'add' && (
           <div>
-            <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '16px' }}>닉네임으로 찾기</p>
+            <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '16px' }}>{t('searchByNickname')}</p>
             <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
               <input
                 type="text"
                 value={searchNick}
                 onChange={e => { setSearchNick(e.target.value); setSendResult(null); }}
                 onKeyDown={e => e.key === 'Enter' && handleSendRequest()}
-                placeholder="예) 달달한바나나_123"
+                placeholder={t('searchPlaceholder')}
                 style={{ flex: 1, padding: '12px 14px', border: '1px solid #e5e7eb', fontSize: '14px', outline: 'none', backgroundColor: 'white' }}
               />
               <button
@@ -518,7 +516,7 @@ export default function NeighborsPage() {
                 }}
               >
                 <FaUserPlus size={12} />
-                {sendLoading ? '...' : '요청'}
+                {sendLoading ? '...' : t('sendRequest')}
               </button>
             </div>
 
@@ -534,9 +532,7 @@ export default function NeighborsPage() {
             )}
 
             <p style={{ fontSize: '11px', color: '#d1d5db', lineHeight: 1.8, marginTop: '24px' }}>
-              상대방 닉네임을 정확히 입력하세요.<br />
-              상대방이 수락하면 이웃이 됩니다.<br />
-              이웃끼리는 식단을 공유하고 서로 응원할 수 있어요.
+              {t('addGuide')}
             </p>
           </div>
         )}

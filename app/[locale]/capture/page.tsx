@@ -97,13 +97,13 @@ export default function CameraCapturePage() {
 
   const SOURCE_LABEL: Record<string, string> = useMemo(() => ({
     'korean_db+gemini':    t('sourceLabel.korean_db_gemini'),
-    'openfoodfacts+gemini': '글로벌DB+AI',
+    'openfoodfacts+gemini': t('sourceLabel.global_db_gemini'),
     'gemini_only':         t('sourceLabel.gemini'),
     'korean_db_only':      t('sourceLabel.korean_db'),
-    'openfoodfacts_only':  '글로벌DB',
+    'openfoodfacts_only':  t('sourceLabel.global_db'),
     'ocr':                 t('sourceLabel.ocr'),
-    'barcode+off':         '바코드 DB',
-    'barcode+ocr':         '바코드+영양표',
+    'barcode+off':         t('sourceLabel.barcode_db'),
+    'barcode+ocr':         t('sourceLabel.barcode_ocr'),
   }), [t]);
 
   const PORTION_LABELS: { value: Portion; label: string }[] = useMemo(() => [

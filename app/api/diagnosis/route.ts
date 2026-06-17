@@ -91,8 +91,8 @@ export async function POST(request: Request) {
       const activityMultiplier = activityMap[bodyInfo.activity] ?? 1.375;
       const bmr = Math.round(10 * w + 6.25 * h - 5 * age + genderOffset);
       const tdee = Math.round(bmr * activityMultiplier);
-      if (goal === '다이어트') targetCalories = Math.round(tdee * 0.8);
-      else if (goal === '증량') targetCalories = Math.round(tdee * 1.15);
+      if (goal === 'diet' || goal === '다이어트') targetCalories = Math.round(tdee * 0.8);
+      else if (goal === 'bulk' || goal === '증량') targetCalories = Math.round(tdee * 1.15);
       else targetCalories = tdee;
       bmrNote = `키 ${h}cm, 체중 ${w}kg, 나이 ${age}세, 활동량 ${bodyInfo.activity || '보통'} → 기초대사량 ${bmr}kcal, TDEE ${tdee}kcal, 목표 칼로리 ${targetCalories}kcal`;
     }

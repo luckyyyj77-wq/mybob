@@ -27,8 +27,8 @@ function calcTargetCalories(height: number, weight: number, goal: string): numbe
   if (!height || !weight) return 2000;
   const bmr = 10 * weight + 6.25 * height - 5 * 30;
   const tdee = Math.round(bmr * 1.375);
-  if (goal === '다이어트') return Math.round(tdee * 0.8);
-  if (goal === '증량') return Math.round(tdee * 1.15);
+  if (goal === 'diet' || goal === '다이어트') return Math.round(tdee * 0.8);
+  if (goal === 'bulk' || goal === '증량') return Math.round(tdee * 1.15);
   return tdee;
 }
 
@@ -60,7 +60,7 @@ export default function MonthlyReportPage() {
     const local: Meal[] = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
     setAllMeals(local);
     const goal = JSON.parse(localStorage.getItem('mybob_goal') || '{}');
-    setTargetCalories(calcTargetCalories(Number(goal.height) || 0, Number(goal.weight) || 0, goal.goal || '유지'));
+    setTargetCalories(calcTargetCalories(Number(goal.height) || 0, Number(goal.weight) || 0, goal.goal || 'maintain'));
 
     if (token === null) return;
     fetch('/api/meals', { headers: token ? { Authorization: `Bearer ${token}` } : {} })

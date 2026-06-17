@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Link, useRouter } from '@/i18n/routing';
 import { supabase } from '@/lib/supabase/client';
+import { useTranslations } from 'next-intl';
 
 export default function SignUpPage() {
   const [email, setEmail] = useState('');
@@ -12,6 +13,7 @@ export default function SignUpPage() {
   const [showEmailConfirm, setShowEmailConfirm] = useState(false);
   const [sentEmail, setSentEmail] = useState('');
   const router = useRouter();
+  const t = useTranslations('Auth');
 
   const handleGoogle = async () => {
     await supabase.auth.signInWithOAuth({
@@ -39,7 +41,6 @@ export default function SignUpPage() {
   return (
     <div style={{ minHeight: '100svh', backgroundColor: 'white', display: 'flex', flexDirection: 'column' }}>
 
-      {/* 이메일 인증 안내 팝업 */}
       {showEmailConfirm && (
         <div style={{
           position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)',
@@ -52,14 +53,14 @@ export default function SignUpPage() {
           }}>
             <div style={{ fontSize: '40px', marginBottom: '16px' }}>✉️</div>
             <h3 style={{ fontSize: '18px', fontWeight: 500, color: 'black', marginBottom: '12px' }}>
-              이메일을 확인해주세요
+              {t('emailConfirmTitle')}
             </h3>
             <p style={{ fontSize: '14px', color: '#6b7280', lineHeight: 1.6, marginBottom: '8px' }}>
-              <span style={{ color: '#111', fontWeight: 500 }}>{sentEmail}</span>으로<br />
-              인증 메일을 보냈습니다.
+              <span style={{ color: '#111', fontWeight: 500 }}>{sentEmail}</span><br />
+              {t('emailConfirmSent')}
             </p>
             <p style={{ fontSize: '13px', color: '#9ca3af', lineHeight: 1.6, marginBottom: '28px' }}>
-              메일 속 링크를 클릭하면<br />가입이 완료됩니다.
+              {t('emailConfirmLink')}
             </p>
             <button
               onClick={() => router.push('/auth/login')}
@@ -69,34 +70,33 @@ export default function SignUpPage() {
                 border: 'none', cursor: 'pointer', letterSpacing: '0.5px',
               }}
             >
-              로그인 페이지로 이동
+              {t('goToLogin')}
             </button>
             <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '16px' }}>
-              메일이 오지 않으면 스팸함을 확인해주세요
+              {t('emailConfirmSpam')}
             </p>
           </div>
         </div>
       )}
-      {/* Header */}
+
       <div style={{ padding: '48px 32px 0', borderBottom: '1px solid #e5e7eb' }}>
         <h1 style={{ fontSize: '40px', fontWeight: 400, color: 'black', letterSpacing: '-1px', lineHeight: 1, marginBottom: '8px' }}>
           MYBOB
         </h1>
         <p style={{ fontSize: '12px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', paddingBottom: '24px' }}>
-          식단 기록 & AI 분석
+          {t('tagline')}
         </p>
       </div>
 
-      {/* Form */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '40px 32px' }}>
         <h2 style={{ fontSize: '22px', fontWeight: 400, color: 'black', marginBottom: '32px' }}>
-          회원가입
+          {t('signup')}
         </h2>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div>
             <label style={{ display: 'block', fontSize: '11px', color: '#6b7280', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px' }}>
-              이메일
+              {t('email')}
             </label>
             <input
               type="email"
@@ -119,7 +119,7 @@ export default function SignUpPage() {
 
           <div>
             <label style={{ display: 'block', fontSize: '11px', color: '#6b7280', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px' }}>
-              비밀번호
+              {t('password')}
             </label>
             <input
               type="password"
@@ -162,18 +162,16 @@ export default function SignUpPage() {
               marginTop: '8px',
             }}
           >
-            {loading ? '가입 중...' : '회원가입'}
+            {loading ? t('signingUp') : t('signup')}
           </button>
         </form>
 
-        {/* 구분선 */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '24px 0' }}>
           <div style={{ flex: 1, height: '1px', backgroundColor: '#e5e7eb' }} />
           <span style={{ fontSize: '11px', color: '#9ca3af', letterSpacing: '1px' }}>OR</span>
           <div style={{ flex: 1, height: '1px', backgroundColor: '#e5e7eb' }} />
         </div>
 
-        {/* 구글 로그인 */}
         <button
           onClick={handleGoogle}
           style={{
@@ -190,13 +188,13 @@ export default function SignUpPage() {
             <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
             <path fill="none" d="M0 0h48v48H0z"/>
           </svg>
-          Google로 계속하기
+          {t('googleContinue')}
         </button>
 
         <p style={{ marginTop: '28px', fontSize: '14px', color: '#6b7280', textAlign: 'center' }}>
-          이미 계정이 있으신가요?{' '}
+          {t('hasAccount')}{' '}
           <Link href="/auth/login" style={{ color: '#6B21A8', textDecoration: 'none' }}>
-            로그인
+            {t('login')}
           </Link>
         </p>
       </div>

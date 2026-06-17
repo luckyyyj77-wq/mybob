@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { MealPhoto } from '@/components/MealPhoto';
+import { useTranslations } from 'next-intl';
 
 type Visibility = 'private' | 'neighbors' | 'public';
 
@@ -44,123 +45,71 @@ interface AdCard {
 
 type FeedItem = RealPost | CurationCard | AdCard;
 
-const CURATION_CARDS: Omit<CurationCard, 'id'>[] = [
-  {
-    type: 'curation', emoji: '🥗', tag: '오늘의 추천',
-    title: '닭가슴살 샐러드',
-    desc: '고단백 저칼로리, 다이어트 식단의 정석. 방울토마토·아보카도와 함께하면 더욱 완벽.',
-    calories: 320, color: '#f0fdf4',
-  },
-  {
-    type: 'curation', emoji: '🍳', tag: '아침 추천',
-    title: '달걀 2개 + 통밀토스트',
-    desc: '하루를 시작하는 든든한 아침. 양질의 단백질로 포만감을 오래 유지하세요.',
-    calories: 370, color: '#fffbeb',
-  },
-  {
-    type: 'curation', emoji: '🍱', tag: '한식 베스트',
-    title: '현미밥 + 된장찌개 + 나물',
-    desc: '균형 잡힌 한국식 한 끼. 식이섬유 풍부, 혈당 스파이크 없는 건강 식사.',
-    calories: 510, color: '#fef2f2',
-  },
-  {
-    type: 'curation', emoji: '🥛', tag: '간식 추천',
-    title: '그릭요거트 + 블루베리',
-    desc: '프로바이오틱스와 항산화 성분이 가득. 오후 슬럼프를 이겨내는 최적의 간식.',
-    calories: 180, color: '#eff6ff',
-  },
-  {
-    type: 'curation', emoji: '🐟', tag: 'PRO PICK',
-    title: '연어 포케볼',
-    desc: '오메가-3 풍부한 연어, 아보카도, 현미밥의 조합. 근육 회복과 포만감을 동시에.',
-    calories: 620, color: '#faf5ff',
-  },
-];
+const CURATION_COLORS = ['#f0fdf4', '#fffbeb', '#fef2f2', '#eff6ff', '#faf5ff'];
+const ADS_COLORS = ['#6B21A8', '#065f46'];
 
-const ADS: Omit<AdCard, 'id'>[] = [
-  {
-    type: 'ad', ad_brand: 'PROTEINWORKS',
-    ad_title: '단백질 보충제 1위 브랜드',
-    ad_desc: '운동 후 골든타임, 흡수율 95% 유청 단백질로 채우세요.',
-    ad_cta: '지금 할인받기', ad_color: '#6B21A8',
-  },
-  {
-    type: 'ad', ad_brand: 'FRESHBOX',
-    ad_title: '신선 식단 정기배송',
-    ad_desc: '영양사가 설계한 주 5회 건강 도시락, 첫 주문 30% 할인.',
-    ad_cta: '무료 체험', ad_color: '#065f46',
-  },
-];
-
-function buildFeed(realPosts: RealPost[], isPro: boolean): FeedItem[] {
+function buildFeed(realPosts: RealPost[], isPro: boolean, curationCards: Omit<CurationCard, 'id'>[], ads: Omit<AdCard, 'id'>[]): FeedItem[] {
   const feed: FeedItem[] = [];
   let curationIdx = 0;
   let adIdx = 0;
   let realIdx = 0;
   let itemCount = 0;
 
-  // 큐레이션 2장 선두
-  const lead = Math.min(2, CURATION_CARDS.length);
+  const lead = Math.min(2, curationCards.length);
   for (let i = 0; i < lead; i++) {
-    feed.push({ ...CURATION_CARDS[curationIdx++], id: `cur_${curationIdx}` });
+    feed.push({ ...curationCards[curationIdx++], id: `cur_${curationIdx}` });
     itemCount++;
   }
 
-  // 실제 3개 → 큐레이션 1개 → (광고) 순환
-  while (realIdx < realPosts.length || curationIdx < CURATION_CARDS.length) {
+  while (realIdx < realPosts.length || curationIdx < curationCards.length) {
     for (let i = 0; i < 3 && realIdx < realPosts.length; i++) {
       feed.push(realPosts[realIdx++]);
       itemCount++;
     }
-    if (curationIdx < CURATION_CARDS.length) {
-      feed.push({ ...CURATION_CARDS[curationIdx++], id: `cur_${curationIdx}` });
+    if (curationIdx < curationCards.length) {
+      feed.push({ ...curationCards[curationIdx++], id: `cur_${curationIdx}` });
       itemCount++;
     }
-    if (!isPro && itemCount % 6 === 0) {
-      feed.push({ ...ADS[adIdx % ADS.length], id: `ad_${adIdx++}` });
+    if (!isPro && ads.length > 0 && itemCount % 6 === 0) {
+      feed.push({ ...ads[adIdx % ads.length], id: `ad_${adIdx++}` });
     }
   }
   while (realIdx < realPosts.length) {
     feed.push(realPosts[realIdx++]);
     itemCount++;
-    if (!isPro && itemCount % 6 === 0) {
-      feed.push({ ...ADS[adIdx % ADS.length], id: `ad_${adIdx++}` });
+    if (!isPro && ads.length > 0 && itemCount % 6 === 0) {
+      feed.push({ ...ads[adIdx % ads.length], id: `ad_${adIdx++}` });
     }
   }
 
   return feed;
 }
 
-function timeAgo(iso: string) {
-  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
-  if (diff < 60) return '방금 전';
-  if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
-  return `${Math.floor(diff / 86400)}일 전`;
-}
-
-function VisibilityBadge({ visibility, isNeighbor }: { visibility: Visibility; isNeighbor: boolean }) {
+function VisibilityBadge({ visibility, isNeighbor, tPublic, tNeighbor }: { visibility: Visibility; isNeighbor: boolean; tPublic: string; tNeighbor: string }) {
   if (visibility === 'public') {
     return (
       <span style={{ fontSize: '9px', color: '#6B21A8', border: '1px solid #e9d5ff', padding: '2px 5px', letterSpacing: '0.5px' }}>
-        🌏 전체공개
+        🌏 {tPublic}
       </span>
     );
   }
   if (isNeighbor) {
     return (
       <span style={{ fontSize: '9px', color: '#6b7280', border: '1px solid #e5e7eb', padding: '2px 5px', letterSpacing: '0.5px' }}>
-        👥 이웃
+        👥 {tNeighbor}
       </span>
     );
   }
   return null;
 }
 
-function RealPostCard({ item, likedMap, onLike }: {
+function RealPostCard({ item, likedMap, onLike, timeAgoStr, tPublic, tNeighbor }: {
   item: RealPost;
   likedMap: Record<string, { count: number; liked: boolean }>;
   onLike: (id: string) => void;
+  timeAgoStr: string;
+  tPublic: string;
+  tNeighbor: string;
 }) {
   const initials = item.nickname.slice(0, 2);
   const likeInfo = likedMap[item.id] ?? { count: item.like_count, liked: false };
@@ -183,10 +132,10 @@ function RealPostCard({ item, likedMap, onLike }: {
         )}
         <div style={{ flex: 1 }}>
           <p style={{ fontSize: '13px', color: 'black', fontWeight: 500 }}>{item.nickname}</p>
-          <p style={{ fontSize: '11px', color: '#9ca3af' }}>{timeAgo(item.created_at)}</p>
+          <p style={{ fontSize: '11px', color: '#9ca3af' }}>{timeAgoStr}</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <VisibilityBadge visibility={item.visibility} isNeighbor={item.is_neighbor} />
+          <VisibilityBadge visibility={item.visibility} isNeighbor={item.is_neighbor} tPublic={tPublic} tNeighbor={tNeighbor} />
           {item.category && (
             <span style={{ fontSize: '9px', letterSpacing: '1.2px', textTransform: 'uppercase', color: '#9ca3af', border: '1px solid #e5e7eb', padding: '3px 7px' }}>
               {item.category}
@@ -289,6 +238,28 @@ function SkeletonCard() {
 
 export default function CommunityRecommendationPage() {
   const { token } = useAuth();
+  const t = useTranslations('Community');
+  const timeAgoRaw = t.raw('timeAgo') as { justNow: string; minutes: string; hours: string; days: string };
+  const tPublic = t('public');
+  const tNeighbor = t('neighbor');
+
+  const curationRaw = t.raw('curation') as { emoji: string; tag: string; title: string; desc: string }[];
+  const CURATION_CARDS: Omit<CurationCard, 'id'>[] = curationRaw.map((c, i) => ({
+    type: 'curation' as const, ...c, calories: [320, 370, 510, 180, 620][i] ?? 300, color: CURATION_COLORS[i] ?? '#f9fafb',
+  }));
+  const adsRaw = t.raw('ads') as { brand: string; title: string; desc: string; cta: string }[];
+  const ADS: Omit<AdCard, 'id'>[] = adsRaw.map((a, i) => ({
+    type: 'ad' as const, ad_brand: a.brand, ad_title: a.title, ad_desc: a.desc, ad_cta: a.cta, ad_color: ADS_COLORS[i] ?? '#6B21A8',
+  }));
+
+  const timeAgo = useCallback((iso: string) => {
+    const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+    if (diff < 60) return timeAgoRaw.justNow;
+    if (diff < 3600) return timeAgoRaw.minutes.replace('{n}', String(Math.floor(diff / 60)));
+    if (diff < 86400) return timeAgoRaw.hours.replace('{n}', String(Math.floor(diff / 3600)));
+    return timeAgoRaw.days.replace('{n}', String(Math.floor(diff / 86400)));
+  }, [timeAgoRaw]);
+
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [isPro, setIsPro] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
@@ -324,7 +295,7 @@ export default function CommunityRecommendationPage() {
           like_count: m.like_count ?? 0,
         }));
 
-        setFeed(buildFeed(realPosts, pro));
+        setFeed(buildFeed(realPosts, pro, CURATION_CARDS, ADS));
 
         // 좋아요 초기값 로드 (전체공개 식단만)
         const publicIds = realPosts.filter(p => p.visibility === 'public').map(p => p.id);
@@ -340,7 +311,7 @@ export default function CommunityRecommendationPage() {
           }
         }
       } catch {
-        setFeed(buildFeed([], isPro ?? false));
+        setFeed(buildFeed([], isPro ?? false, CURATION_CARDS, ADS));
       } finally {
         setLoading(false);
       }
@@ -385,12 +356,12 @@ export default function CommunityRecommendationPage() {
       {feed.length === 0 && (
         <div style={{ padding: '48px 24px', textAlign: 'center' }}>
           <p style={{ fontSize: '32px', marginBottom: '12px' }}>🍽️</p>
-          <p style={{ fontSize: '14px', color: '#9ca3af' }}>아직 공유된 식단이 없어요</p>
-          <p style={{ fontSize: '12px', color: '#d1d5db', marginTop: '6px' }}>식단을 기록하고 이웃과 공유해보세요!</p>
+          <p style={{ fontSize: '14px', color: '#9ca3af' }}>{t('noFeed')}</p>
+          <p style={{ fontSize: '12px', color: '#d1d5db', marginTop: '6px' }}>{t('noFeedDesc')}</p>
         </div>
       )}
       {feed.map(item => {
-        if (item.type === 'real') return <RealPostCard key={item.id} item={item} likedMap={likedMap} onLike={handleLike} />;
+        if (item.type === 'real') return <RealPostCard key={item.id} item={item} likedMap={likedMap} onLike={handleLike} timeAgoStr={timeAgo(item.created_at)} tPublic={tPublic} tNeighbor={tNeighbor} />;
         if (item.type === 'curation') return <CurationPostCard key={item.id} item={item} />;
         if (item.type === 'ad' && !isPro) return <AdPostCard key={item.id} item={item} />;
         return null;

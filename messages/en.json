@@ -287,7 +287,187 @@
       "logoutBtn": "Logout",
       "deleteBtn": "Delete Account",
       "deleteConfirm": "Are you sure you want to delete your account?\nAll data will be immediately deleted and cannot be recovered."
-    }
+    },
+    "goalOptions": {
+      "diet": "Diet",
+      "maintain": "Maintain",
+      "bulk": "Bulk"
+    },
+    "activityLevels": {
+      "sedentary": "Sedentary (little or no exercise)",
+      "light": "Light (1-2 days/week)",
+      "moderate": "Moderate (3-5 days/week)",
+      "active": "Active (daily exercise)"
+    },
+    "bodyFields": {
+      "age": "Age",
+      "height": "Height",
+      "weight": "Weight",
+      "targetWeight": "Target Weight"
+    },
+    "csvHeader": "Date,Food,Category,Calories(kcal),Carbs(g),Protein(g),Fat(g),Fiber(g),Sugar(g),Sodium(mg)",
+    "gender": "Gender",
+    "male": "Male",
+    "female": "Female",
+    "activityLabel": "Activity Level",
+    "goalLabel": "Goal",
+    "dailyCalTarget": "Daily Calorie Goal",
+    "recommended": "Recommended",
+    "useRecommended": "Use Recommended",
+    "customInput": "Enter Manually",
+    "kcalPerDay": "kcal/day",
+    "calcHint": "Enter height, weight & activity to calculate",
+    "bmrNote": "Harris-Benedict BMR × activity factor",
+    "bmrDiet": "× 0.8 (diet)",
+    "bmrBulk": "× 1.15 (bulk)",
+    "bmrMaintain": "(maintain)",
+    "saved": "Saved ✓",
+    "saving": "Encrypting...",
+    "save": "Save",
+    "encNote": "🔐 AES-256 encrypted · stored on this device only",
+    "bodyInfo": "Body Info",
+    "lockBtn": "🔓 Lock",
+    "lockedMsg": "Body info is locked",
+    "enterPin": "Enter your PIN to unlock",
+    "decryptErr": "Could not load saved data — it has been reset. Please unlock and re-enter your info.",
+    "verifying": "Verifying...",
+    "unlockBtn": "Unlock",
+    "dataTitle": "Meal Data",
+    "recordStatus": "Record Status",
+    "totalRecords": "Total Records",
+    "dailyAvg": "Daily Average",
+    "topFood": "Most Eaten",
+    "firstRecord": "First Record",
+    "lastRecord": "Last Record",
+    "topCategory": "Top Category",
+    "exportData": "Export Data",
+    "exportDesc": "JSON: best for backup and restore. CSV: open in spreadsheet apps.",
+    "noExportData": "No data to export.",
+    "shareTitle": "MyBob Meal Data",
+    "pinEnter": "Enter PIN",
+    "pinSet": "Set PIN",
+    "pinConfirm": "Confirm PIN",
+    "pinEnterDesc": "Enter your 4-digit PIN",
+    "pinSetDesc": "Choose a 4-digit PIN",
+    "pinConfirmDesc": "Enter it again",
+    "pinCancel": "Cancel",
+    "pinForgot": "Forgot your PIN?",
+    "pinWrong": "Incorrect PIN",
+    "pinWrongWarn": "Incorrect PIN · {left} attempt(s) left before reset",
+    "pinMaxErr": "10 errors — body info will be reset",
+    "pinWarnRemaining": "{remaining} more wrong attempts will reset your body info",
+    "pinMismatch": "PINs do not match",
+    "storageTitle": "Storage",
+    "currentStorage": "Current Storage Mode",
+    "localMode": "Local Storage",
+    "cloudMode": "Cloud Sync",
+    "localBadge": "LOCAL · This device only",
+    "cloudBadge": "CLOUD · Syncing to server",
+    "changeBtn": "Change",
+    "localDesc": "All meal records and photos are stored on this device only. Nothing is sent to the server.",
+    "cloudDesc": "Meal records sync to the server. Access the same data across multiple devices.",
+    "deleteWarning": "Server data will be deleted in {days} days.",
+    "deleteNow": "Delete Now",
+    "cancelDelete": "Cancel (Keep Cloud)",
+    "featureCompare": "Feature Comparison",
+    "features": [
+      {
+        "label": "Meal Storage",
+        "local": "This device only",
+        "cloud": "All devices sync"
+      },
+      {
+        "label": "Meal Editing",
+        "local": "❌ Not available",
+        "cloud": "✅ PRO only"
+      },
+      {
+        "label": "Multi-device",
+        "local": "❌ Not available",
+        "cloud": "✅ Available"
+      },
+      {
+        "label": "Neighbor features",
+        "local": "❌ Not available",
+        "cloud": "✅ Available"
+      },
+      {
+        "label": "Neighbor feed",
+        "local": "❌ Not available",
+        "cloud": "✅ PRO only"
+      },
+      {
+        "label": "Community feed",
+        "local": "✅ (with ads)",
+        "cloud": "✅ PRO: no ads"
+      }
+    ],
+    "localLabel": "📱 Local",
+    "cloudLabel": "☁️ Cloud",
+    "notificationSettings": "Notification Settings",
+    "pushNotif": "Push Notifications",
+    "pushNotifDesc": "Set meal reminder interval",
+    "notifOptions": [
+      "After 1 hour",
+      "After 2 hours",
+      "Manual"
+    ],
+    "deleteConfirm": "Delete server data immediately?",
+    "planTitle": "Plan",
+    "currentPlan": "Current Plan",
+    "usingPlan": "Active",
+    "foundingMemberPro": "🎖️ Founding PRO",
+    "foundingSeats": "🎖️ Founding {n} seats",
+    "promotionDaysLeft": "Promotion ends in",
+    "daysUsed": "Days used so far",
+    "estimatedReward": "Expected reward after end",
+    "rewardMonths": "PRO {n} months credit",
+    "rewardMinDays": "Use 30+ days to earn reward",
+    "seatsLeft": "✨ Founding {n} seats left",
+    "seatsLeftDesc": "Join now for free PRO until Dec 31, 2026.",
+    "aiAnalysisToday": "AI Analysis Today",
+    "cloudSaveToday": "Cloud Saves Today",
+    "promotionNote": "Founding promotion is active. Try PRO for free while seats last.",
+    "autoCancelNote": "⏱️ Auto-cancel is scheduled. You will switch to FREE after your current period ends.",
+    "cancelBtn": "Cancel Subscription",
+    "cancelConfirmTitle": "Are you sure you want to cancel?",
+    "cancelConfirmDesc": "PRO features will end when your current period expires. You can continue using PRO until then.",
+    "cancelConfirmBtn": "Confirm Cancel",
+    "cancelKeepBtn": "Keep",
+    "cancelProcessing": "Processing...",
+    "loginRequired": "Please log in to view your plan.",
+    "proBenefits": "PRO Benefits",
+    "proFeatures": [
+      {
+        "icon": "🤖",
+        "text": "AI Analysis 25x per day"
+      },
+      {
+        "icon": "☁️",
+        "text": "Cloud storage 25 photos/day"
+      },
+      {
+        "icon": "📊",
+        "text": "Precision nutrition diagnosis"
+      },
+      {
+        "icon": "🎯",
+        "text": "Custom calorie goal AI coaching"
+      },
+      {
+        "icon": "👤",
+        "text": "Profile nickname & photo"
+      }
+    ],
+    "upgradeBtn": "Upgrade to PRO",
+    "cancelSuccess": "Cancellation requested. You will switch to FREE after the current period ends.",
+    "cancelNoSub": "No active subscription found.",
+    "cancelError": "An error occurred during cancellation.",
+    "cancelNetworkError": "Network error occurred.",
+    "planLabelFree": "Free",
+    "planLabelPro": "PRO Subscription",
+    "planLabelLifetime": "Lifetime",
+    "daysUnit": "{n} days"
   },
   "PIN": {
     "enter": "Enter PIN",
@@ -424,12 +604,10 @@
       "cal_asc": "Lowest Cal"
     },
     "categories": {
-      "all": "All",
       "korean": "Korean",
-      "western": "Western",
-      "japanese": "Japanese",
       "chinese": "Chinese",
-      "fast_food": "Fast Food",
+      "japanese": "Japanese",
+      "western": "Western",
       "snack": "Snack",
       "drink": "Drink",
       "etc": "Other"
@@ -467,7 +645,28 @@
       "Late-night snacks lower sleep quality",
       "Breakfast is the start of your daily energy",
       "Writing a food diary reduces overeating by 20%"
-    ]
+    ],
+    "nutrients": {
+      "carbohydrates": "Carbs",
+      "protein": "Protein",
+      "fat": "Fat",
+      "fiber": "Fiber",
+      "sugar": "Sugar",
+      "sodium": "Sodium",
+      "caffeine": "Caffeine",
+      "vitaminA": "Vit A",
+      "vitaminC": "Vit C",
+      "vitaminD": "Vit D",
+      "calcium": "Calcium",
+      "iron": "Iron",
+      "potassium": "Potassium"
+    },
+    "timeAgo": {
+      "justNow": "Just now",
+      "minutes": "{n}m ago",
+      "hours": "{n}h ago",
+      "days": "{n}d ago"
+    }
   },
   "MealDetail": {
     "title": "Meal Detail",
@@ -547,7 +746,7 @@
     "dayOfWeek": "{label}",
     "goalLine": "Goal {value} kcal",
     "overGoal": "Over Goal",
-    "dayLabels": "Mon,Tue,Wed,Thu,Fri,Sat,Sun",
+    "dayLabels": "Sun,Mon,Tue,Wed,Thu,Fri,Sat",
     "noMonthlyData": "No records for this month.",
     "monthTitle": "{year} / {month}",
     "totalCal": "Total Calories",
@@ -575,7 +774,54 @@
       "consistency": "Consistency"
     },
     "proOnly": "PRO plan only.",
-    "noMealData": "No meal records to analyze.\nPlease log your meals first."
+    "noMealData": "No meal records to analyze.\nPlease log your meals first.",
+    "strengths": "✓ Doing Well",
+    "aiCoach": "AI Coach Message",
+    "analyzedToday": "Already analyzed today (retry tomorrow)",
+    "reanalyze": "🔄 Re-analyze",
+    "avgCal": "Avg Daily Calories",
+    "targetCal": "Target Calories",
+    "analysisDays": "Days Analyzed",
+    "totalLogs": "Total Logs",
+    "issues": "Areas to Improve",
+    "recommendations": "Action Steps",
+    "weeklyPlan": "This Week's Plan",
+    "trendTitle": "Overall Score Trend",
+    "trendEmpty": "Trend available after 2+ analyses.\nKeep logging and re-analyzing.",
+    "indicatorTrend": "Indicator Change (Latest vs Previous)",
+    "severityHigh": "HIGH",
+    "severityMedium": "MED",
+    "severityLow": "LOW",
+    "priorityHigh": "PRIORITY",
+    "priorityMedium": "RECOMMEND",
+    "priorityLow": "REFERENCE",
+    "refreshDays": "{n} days since last analysis. Re-analyze recommended.",
+    "refreshMeals": "{n} new meals since last analysis. Re-analyze recommended.",
+    "proOnlyDesc": "AI Precision Diagnosis is available\non PRO plan and above.",
+    "proFeatureList": "PRO Diagnosis Features",
+    "proFeatureItems": [
+      "5-metric health score (A+ to D)",
+      "In-depth issue analysis + action steps",
+      "AI custom weekly meal plan",
+      "Sodium · fiber · nutrition balance evaluation",
+      "Long-term trend score tracking"
+    ],
+    "upgradeSoon": "Upgrade coming soon",
+    "diagTitle": "AI Precision Diagnosis",
+    "diagDesc": "Analyzes your last 30 days of meals.\nCalories · Nutrition · Sodium · Fiber\n5-metric composite score with personalized coaching.",
+    "diagDataCount": "Available data: {n} records",
+    "diagStart": "Start Diagnosis",
+    "analyzing": "AI is analyzing your diet...",
+    "analyzingTime": "Takes about 10–20 seconds",
+    "analysisPeriod": "Period",
+    "mealBase": "Meals",
+    "analyzedAt": "Analyzed at",
+    "gradeLabel": "Grade",
+    "tabOverview": "Overview",
+    "tabDetail": "Detail",
+    "tabPlan": "Plan",
+    "tabTrend": "Trend",
+    "indicatorScores": "Indicator Scores"
   },
   "Community": {
     "title": "Community",
@@ -600,7 +846,122 @@
     "noRequests": "No requests",
     "accept": "Accept",
     "reject": "Reject",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "tabs": {
+      "recommendation": "Feed",
+      "neighbors": "Neighbors",
+      "challenge": "Challenge"
+    },
+    "cloudOnly": "Neighbor features are available in Cloud mode only.",
+    "switchToCloud": "Switch to Cloud Mode",
+    "subTabs": {
+      "feed": "Feed",
+      "neighbors": "Neighbors",
+      "requests": "Requests",
+      "add": "+ Add"
+    },
+    "requestFailed": "Request failed. Please try again.",
+    "timeAgo": {
+      "justNow": "Just now",
+      "minutes": "{n}m ago",
+      "hours": "{n}h ago",
+      "days": "{n}d ago"
+    },
+    "challengeTitle": "Challenge System Coming Soon",
+    "challengeDesc": "Achieve goals with friends and earn points and badges!",
+    "noFeed": "No shared meals yet",
+    "noFeedDesc": "Record your meals and share with neighbors!",
+    "public": "Public",
+    "neighbor": "Neighbor",
+    "feedTab": "Feed",
+    "friendsTab": "Neighbors",
+    "requestsTab": "Requests",
+    "addTab": "+ Add",
+    "proFeedTitle": "PRO Feature",
+    "proFeedDesc": "Upgrade to PRO to see your neighbors's meals in feed.",
+    "noFeedNeighbors": "No shared meals from neighbors yet. Add neighbors or wait for them to share.",
+    "noFriends": "No neighbors yet.",
+    "addNeighbors": "Add a neighbor",
+    "confirmRemove": "Remove?",
+    "confirmBtn": "Confirm",
+    "cancelBtn": "Cancel",
+    "removeBtn": "Remove",
+    "incomingRequests": "Received Requests",
+    "outgoingRequests": "Sent Requests",
+    "noIncoming": "No incoming requests.",
+    "noOutgoing": "No sent requests.",
+    "neighborRequest": "Neighbor request",
+    "pending": "Pending acceptance",
+    "cancelRequest": "Cancel",
+    "searchByNickname": "Search by nickname",
+    "searchPlaceholder": "e.g. banana_lover_123",
+    "sendRequest": "Request",
+    "addGuide": "Enter the exact nickname of the person you want to add. Once accepted, you become neighbors and can share meals.",
+    "cloudOnlyTitle": "Neighbor features are Cloud mode only",
+    "cloudOnlyDesc": "You are currently in Local mode. Neighbor, feed sharing, and other community features require Cloud mode.",
+    "switchNote": "Your existing meal data will be preserved. You can also change this in Settings > Storage.",
+    "comingSoon": "Challenge System Coming Soon",
+    "comingSoonDesc": "Achieve goals together with friends and earn points and badges!",
+    "challengeList": [
+      {
+        "title": "7-Day Clean Eating Challenge",
+        "period": "1 week"
+      },
+      {
+        "title": "No Sugar Challenge",
+        "period": "14 days"
+      },
+      {
+        "title": "Daily Morning Salad",
+        "period": "30 days"
+      }
+    ],
+    "curation": [
+      {
+        "emoji": "🥗",
+        "tag": "Today's Pick",
+        "title": "Chicken Breast Salad",
+        "desc": "High protein, low calorie diet staple. Perfect with cherry tomatoes and avocado."
+      },
+      {
+        "emoji": "🍳",
+        "tag": "Morning Rec",
+        "title": "2 Eggs + Whole Wheat Toast",
+        "desc": "A filling breakfast to start the day. Stay full longer with quality protein."
+      },
+      {
+        "emoji": "🍱",
+        "tag": "K-Food Best",
+        "title": "Brown Rice + Doenjang Stew + Namul",
+        "desc": "Balanced Korean meal. High fiber, no blood sugar spike."
+      },
+      {
+        "emoji": "🥛",
+        "tag": "Snack Rec",
+        "title": "Greek Yogurt + Blueberry",
+        "desc": "Packed with probiotics and antioxidants. The perfect afternoon pick-me-up."
+      },
+      {
+        "emoji": "🐟",
+        "tag": "PRO PICK",
+        "title": "Salmon Poke Bowl",
+        "desc": "Omega-3 rich salmon, avocado, and brown rice. Muscle recovery and satiety in one."
+      }
+    ],
+    "ads": [
+      {
+        "brand": "PROTEINWORKS",
+        "title": "#1 Protein Supplement Brand",
+        "desc": "Fill the golden hour post-workout with 95% absorption whey protein.",
+        "cta": "Get Discount Now"
+      },
+      {
+        "brand": "FRESHBOX",
+        "title": "Fresh Meal Subscription",
+        "desc": "Dietitian-designed healthy lunch boxes 5x/week, 30% off first order.",
+        "cta": "Free Trial"
+      }
+    ]
   },
   "Terms": {
     "title": "Terms of Use",
@@ -832,6 +1193,60 @@
     "password": "Password",
     "googleLogin": "Continue with Google",
     "forgotPassword": "Forgot your password?",
-    "noAccount": "Don't have an account?"
+    "noAccount": "Don't have an account?",
+    "resetTitle": "Reset Password",
+    "newPasswordTitle": "Enter New Password",
+    "resetDesc": "Enter your email and we will send you a reset link.",
+    "newPasswordDesc": "Enter the new password you want to use.",
+    "sendingLink": "Sending...",
+    "sendLink": "Send Reset Link",
+    "newPassword": "New Password",
+    "confirmPassword": "Confirm Password",
+    "passwordPlaceholder": "At least 6 characters",
+    "confirmPlaceholder": "Enter again",
+    "changingPw": "Changing...",
+    "changePw": "Change Password",
+    "backToLogin": "Back to Login",
+    "errSendFailed": "Failed to send email. Please try again.",
+    "errResetSuccess": "Check your email. We sent a reset link.",
+    "errPwMismatch": "Passwords do not match.",
+    "errPwTooShort": "Password must be at least 6 characters.",
+    "errChangeFailed": "Failed to change password. The link may have expired.",
+    "errChangeSuccess": "Password changed successfully.",
+    "emailConfirmTitle": "Check your email",
+    "emailConfirmSent": "We sent a verification email to {email}.",
+    "emailConfirmLink": "Click the link in the email to complete signup.",
+    "emailConfirmSpam": "Did not receive it? Check your spam folder.",
+    "goToLogin": "Go to Login",
+    "signingUp": "Signing up...",
+    "googleContinue": "Continue with Google",
+    "hasAccount": "Already have an account?"
+  },
+  "Pricing": {
+    "title": "Pricing",
+    "intro": "MyBob is free to start. Unlock more with a PRO subscription.",
+    "freeForever": "Free · Forever",
+    "monthlySubscription": "Monthly subscription · Cancel anytime",
+    "recommended": "RECOMMENDED",
+    "freeFeatures": [
+      "AI analysis 10x/day",
+      "Unlimited meal logs",
+      "Daily/weekly/monthly reports",
+      "Local storage (on-device)"
+    ],
+    "proFeatures": [
+      "AI analysis 25x/day",
+      "Cloud storage & multi-device sync",
+      "AI precision nutrition diagnosis",
+      "Nickname & avatar customization",
+      "Ad-free",
+      "Priority support"
+    ],
+    "foundingBannerTitle": "Founding Member Promotion Active",
+    "foundingBannerDesc": "First 1,000 users enjoy FREE PRO until Dec 31, 2026.\nSign up now to become a Founding Member automatically.",
+    "startApp": "Get Started",
+    "paymentNote": "Payment system opens after promotion ends.\n· Subscription auto-renews monthly, cancel anytime\n· See our",
+    "refundPolicy": "Refund Policy",
+    "paymentNoteEnd": "page for details."
   }
 }

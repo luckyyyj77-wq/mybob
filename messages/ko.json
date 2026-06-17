@@ -287,7 +287,187 @@
       "logoutBtn": "로그아웃",
       "deleteBtn": "회원 탈퇴",
       "deleteConfirm": "정말 탈퇴하시겠습니까?\n모든 데이터가 즉시 삭제되며 복구할 수 없습니다."
-    }
+    },
+    "goalOptions": {
+      "diet": "다이어트",
+      "maintain": "유지",
+      "bulk": "증량"
+    },
+    "activityLevels": {
+      "sedentary": "좌식 (거의 운동 안 함)",
+      "light": "가벼운 활동 (주 1~2회)",
+      "moderate": "보통 활동 (주 3~5회)",
+      "active": "활동적 (매일 운동)"
+    },
+    "bodyFields": {
+      "age": "나이",
+      "height": "키",
+      "weight": "몸무게",
+      "targetWeight": "목표 체중"
+    },
+    "csvHeader": "날짜,음식명,카테고리,칼로리(kcal),탄수화물(g),단백질(g),지방(g),식이섬유(g),당류(g),나트륨(mg)",
+    "gender": "성별",
+    "male": "남성",
+    "female": "여성",
+    "activityLabel": "활동량",
+    "goalLabel": "목표",
+    "dailyCalTarget": "일일 목표 칼로리",
+    "recommended": "권장",
+    "useRecommended": "권장값 사용",
+    "customInput": "직접 입력",
+    "kcalPerDay": "kcal/일",
+    "calcHint": "키·몸무게·활동량을 입력하면 계산됩니다",
+    "bmrNote": "Harris-Benedict BMR × 활동량 계수",
+    "bmrDiet": "× 0.8 (다이어트)",
+    "bmrBulk": "× 1.15 (증량)",
+    "bmrMaintain": "(유지)",
+    "saved": "저장됨 ✓",
+    "saving": "암호화 중...",
+    "save": "저장",
+    "encNote": "🔐 AES-256 암호화 · 이 기기에만 저장",
+    "bodyInfo": "신체 정보",
+    "lockBtn": "🔓 잠금",
+    "lockedMsg": "신체정보가 잠겨 있습니다",
+    "enterPin": "PIN을 입력해 잠금을 해제하세요",
+    "decryptErr": "저장된 데이터를 불러올 수 없어 초기화했습니다. 다시 잠금 해제 후 정보를 입력해 주세요.",
+    "verifying": "확인 중...",
+    "unlockBtn": "잠금 해제",
+    "dataTitle": "기록 데이터",
+    "recordStatus": "기록 현황",
+    "totalRecords": "총 기록",
+    "dailyAvg": "1일 평균",
+    "topFood": "자주 먹는 음식",
+    "firstRecord": "첫 기록일",
+    "lastRecord": "최근 기록일",
+    "topCategory": "가장 많은 카테고리",
+    "exportData": "데이터 내보내기",
+    "exportDesc": "JSON: 앱 백업 및 복원에 적합합니다. CSV: 스프레드시트에서 열 수 있습니다.",
+    "noExportData": "내보낼 데이터가 없습니다.",
+    "shareTitle": "MyBob 식단 데이터",
+    "pinEnter": "PIN 입력",
+    "pinSet": "PIN 설정",
+    "pinConfirm": "PIN 확인",
+    "pinEnterDesc": "4자리 PIN을 입력하세요",
+    "pinSetDesc": "사용할 4자리 PIN을 입력하세요",
+    "pinConfirmDesc": "한 번 더 입력하세요",
+    "pinCancel": "취소",
+    "pinForgot": "PIN을 잊으셨나요?",
+    "pinWrong": "PIN이 올바르지 않습니다",
+    "pinWrongWarn": "PIN이 올바르지 않습니다 · {left}회 남으면 초기화됩니다",
+    "pinMaxErr": "10회 오류 — 신체정보가 초기화됩니다",
+    "pinWarnRemaining": "{remaining}회 더 틀리면 신체정보가 초기화됩니다",
+    "pinMismatch": "PIN이 일치하지 않습니다",
+    "storageTitle": "저장 방식",
+    "currentStorage": "현재 저장 방식",
+    "localMode": "로컬 저장",
+    "cloudMode": "클라우드 동기화",
+    "localBadge": "LOCAL · 이 기기에만 보관",
+    "cloudBadge": "CLOUD · 서버 동기화 중",
+    "changeBtn": "변경",
+    "localDesc": "모든 식단 기록과 사진은 이 기기에만 저장됩니다. 서버로 전송되지 않습니다.",
+    "cloudDesc": "식단 기록이 서버에 동기화됩니다. 여러 기기에서 같은 데이터를 볼 수 있습니다.",
+    "deleteWarning": "서버 데이터가 {days}일 후 삭제될 예정입니다.",
+    "deleteNow": "지금 삭제",
+    "cancelDelete": "취소 (클라우드 유지)",
+    "featureCompare": "기능 비교",
+    "features": [
+      {
+        "label": "식단 저장",
+        "local": "이 기기에만",
+        "cloud": "모든 기기 동기화"
+      },
+      {
+        "label": "식단 편집",
+        "local": "❌ 불가",
+        "cloud": "✅ PRO 전용"
+      },
+      {
+        "label": "다기기 접속",
+        "local": "❌ 불가",
+        "cloud": "✅ 가능"
+      },
+      {
+        "label": "이웃 추가/관리",
+        "local": "❌ 불가",
+        "cloud": "✅ 가능"
+      },
+      {
+        "label": "이웃 피드 공유",
+        "local": "❌ 불가",
+        "cloud": "✅ PRO 전용"
+      },
+      {
+        "label": "커뮤니티 추천 탭",
+        "local": "✅ (광고 포함)",
+        "cloud": "✅ PRO는 광고 없음"
+      }
+    ],
+    "localLabel": "📱 로컬",
+    "cloudLabel": "☁️ 클라우드",
+    "notificationSettings": "알림 설정",
+    "pushNotif": "푸시 알림",
+    "pushNotifDesc": "식단 기록 알림 주기 설정",
+    "notifOptions": [
+      "1시간 후",
+      "2시간 후",
+      "수동"
+    ],
+    "deleteConfirm": "지금 즉시 서버 데이터를 삭제하시겠습니까?",
+    "planTitle": "이용 플랜",
+    "currentPlan": "현재 플랜",
+    "usingPlan": "이용 중",
+    "foundingMemberPro": "🎖️ 천인회 PRO",
+    "foundingSeats": "🎖️ 천인회 {n}석",
+    "promotionDaysLeft": "프로모션 종료까지",
+    "daysUsed": "지금까지 사용일수",
+    "estimatedReward": "종료 후 예상 보상",
+    "rewardMonths": "PRO {n}개월 크레딧",
+    "rewardMinDays": "30일 이상 사용 시 보상 시작",
+    "seatsLeft": "✨ 천인회 {n}석 남음",
+    "seatsLeftDesc": "지금 가입하면 2026년 12월 31일까지 PRO 기능을 무료로 이용할 수 있어요.",
+    "aiAnalysisToday": "오늘 AI 분석",
+    "cloudSaveToday": "오늘 클라우드 저장",
+    "promotionNote": "현재 천인회 프로모션 진행 중입니다. 자리가 남아있는 동안 무료로 PRO를 이용해보세요.",
+    "autoCancelNote": "⏱️ 자동 해지가 예약되어 있습니다. 구독 기간 종료 후 자동으로 FREE로 전환됩니다.",
+    "cancelBtn": "구독 해지",
+    "cancelConfirmTitle": "정말 해지하시겠습니까?",
+    "cancelConfirmDesc": "현재 구독 기간이 끝나는 시점에 PRO 기능이 종료됩니다. 해지 후에도 기간 내에는 PRO를 계속 이용할 수 있습니다.",
+    "cancelConfirmBtn": "해지 확정",
+    "cancelKeepBtn": "취소",
+    "cancelProcessing": "처리 중...",
+    "loginRequired": "로그인 후 확인 가능합니다.",
+    "proBenefits": "PRO 혜택",
+    "proFeatures": [
+      {
+        "icon": "🤖",
+        "text": "AI 분석 하루 25회"
+      },
+      {
+        "icon": "☁️",
+        "text": "클라우드 저장 하루 25장"
+      },
+      {
+        "icon": "📊",
+        "text": "정밀 영양 진단 리포트"
+      },
+      {
+        "icon": "🎯",
+        "text": "맞춤 목표 칼로리 AI 코칭"
+      },
+      {
+        "icon": "👤",
+        "text": "프로필 닉네임 · 사진 변경"
+      }
+    ],
+    "upgradeBtn": "PRO 업그레이드",
+    "cancelSuccess": "해지 신청이 완료되었습니다. 현재 구독 기간 종료 후 FREE로 전환됩니다.",
+    "cancelNoSub": "활성 구독이 없습니다.",
+    "cancelError": "해지 중 오류가 발생했습니다.",
+    "cancelNetworkError": "네트워크 오류가 발생했습니다.",
+    "planLabelFree": "무료",
+    "planLabelPro": "구독 PRO",
+    "planLabelLifetime": "평생 이용권",
+    "daysUnit": "{n}일"
   },
   "PIN": {
     "enter": "PIN 입력",
@@ -424,12 +604,10 @@
       "cal_asc": "칼로리 낮은순"
     },
     "categories": {
-      "all": "전체",
       "korean": "한식",
-      "western": "양식",
-      "japanese": "일식",
       "chinese": "중식",
-      "fast_food": "패스트푸드",
+      "japanese": "일식",
+      "western": "양식",
       "snack": "간식",
       "drink": "음료",
       "etc": "기타"
@@ -467,7 +645,28 @@
       "야식은 수면의 질을 낮춰요",
       "아침 식사는 하루 에너지의 시작이에요",
       "식사 일기를 쓰면 과식이 20% 줄어요"
-    ]
+    ],
+    "nutrients": {
+      "carbohydrates": "탄수화물",
+      "protein": "단백질",
+      "fat": "지방",
+      "fiber": "식이섬유",
+      "sugar": "당류",
+      "sodium": "나트륨",
+      "caffeine": "카페인",
+      "vitaminA": "비타민A",
+      "vitaminC": "비타민C",
+      "vitaminD": "비타민D",
+      "calcium": "칼슘",
+      "iron": "철분",
+      "potassium": "칼륨"
+    },
+    "timeAgo": {
+      "justNow": "방금 전",
+      "minutes": "{n}분 전",
+      "hours": "{n}시간 전",
+      "days": "{n}일 전"
+    }
   },
   "MealDetail": {
     "title": "식단 상세",
@@ -547,7 +746,7 @@
     "dayOfWeek": "{label}요일",
     "goalLine": "목표 {value} kcal",
     "overGoal": "목표 초과",
-    "dayLabels": "월,화,수,목,금,토,일",
+    "dayLabels": "일,월,화,수,목,금,토",
     "noMonthlyData": "이 달의 기록이 없습니다.",
     "monthTitle": "{year}년 {month}월",
     "totalCal": "총 칼로리",
@@ -575,7 +774,54 @@
       "consistency": "기록 일관성"
     },
     "proOnly": "PRO 플랜 전용 기능입니다.",
-    "noMealData": "분석할 식단 기록이 없습니다.\n식단을 먼저 기록해주세요."
+    "noMealData": "분석할 식단 기록이 없습니다.\n식단을 먼저 기록해주세요.",
+    "strengths": "✓ 잘하고 있어요",
+    "aiCoach": "AI 코치 메시지",
+    "analyzedToday": "오늘 분석 완료 (내일 재분석 가능)",
+    "reanalyze": "🔄 재분석",
+    "avgCal": "일 평균 칼로리",
+    "targetCal": "목표 칼로리",
+    "analysisDays": "분석 일수",
+    "totalLogs": "총 기록 수",
+    "issues": "개선이 필요한 점",
+    "recommendations": "실천 방법",
+    "weeklyPlan": "이번 주 실천 플랜",
+    "trendTitle": "종합 점수 변화",
+    "trendEmpty": "트렌드는 2회 이상 진단 후 확인할 수 있습니다.\n꾸준히 기록하고 재분석해보세요.",
+    "indicatorTrend": "지표별 변화 (최신 vs 직전)",
+    "severityHigh": "높음",
+    "severityMedium": "보통",
+    "severityLow": "낮음",
+    "priorityHigh": "우선",
+    "priorityMedium": "권장",
+    "priorityLow": "참고",
+    "refreshDays": "마지막 진단으로부터 {n}일이 지났어요. 재분석을 추천합니다.",
+    "refreshMeals": "진단 이후 {n}개의 식단이 새로 추가됐어요. 재분석을 추천합니다.",
+    "proOnlyDesc": "AI 정밀 진단은 PRO 플랜 이상에서\n사용할 수 있습니다.",
+    "proFeatureList": "PRO 진단 포함 기능",
+    "proFeatureItems": [
+      "5개 지표 종합 건강 점수 (A+~D 등급)",
+      "문제점 심층 분석 + 개선 방법",
+      "AI 맞춤 주간 식단 플랜",
+      "나트륨 · 식이섬유 · 영양 균형 평가",
+      "장기 트렌드 점수 변화 추적"
+    ],
+    "upgradeSoon": "업그레이드 준비 중",
+    "diagTitle": "AI 정밀 진단",
+    "diagDesc": "최근 30일 식단 데이터를 분석해\n칼로리 · 영양 균형 · 나트륨 · 식이섬유\n5개 지표 종합 점수와 맞춤 코칭을 제공합니다.",
+    "diagDataCount": "분석 가능 데이터: {n}개 기록",
+    "diagStart": "진단 시작",
+    "analyzing": "AI가 식단을 분석하고 있습니다...",
+    "analyzingTime": "약 10~20초 소요",
+    "analysisPeriod": "분석 기간",
+    "mealBase": "기준 식단",
+    "analyzedAt": "분석 시각",
+    "gradeLabel": "등급",
+    "tabOverview": "개요",
+    "tabDetail": "상세",
+    "tabPlan": "플랜",
+    "tabTrend": "트렌드",
+    "indicatorScores": "지표별 점수"
   },
   "Community": {
     "title": "커뮤니티",
@@ -600,7 +846,122 @@
     "noRequests": "요청이 없습니다",
     "accept": "수락",
     "reject": "거절",
-    "cancel": "거절"
+    "cancel": "거절",
+    "tabs": {
+      "recommendation": "추천",
+      "neighbors": "이웃",
+      "challenge": "챌린지"
+    },
+    "cloudOnly": "이웃 기능은 클라우드 모드 전용입니다",
+    "switchToCloud": "클라우드 모드로 전환하기",
+    "subTabs": {
+      "feed": "피드",
+      "neighbors": "이웃",
+      "requests": "요청",
+      "add": "+ 추가"
+    },
+    "requestFailed": "요청 실패. 다시 시도해주세요.",
+    "timeAgo": {
+      "justNow": "방금 전",
+      "minutes": "{n}분 전",
+      "hours": "{n}시간 전",
+      "days": "{n}일 전"
+    },
+    "challengeTitle": "챌린지 시스템 준비 중",
+    "challengeDesc": "친구들과 함께 목표를 달성하고 포인트와 뱃지를 획득하세요!",
+    "noFeed": "아직 공유된 식단이 없어요",
+    "noFeedDesc": "식단을 기록하고 이웃과 공유해보세요!",
+    "public": "전체공개",
+    "neighbor": "이웃",
+    "feedTab": "피드",
+    "friendsTab": "이웃",
+    "requestsTab": "요청",
+    "addTab": "+ 추가",
+    "proFeedTitle": "PRO 전용 기능",
+    "proFeedDesc": "PRO 플랜에서 이웃의 식단을 피드로 확인할 수 있습니다.",
+    "noFeedNeighbors": "이웃이 공유한 식단이 없습니다. 이웃을 추가하거나 공유를 기다려보세요.",
+    "noFriends": "아직 이웃이 없습니다.",
+    "addNeighbors": "이웃 추가하기",
+    "confirmRemove": "삭제할까요?",
+    "confirmBtn": "확인",
+    "cancelBtn": "취소",
+    "removeBtn": "삭제",
+    "incomingRequests": "받은 요청",
+    "outgoingRequests": "보낸 요청",
+    "noIncoming": "받은 요청이 없습니다.",
+    "noOutgoing": "보낸 요청이 없습니다.",
+    "neighborRequest": "이웃 요청",
+    "pending": "수락 대기 중",
+    "cancelRequest": "취소",
+    "searchByNickname": "닉네임으로 찾기",
+    "searchPlaceholder": "예) 달달한바나나_123",
+    "sendRequest": "요청",
+    "addGuide": "상대방 닉네임을 정확히 입력하세요. 상대방이 수락하면 이웃이 됩니다. 이웃끼리는 식단을 공유하고 서로 응원할 수 있어요.",
+    "cloudOnlyTitle": "이웃 기능은 클라우드 모드 전용입니다",
+    "cloudOnlyDesc": "현재 로컬 모드로 사용 중입니다. 이웃 추가, 피드 공유 등 커뮤니티 기능은 클라우드 모드에서만 사용할 수 있습니다.",
+    "switchNote": "기존 식단 데이터는 그대로 유지됩니다. 설정 > 저장 방식에서도 변경할 수 있습니다.",
+    "comingSoon": "챌린지 시스템 준비 중",
+    "comingSoonDesc": "친구들과 함께 목표를 달성하고 포인트와 뱃지를 획득하세요!",
+    "challengeList": [
+      {
+        "title": "7일 클린 식단 챌린지",
+        "period": "1주"
+      },
+      {
+        "title": "노슈가(No Sugar) 도전",
+        "period": "14일"
+      },
+      {
+        "title": "매일 아침 샐러드 먹기",
+        "period": "30일"
+      }
+    ],
+    "curation": [
+      {
+        "emoji": "🥗",
+        "tag": "오늘의 추천",
+        "title": "닭가슴살 샐러드",
+        "desc": "고단백 저칼로리, 다이어트 식단의 정석. 방울토마토·아보카도와 함께하면 더욱 완벽."
+      },
+      {
+        "emoji": "🍳",
+        "tag": "아침 추천",
+        "title": "달걀 2개 + 통밀토스트",
+        "desc": "하루를 시작하는 든든한 아침. 양질의 단백질로 포만감을 오래 유지하세요."
+      },
+      {
+        "emoji": "🍱",
+        "tag": "한식 베스트",
+        "title": "현미밥 + 된장찌개 + 나물",
+        "desc": "균형 잡힌 한국식 한 끼. 식이섬유 풍부, 혈당 스파이크 없는 건강 식사."
+      },
+      {
+        "emoji": "🥛",
+        "tag": "간식 추천",
+        "title": "그릭요거트 + 블루베리",
+        "desc": "프로바이오틱스와 항산화 성분이 가득. 오후 슬럼프를 이겨내는 최적의 간식."
+      },
+      {
+        "emoji": "🐟",
+        "tag": "PRO PICK",
+        "title": "연어 포케볼",
+        "desc": "오메가-3 풍부한 연어, 아보카도, 현미밥의 조합. 근육 회복과 포만감을 동시에."
+      }
+    ],
+    "ads": [
+      {
+        "brand": "PROTEINWORKS",
+        "title": "단백질 보충제 1위 브랜드",
+        "desc": "운동 후 골든타임, 흡수율 95% 유청 단백질로 채우세요.",
+        "cta": "지금 할인받기"
+      },
+      {
+        "brand": "FRESHBOX",
+        "title": "신선 식단 정기배송",
+        "desc": "영양사가 설계한 주 5회 건강 도시락, 첫 주문 30% 할인.",
+        "cta": "무료 체험"
+      }
+    ]
   },
   "Terms": {
     "title": "이용약관",
@@ -832,6 +1193,60 @@
     "password": "비밀번호",
     "googleLogin": "Google로 로그인",
     "forgotPassword": "비밀번호를 잊으셨나요?",
-    "noAccount": "계정이 없으신가요?"
+    "noAccount": "계정이 없으신가요?",
+    "resetTitle": "비밀번호 재설정",
+    "newPasswordTitle": "새 비밀번호 입력",
+    "resetDesc": "가입한 이메일을 입력하면 재설정 링크를 보내드립니다.",
+    "newPasswordDesc": "새로 사용할 비밀번호를 입력해주세요.",
+    "sendingLink": "전송 중...",
+    "sendLink": "재설정 링크 보내기",
+    "newPassword": "새 비밀번호",
+    "confirmPassword": "비밀번호 확인",
+    "passwordPlaceholder": "6자 이상",
+    "confirmPlaceholder": "동일하게 입력",
+    "changingPw": "변경 중...",
+    "changePw": "비밀번호 변경",
+    "backToLogin": "로그인으로 돌아가기",
+    "errSendFailed": "이메일 전송에 실패했습니다. 다시 시도해주세요.",
+    "errResetSuccess": "이메일을 확인해주세요. 재설정 링크를 보내드렸습니다.",
+    "errPwMismatch": "비밀번호가 일치하지 않습니다.",
+    "errPwTooShort": "비밀번호는 6자 이상이어야 합니다.",
+    "errChangeFailed": "비밀번호 변경에 실패했습니다. 링크가 만료되었을 수 있습니다.",
+    "errChangeSuccess": "비밀번호가 변경되었습니다.",
+    "emailConfirmTitle": "이메일을 확인해주세요",
+    "emailConfirmSent": "{email}으로 인증 메일을 보냈습니다.",
+    "emailConfirmLink": "메일 속 링크를 클릭하면 가입이 완료됩니다.",
+    "emailConfirmSpam": "메일이 오지 않으면 스팸함을 확인해주세요",
+    "goToLogin": "로그인 페이지로 이동",
+    "signingUp": "가입 중...",
+    "googleContinue": "Google로 계속하기",
+    "hasAccount": "이미 계정이 있으신가요?"
+  },
+  "Pricing": {
+    "title": "요금제",
+    "intro": "MyBob은 무료로 시작할 수 있으며, PRO 구독으로 더 많은 기능을 이용할 수 있습니다.",
+    "freeForever": "무료 · 영구 이용",
+    "monthlySubscription": "월간 구독 · 언제든 해지 가능",
+    "recommended": "추천",
+    "freeFeatures": [
+      "AI 음식 분석 10회/일",
+      "식단 기록 무제한",
+      "일간·주간·월간 리포트",
+      "로컬 저장 (기기 내)"
+    ],
+    "proFeatures": [
+      "AI 음식 분석 25회/일",
+      "클라우드 저장 & 다기기 동기화",
+      "AI 정밀 영양 진단 리포트",
+      "닉네임 & 아바타 커스텀",
+      "광고 없음",
+      "우선 고객 지원"
+    ],
+    "foundingBannerTitle": "천인회 프로모션 진행 중",
+    "foundingBannerDesc": "선착순 1,000명은 2026년 12월 31일까지 PRO 기능을 무료로 이용할 수 있어요.\n지금 가입하면 자동으로 천인회 멤버가 됩니다.",
+    "startApp": "앱 시작하기",
+    "paymentNote": "프로모션 종료 후 결제 시스템이 오픈됩니다.\n· 구독은 매월 자동 결제되며 언제든 해지 가능\n· 환불 정책은",
+    "refundPolicy": "환불 정책",
+    "paymentNoteEnd": "페이지를 참고해 주세요."
   }
 }

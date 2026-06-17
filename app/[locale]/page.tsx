@@ -163,7 +163,7 @@ export default function Home() {
   const runCoachLocal = (meals: Meal[], currentPersona: Persona, goalRaw: string | null) => {
     const finalStats = computeTodayStats(meals);
     const weekly = buildWeekly(meals);
-    const goalData = JSON.parse(goalRaw || '{"goal":"유지"}');
+    const goalData = JSON.parse(goalRaw || '{"goal":"maintain"}');
 
     let weight = 65;
     let goalCalories = 0;
@@ -185,9 +185,9 @@ export default function Home() {
         if (h > 0 && w > 0) {
           const bmr = 10 * w + 6.25 * h - 5 * 30;
           const tdee = Math.round(bmr * 1.375);
-          const goal = gd.goal || '유지';
-          goalCalories = goal === '다이어트' ? Math.round(tdee * 0.8)
-                       : goal === '증량'     ? Math.round(tdee * 1.15)
+          const goal = gd.goal || 'maintain';
+          goalCalories = (goal === 'diet' || goal === '다이어트') ? Math.round(tdee * 0.8)
+                       : (goal === 'bulk' || goal === '증량') ? Math.round(tdee * 1.15)
                        : tdee;
         }
       } catch { }

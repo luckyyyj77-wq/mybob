@@ -4,10 +4,12 @@ import { Link, usePathname } from '@/i18n/routing';
 import { useEffect, useState } from 'react';
 import { FaArrowLeft } from 'react-icons/fa';
 import { useAuth } from '@/lib/auth-context';
+import { useTranslations } from 'next-intl';
 
 export default function CommunityLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { token } = useAuth();
+  const t = useTranslations('Community');
   const [plan, setPlan] = useState<'free' | 'pro' | 'lifetime'>('free');
   const [nickname, setNickname] = useState<string | null>(null);
 
@@ -25,15 +27,15 @@ export default function CommunityLayout({ children }: { children: React.ReactNod
   }, [token]);
 
   const isPro = plan === 'pro' || plan === 'lifetime';
+  const tabs = t.raw('tabs') as { recommendation: string; neighbors: string; challenge: string };
 
   return (
     <div style={{ height: 'calc(100svh - 65px)', display: 'flex', flexDirection: 'column', backgroundColor: 'white', overflow: 'hidden' }}>
-      {/* Header */}
       <div style={{ flexShrink: 0, padding: '24px 24px 0', borderBottom: '1px solid #e5e7eb' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
           <div>
             <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '4px' }}>SOCIAL</p>
-            <h1 style={{ fontSize: '22px', fontWeight: 400, color: 'black', lineHeight: 1 }}>커뮤니티</h1>
+            <h1 style={{ fontSize: '22px', fontWeight: 400, color: 'black', lineHeight: 1 }}>{t('title')}</h1>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             {nickname && (
@@ -52,12 +54,11 @@ export default function CommunityLayout({ children }: { children: React.ReactNod
           </div>
         </div>
 
-        {/* Tabs */}
         <nav style={{ display: 'flex' }}>
           {[
-            { label: '추천', href: '/community/recommendation', proOnly: false },
-            { label: '이웃', href: '/community/neighbors', proOnly: false },
-            { label: '챌린지', href: '/community/challenge', proOnly: true },
+            { label: tabs.recommendation, href: '/community/recommendation', proOnly: false },
+            { label: tabs.neighbors, href: '/community/neighbors', proOnly: false },
+            { label: tabs.challenge, href: '/community/challenge', proOnly: true },
           ].map((tab, i) => {
             const active = pathname === tab.href;
             const locked = tab.proOnly && !isPro;
@@ -83,7 +84,6 @@ export default function CommunityLayout({ children }: { children: React.ReactNod
         </nav>
       </div>
 
-      {/* Scrollable content */}
       <div style={{ flex: 1, overflowY: 'auto' }}>
         {children}
       </div>

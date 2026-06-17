@@ -3,6 +3,7 @@
 import { Link } from '@/i18n/routing';
 import { FaArrowLeft } from 'react-icons/fa';
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   getPinHash, savePin, verifyPin,
   encryptBody, decryptBody,
@@ -21,6 +22,7 @@ function PinModal({
   onCancel: () => void;
   onForgot?: () => void;
 }) {
+  const tp = useTranslations('Settings');
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
   const [step, setStep] = useState<'enter' | 'confirm'>('enter');
@@ -47,17 +49,17 @@ function PinModal({
             setAttempts(count);
             const left = BODY_MAX_ATTEMPTS - count;
             if (left <= 0) {
-              setError('10회 오류 — 신체정보가 초기화됩니다');
+              setError(tp('pinMaxErr'));
               setTimeout(() => { localStorage.removeItem(BODY_ENC_KEY); localStorage.removeItem(BODY_SALT_KEY); resetBodyAttempts(); onCancel(); }, 1500);
             } else if (count >= BODY_WARN_AT) {
-              setError(`PIN이 올바르지 않습니다 · ${left}회 남으면 초기화됩니다`);
+              setError(tp('pinWrongWarn').replace('{left}', String(left)));
               setTimeout(() => setPin(''), 600);
             } else {
-              setError('PIN이 올바르지 않습니다');
+              setError(tp('pinWrong'));
               setTimeout(() => setPin(''), 600);
             }
           } else {
-            setError('PIN이 올바르지 않습니다');
+            setError(tp('pinWrong'));
             setTimeout(() => setPin(''), 600);
           }
         }
@@ -72,7 +74,7 @@ function PinModal({
         setConfirmPin(next);
         if (next.length === 4) {
           if (pin === next) { requestAnimationFrame(() => setTimeout(() => onSuccess(pin), 80)); }
-          else { setError('PIN이 일치하지 않습니다'); setTimeout(() => { setConfirmPin(''); setStep('enter'); setPin(''); setError(''); }, 800); }
+          else { setError(tp('pinMismatch')); setTimeout(() => { setConfirmPin(''); setStep('enter'); setPin(''); setError(''); }, 800); }
         }
       }
     }
@@ -92,10 +94,10 @@ function PinModal({
         <div style={{ textAlign: 'center' }}>
           <p style={{ fontSize: '18px', marginBottom: '6px' }}>{isLocked ? '⚠️' : '🔐'}</p>
           <p style={{ fontSize: '15px', color: 'black', marginBottom: '4px' }}>
-            {mode === 'verify' ? 'PIN 입력' : step === 'enter' ? 'PIN 설정' : 'PIN 확인'}
+            {mode === 'verify' ? tp('pinEnter') : step === 'enter' ? tp('pinSet') : tp('pinConfirm')}
           </p>
           <p style={{ fontSize: '11px', color: '#9ca3af' }}>
-            {mode === 'verify' ? '4자리 PIN을 입력하세요' : step === 'enter' ? '사용할 4자리 PIN을 입력하세요' : '한 번 더 입력하세요'}
+            {mode === 'verify' ? tp('pinEnterDesc') : step === 'enter' ? tp('pinSetDesc') : tp('pinConfirmDesc')}
           </p>
         </div>
         <div style={{ display: 'flex', gap: '16px' }}>
@@ -103,7 +105,7 @@ function PinModal({
             <div key={i} style={{ width: '14px', height: '14px', borderRadius: '50%', backgroundColor: i < current.length ? (warned || isLocked ? '#ef4444' : 'black') : '#e5e7eb', transition: 'background-color 0.1s' }} />
           ))}
         </div>
-        {warned && !error && <p style={{ fontSize: '11px', color: '#ef4444', marginTop: '-12px', textAlign: 'center', lineHeight: 1.5 }}>{remaining}회 더 틀리면 신체정보가 초기화됩니다</p>}
+        {warned && !error && <p style={{ fontSize: '11px', color: '#ef4444', marginTop: '-12px', textAlign: 'center', lineHeight: 1.5 }}>{tp('pinWarnRemaining').replace('{remaining}', String(remaining))}</p>}
         {error && <p style={{ fontSize: '11px', color: '#ef4444', marginTop: '-12px', textAlign: 'center', lineHeight: 1.5 }}>{error}</p>}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', width: '100%' }}>
           {['1','2','3','4','5','6','7','8','9','','0','⌫'].map((d, i) => (
@@ -114,9 +116,9 @@ function PinModal({
           ))}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-          <button onClick={onCancel} style={{ fontSize: '12px', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>취소</button>
+          <button onClick={onCancel} style={{ fontSize: '12px', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>{tp('pinCancel')}</button>
           {mode === 'verify' && context === 'danger' && onForgot && (
-            <button onClick={onForgot} style={{ fontSize: '11px', color: '#6B21A8', background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>PIN을 잊으셨나요?</button>
+            <button onClick={onForgot} style={{ fontSize: '11px', color: '#6B21A8', background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>{tp('pinForgot')}</button>
           )}
         </div>
       </div>
@@ -132,17 +134,13 @@ type BodyInfo = {
   weight: string;
   targetWeight: string;
   activity: 'sedentary' | 'light' | 'moderate' | 'active' | '';
-  goal: '다이어트' | '유지' | '증량';
+  goal: 'diet' | 'maintain' | 'bulk';
   customCalories: string;
 };
 
-const EMPTY_BODY: BodyInfo = { gender: '', age: '', height: '', weight: '', targetWeight: '', activity: '', goal: '유지', customCalories: '' };
+const EMPTY_BODY: BodyInfo = { gender: '', age: '', height: '', weight: '', targetWeight: '', activity: '', goal: 'maintain', customCalories: '' };
 
 const ACTIVITY_MULTIPLIER: Record<string, number> = { sedentary: 1.2, light: 1.375, moderate: 1.55, active: 1.725 };
-const ACTIVITY_LABEL: Record<string, string> = {
-  sedentary: '좌식 (거의 운동 안 함)', light: '가벼운 활동 (주 1~2회)',
-  moderate: '보통 활동 (주 3~5회)', active: '활동적 (매일 운동)',
-};
 
 const TARGET_CALORIES_KEY = 'mybob_target_calories';
 const GOAL_ACHIEVED_KEY = 'mybob_goal_achieved';
@@ -154,15 +152,22 @@ function calcRecommendedCalories(b: BodyInfo): number | null {
   const bmr = b.gender === 'female' ? 10 * w + 6.25 * h - 5 * age - 161 : 10 * w + 6.25 * h - 5 * age + 5;
   const multiplier = ACTIVITY_MULTIPLIER[b.activity] ?? 1.375;
   const tdee = Math.round(bmr * multiplier);
-  if (b.goal === '다이어트') return Math.round(tdee * 0.8);
-  if (b.goal === '증량') return Math.round(tdee * 1.15);
+  if (b.goal === 'diet') return Math.round(tdee * 0.8);
+  if (b.goal === 'bulk') return Math.round(tdee * 1.15);
   return tdee;
 }
 
 function readLegacyGoal(): Partial<BodyInfo> | null {
   const raw = localStorage.getItem('mybob_goal');
   if (!raw) return null;
-  try { return JSON.parse(raw); } catch { return null; }
+  try {
+    const parsed = JSON.parse(raw);
+    // Migrate legacy Korean goal values to English keys
+    if (parsed.goal === '다이어트') parsed.goal = 'diet';
+    else if (parsed.goal === '증량') parsed.goal = 'bulk';
+    else if (parsed.goal === '유지') parsed.goal = 'maintain';
+    return parsed;
+  } catch { return null; }
 }
 
 function checkDailyGoalAchievement() {
@@ -185,6 +190,7 @@ function checkDailyGoalAchievement() {
 }
 
 export default function GoalPage() {
+  const t = useTranslations('Settings');
   const [unlocked, setUnlocked] = useState(false);
   const [body, setBody] = useState<BodyInfo>(EMPTY_BODY);
   const [saved, setSaved] = useState(false);
@@ -229,7 +235,7 @@ export default function GoalPage() {
         }
       } else {
         const legacy = readLegacyGoal();
-        if (legacy) setBody({ ...EMPTY_BODY, height: legacy.height || '', weight: legacy.weight || '', goal: (legacy.goal as BodyInfo['goal']) || '유지' });
+        if (legacy) setBody({ ...EMPTY_BODY, height: legacy.height || '', weight: legacy.weight || '', goal: (legacy.goal as BodyInfo['goal']) || 'maintain' });
         else setBody(EMPTY_BODY);
         setDecryptErr(false);
         setUnlocked(true);
@@ -238,11 +244,12 @@ export default function GoalPage() {
     });
   };
 
+  const bodyFields = t.raw('bodyFields') as { age: string; height: string; weight: string; targetWeight: string };
   const LIMITS = {
-    age:          { min: 1,  max: 99,  label: '나이',      unit: '세' },
-    height:       { min: 50, max: 250, label: '키',        unit: 'cm' },
-    weight:       { min: 20, max: 300, label: '몸무게',    unit: 'kg' },
-    targetWeight: { min: 20, max: 300, label: '목표 체중', unit: 'kg' },
+    age:          { min: 1,  max: 99,  label: bodyFields.age,          unit: '' },
+    height:       { min: 50, max: 250, label: bodyFields.height,       unit: 'cm' },
+    weight:       { min: 20, max: 300, label: bodyFields.weight,       unit: 'kg' },
+    targetWeight: { min: 20, max: 300, label: bodyFields.targetWeight, unit: 'kg' },
   } as const;
 
   const set = (field: keyof BodyInfo) => (val: string) => {
@@ -306,7 +313,7 @@ export default function GoalPage() {
       <div style={{ flexShrink: 0, padding: '24px 24px 16px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
           <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '4px' }}>SETTINGS</p>
-          <h1 style={{ fontSize: '22px', fontWeight: 400, color: 'black', lineHeight: 1 }}>목표 설정</h1>
+          <h1 style={{ fontSize: '22px', fontWeight: 400, color: 'black', lineHeight: 1 }}>{t('goal')}</h1>
         </div>
         <Link href="/settings" style={{ textDecoration: 'none' }}>
           <div style={{ width: '36px', height: '36px', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -316,23 +323,23 @@ export default function GoalPage() {
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
-        <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>목표 설정</p>
+        <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>{t('goal')}</p>
 
         {!unlocked ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: '#e5e7eb', marginBottom: '28px' }}>
             <div style={{ padding: '20px 16px', backgroundColor: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
               <span style={{ fontSize: '28px' }}>🔒</span>
               <div style={{ textAlign: 'center' }}>
-                <p style={{ fontSize: '13px', color: 'black', marginBottom: '4px' }}>신체정보가 잠겨 있습니다</p>
-                <p style={{ fontSize: '11px', color: '#9ca3af' }}>PIN을 입력해 잠금을 해제하세요</p>
-                {decryptErr && <p style={{ fontSize: '11px', color: '#ef4444', marginTop: '4px', lineHeight: 1.5 }}>저장된 데이터를 불러올 수 없어 초기화했습니다.<br />다시 잠금 해제 후 정보를 입력해 주세요.</p>}
+                <p style={{ fontSize: '13px', color: 'black', marginBottom: '4px' }}>{t('lockedMsg')}</p>
+                <p style={{ fontSize: '11px', color: '#9ca3af' }}>{t('enterPin')}</p>
+                {decryptErr && <p style={{ fontSize: '11px', color: '#ef4444', marginTop: '4px', lineHeight: 1.5 }}>{t('decryptErr')}</p>}
               </div>
               <button
                 onClick={handleUnlock}
                 disabled={authing}
                 style={{ padding: '10px 24px', border: '1px solid black', backgroundColor: authing ? '#f3f4f6' : 'black', color: authing ? '#9ca3af' : 'white', fontSize: '12px', cursor: authing ? 'not-allowed' : 'pointer', letterSpacing: '1px', transition: 'all 0.2s' }}
               >
-                {authing ? '확인 중...' : '잠금 해제'}
+                {authing ? t('verifying') : t('unlockBtn')}
               </button>
             </div>
           </div>
@@ -341,36 +348,33 @@ export default function GoalPage() {
             <div style={{ padding: '14px 16px', backgroundColor: 'white' }}>
 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase' }}>신체 정보</p>
-                <button onClick={() => { setUnlocked(false); currentPin.current = ''; }} style={{ fontSize: '11px', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>🔓 잠금</button>
+                <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase' }}>{t('bodyInfo')}</p>
+                <button onClick={() => { setUnlocked(false); currentPin.current = ''; }} style={{ fontSize: '11px', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>{t('lockBtn')}</button>
               </div>
 
-              {/* 성별 */}
-              <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '6px' }}>성별</p>
+              <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '6px' }}>{t('gender')}</p>
               <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
-                {[['male', '남성'], ['female', '여성']].map(([val, label]) => (
-                  <button key={val} onClick={() => set('gender')(val)} style={chipStyle(body.gender === val)}>{label}</button>
+                {(['male', 'female'] as const).map(val => (
+                  <button key={val} onClick={() => set('gender')(val)} style={chipStyle(body.gender === val)}>{t(val)}</button>
                 ))}
               </div>
 
-              {/* 나이 */}
-              <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '6px' }}>나이</p>
+              <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '6px' }}>{bodyFields.age}</p>
               <input type="number" inputMode="numeric" value={body.age} min={1} max={99}
                 onChange={e => set('age')(e.target.value)} onBlur={e => checkField('age')(e.target.value)} placeholder="25"
                 style={{ ...inputStyle, marginBottom: fieldErrors.age ? '4px' : '14px', borderColor: fieldErrors.age ? '#ef4444' : '#e5e7eb' }} />
               {fieldErrors.age && <p style={{ fontSize: '10px', color: '#ef4444', marginBottom: '10px' }}>{fieldErrors.age}</p>}
 
-              {/* 키 / 몸무게 */}
               <div style={{ display: 'flex', gap: '8px', marginBottom: '4px' }}>
                 <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '6px' }}>키 (cm)</p>
+                  <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '6px' }}>{bodyFields.height} (cm)</p>
                   <input type="number" inputMode="decimal" value={body.height} min={50} max={250}
                     onChange={e => set('height')(e.target.value)} onBlur={e => checkField('height')(e.target.value)} placeholder="170"
                     style={{ ...inputStyle, borderColor: fieldErrors.height ? '#ef4444' : '#e5e7eb' }} />
                   {fieldErrors.height && <p style={{ fontSize: '10px', color: '#ef4444', marginTop: '4px' }}>{fieldErrors.height}</p>}
                 </div>
                 <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '6px' }}>몸무게 (kg)</p>
+                  <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '6px' }}>{bodyFields.weight} (kg)</p>
                   <input type="number" inputMode="decimal" value={body.weight} min={20} max={300}
                     onChange={e => set('weight')(e.target.value)} onBlur={e => checkField('weight')(e.target.value)} placeholder="65"
                     style={{ ...inputStyle, borderColor: fieldErrors.weight ? '#ef4444' : '#e5e7eb' }} />
@@ -379,49 +383,52 @@ export default function GoalPage() {
               </div>
               <div style={{ marginBottom: '14px' }} />
 
-              {/* 목표 체중 */}
-              <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '6px' }}>목표 체중 (kg)</p>
+              <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '6px' }}>{bodyFields.targetWeight} (kg)</p>
               <input type="number" inputMode="decimal" value={body.targetWeight} min={20} max={300}
                 onChange={e => set('targetWeight')(e.target.value)} onBlur={e => checkField('targetWeight')(e.target.value)} placeholder="60"
                 style={{ ...inputStyle, marginBottom: fieldErrors.targetWeight ? '4px' : '14px', borderColor: fieldErrors.targetWeight ? '#ef4444' : '#e5e7eb' }} />
               {fieldErrors.targetWeight && <p style={{ fontSize: '10px', color: '#ef4444', marginBottom: '10px' }}>{fieldErrors.targetWeight}</p>}
 
-              {/* 활동량 */}
-              <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '6px' }}>활동량</p>
+              <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '6px' }}>{t('activityLabel')}</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
-                {(['sedentary', 'light', 'moderate', 'active'] as const).map(val => (
-                  <button key={val} onClick={() => set('activity')(val)}
-                    style={{ padding: '10px 12px', border: '1px solid', fontSize: '12px', cursor: 'pointer', textAlign: 'left', borderColor: body.activity === val ? 'black' : '#e5e7eb', backgroundColor: body.activity === val ? 'black' : 'white', color: body.activity === val ? 'white' : 'black' }}>
-                    {ACTIVITY_LABEL[val]}
-                  </button>
-                ))}
+                {(['sedentary', 'light', 'moderate', 'active'] as const).map(val => {
+                  const actLevels = t.raw('activityLevels') as Record<string, string>;
+                  return (
+                    <button key={val} onClick={() => set('activity')(val)}
+                      style={{ padding: '10px 12px', border: '1px solid', fontSize: '12px', cursor: 'pointer', textAlign: 'left', borderColor: body.activity === val ? 'black' : '#e5e7eb', backgroundColor: body.activity === val ? 'black' : 'white', color: body.activity === val ? 'white' : 'black' }}>
+                      {actLevels[val]}
+                    </button>
+                  );
+                })}
               </div>
 
-              {/* 목표 */}
-              <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '6px' }}>목표</p>
+              <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '6px' }}>{t('goalLabel')}</p>
               <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
-                {(['다이어트', '유지', '증량'] as const).map(g => (
-                  <button key={g} onClick={() => set('goal')(g)} style={chipStyle(body.goal === g)}>{g}</button>
-                ))}
+                {(() => {
+                  const goalOpts = t.raw('goalOptions') as Record<string, string>;
+                  return (['diet', 'maintain', 'bulk'] as const).map(g => (
+                    <button key={g} onClick={() => set('goal')(g)} style={chipStyle(body.goal === g)}>{goalOpts[g]}</button>
+                  ));
+                })()}
               </div>
 
-              {/* 목표 칼로리 */}
               {(() => {
                 const recommended = calcRecommendedCalories(body);
+                const goalOpts = t.raw('goalOptions') as Record<string, string>;
                 return (
                   <div style={{ backgroundColor: '#faf5ff', border: '1px solid #e9d5ff', padding: '14px', marginBottom: '16px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                      <p style={{ fontSize: '11px', color: '#6B21A8', letterSpacing: '1px' }}>일일 목표 칼로리</p>
-                      {recommended && <span style={{ fontSize: '10px', color: '#9ca3af' }}>권장 <strong style={{ color: '#6B21A8' }}>{recommended.toLocaleString()} kcal</strong></span>}
+                      <p style={{ fontSize: '11px', color: '#6B21A8', letterSpacing: '1px' }}>{t('dailyCalTarget')}</p>
+                      {recommended && <span style={{ fontSize: '10px', color: '#9ca3af' }}>{t('recommended')} <strong style={{ color: '#6B21A8' }}>{recommended.toLocaleString()} kcal</strong></span>}
                     </div>
                     <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
                       <button onClick={() => { setUseCustom(false); setBody(prev => ({ ...prev, customCalories: '' })); }}
                         style={{ flex: 1, padding: '8px', fontSize: '11px', border: '1px solid', borderColor: !useCustom ? '#6B21A8' : '#e5e7eb', backgroundColor: !useCustom ? '#6B21A8' : 'white', color: !useCustom ? 'white' : '#6b7280', cursor: 'pointer' }}>
-                        권장값 사용
+                        {t('useRecommended')}
                       </button>
                       <button onClick={() => setUseCustom(true)}
                         style={{ flex: 1, padding: '8px', fontSize: '11px', border: '1px solid', borderColor: useCustom ? '#6B21A8' : '#e5e7eb', backgroundColor: useCustom ? '#6B21A8' : 'white', color: useCustom ? 'white' : '#6b7280', cursor: 'pointer' }}>
-                        직접 입력
+                        {t('customInput')}
                       </button>
                     </div>
                     {useCustom ? (
@@ -435,14 +442,14 @@ export default function GoalPage() {
                     ) : (
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px', backgroundColor: 'white', border: '1px solid #e9d5ff' }}>
                         {recommended
-                          ? <span style={{ fontSize: '20px', fontWeight: 600, color: '#6B21A8' }}>{recommended.toLocaleString()} <span style={{ fontSize: '13px', fontWeight: 400 }}>kcal/일</span></span>
-                          : <span style={{ fontSize: '12px', color: '#9ca3af' }}>키·몸무게·활동량을 입력하면 계산됩니다</span>
+                          ? <span style={{ fontSize: '20px', fontWeight: 600, color: '#6B21A8' }}>{recommended.toLocaleString()} <span style={{ fontSize: '13px', fontWeight: 400 }}>{t('kcalPerDay')}</span></span>
+                          : <span style={{ fontSize: '12px', color: '#9ca3af' }}>{t('calcHint')}</span>
                         }
                       </div>
                     )}
                     {!useCustom && recommended && (
                       <p style={{ fontSize: '10px', color: '#9ca3af', marginTop: '8px', lineHeight: 1.6 }}>
-                        Harris-Benedict BMR × 활동량 계수{body.goal === '다이어트' ? ' × 0.8 (다이어트)' : body.goal === '증량' ? ' × 1.15 (증량)' : ' (유지)'}
+                        {t('bmrNote')}{body.goal === 'diet' ? ` ${t('bmrDiet')}` : body.goal === 'bulk' ? ` ${t('bmrBulk')}` : ` ${t('bmrMaintain')}`}
                       </p>
                     )}
                   </div>
@@ -451,9 +458,9 @@ export default function GoalPage() {
 
               <button onClick={handleSave} disabled={saving}
                 style={{ width: '100%', padding: '12px', border: '1px solid black', backgroundColor: saved ? 'black' : saving ? '#f3f4f6' : 'white', color: saved ? 'white' : saving ? '#9ca3af' : 'black', fontSize: '12px', cursor: saving ? 'not-allowed' : 'pointer', letterSpacing: '1px', transition: 'all 0.2s' }}>
-                {saved ? '저장됨 ✓' : saving ? '암호화 중...' : '저장'}
+                {saved ? t('saved') : saving ? t('saving') : t('save')}
               </button>
-              <p style={{ fontSize: '10px', color: '#d1d5db', marginTop: '8px', textAlign: 'center' }}>🔐 AES-256 암호화 · 이 기기에만 저장</p>
+              <p style={{ fontSize: '10px', color: '#d1d5db', marginTop: '8px', textAlign: 'center' }}>{t('encNote')}</p>
             </div>
           </div>
         )}
