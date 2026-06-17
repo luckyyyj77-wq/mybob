@@ -40,7 +40,7 @@ export default function OnboardingPage() {
   const localItemsCount = 4;
   const localItems = Array.from({ length: localItemsCount }, (_, i) => ({
     text: t(`local.items.${i}.text`),
-    warn: t(`local.items.${i}.warn`) === 'true' || t(`local.items.${i}.warn`) === true,
+    warn: t(`local.items.${i}.warn`) === 'true',
   }));
 
   const cloudItemsCount = 4;
