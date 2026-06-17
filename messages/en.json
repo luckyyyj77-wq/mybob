@@ -257,9 +257,18 @@
       "dataDesc": "Stats · Export"
     },
     "coach": {
-      "robot": { "name": "Analytical", "desc": "Speaks with data" },
-      "cat": { "name": "Intuitive", "desc": "Gives unexpected tips" },
-      "dog": { "name": "Supportive", "desc": "Always on your side" }
+      "robot": {
+        "name": "Analytical",
+        "desc": "Speaks with data"
+      },
+      "cat": {
+        "name": "Intuitive",
+        "desc": "Gives unexpected tips"
+      },
+      "dog": {
+        "name": "Supportive",
+        "desc": "Always on your side"
+      }
     },
     "legal": {
       "terms": "Terms of Use",
@@ -361,11 +370,33 @@
     "privacyModal": {
       "title": "Privacy Policy",
       "items": [
-        { "icon": "📁", "title": "Photo Storage", "cloud": "Photos are securely stored on encrypted servers. Only you can access them.", "local": "Photos are stored only in your browser storage (IndexedDB). They are not sent to the server." },
-        { "icon": "🔐", "title": "Authentication", "content": "We use JWT token-based authentication. Cloud storage is only available when logged in." },
-        { "icon": "🗄️", "title": "Nutrition Data", "cloud": "Nutrition logs are securely stored on encrypted servers. Only you can access them.", "local": "Nutrition logs are stored only in your local storage (mybob_meals). They are not sent to the server." },
-        { "icon": "🤖", "title": "AI Analysis", "content": "Food photos are sent to Google Gemini API for analysis. Original images are not stored on Gemini servers (based on Google policy)." },
-        { "icon": "🚫", "title": "Third-party", "content": "Personal info such as name, email, and meal logs are not provided to third parties." }
+        {
+          "icon": "📁",
+          "title": "Photo Storage",
+          "cloud": "Photos are securely stored on encrypted servers. Only you can access them.",
+          "local": "Photos are stored only in your browser storage (IndexedDB). They are not sent to the server."
+        },
+        {
+          "icon": "🔐",
+          "title": "Authentication",
+          "content": "We use JWT token-based authentication. Cloud storage is only available when logged in."
+        },
+        {
+          "icon": "🗄️",
+          "title": "Nutrition Data",
+          "cloud": "Nutrition logs are securely stored on encrypted servers. Only you can access them.",
+          "local": "Nutrition logs are stored only in your local storage (mybob_meals). They are not sent to the server."
+        },
+        {
+          "icon": "🤖",
+          "title": "AI Analysis",
+          "content": "Food photos are sent to Google Gemini API for analysis. Original images are not stored on Gemini servers (based on Google policy)."
+        },
+        {
+          "icon": "🚫",
+          "title": "Third-party",
+          "content": "Personal info such as name, email, and meal logs are not provided to third parties."
+        }
       ]
     }
   },
@@ -481,7 +512,7 @@
     "weekly": "Weekly",
     "monthly": "Monthly",
     "diagnosis": "Diagnostic",
-    "noData": "Not enough data",
+    "noData": "No data",
     "totalCalories": "Total Calories",
     "nutrientRatio": "Nutrient Ratio",
     "goalAchieved": "Goal Achieved",
@@ -497,7 +528,54 @@
     "maxCalories": "Max Calories",
     "nutrientStats": "Nutrient Stats",
     "achieveStats": "Achievement Stats",
-    "achieveRate": "Achieve Rate"
+    "achieveRate": "Achieve Rate",
+    "layoutTitle": "Report",
+    "tabDaily": "Daily",
+    "tabWeekly": "Weekly",
+    "tabMonthly": "Monthly",
+    "tabDiagnosis": "Diagnosis",
+    "noWeeklyData": "No records for this week.",
+    "weeklyTotalCal": "Weekly Total Calories",
+    "weeklyAvgCal": "Daily Avg Calories",
+    "recordedDays": "Days Logged",
+    "totalMeals": "Total Meals",
+    "goalLabel": "Goal {value}",
+    "dayCalories": "Daily Calories",
+    "weeklyBalance": "Weekly Nutrition Balance",
+    "topCategory": "Top Categories",
+    "calTooltip": "Calories",
+    "dayOfWeek": "{label}",
+    "goalLine": "Goal {value} kcal",
+    "overGoal": "Over Goal",
+    "dayLabels": "Mon,Tue,Wed,Thu,Fri,Sat,Sun",
+    "noMonthlyData": "No records for this month.",
+    "monthTitle": "{year} / {month}",
+    "totalCal": "Total Calories",
+    "dailyAvg": "Daily Avg",
+    "recordDays": "Days Logged",
+    "goalDays": "Goal Days",
+    "sodiumTotal": "Total Sodium",
+    "fiberTotal": "Total Fiber",
+    "avgGoalCal": "Daily Calorie Goal",
+    "calOver": "Avg +{value} kcal over goal",
+    "calUnder": "Avg {value} kcal under goal",
+    "dailyCal": "Daily Calories",
+    "nutrientBalance": "Nutrition Balance",
+    "topCat3": "Category TOP 3",
+    "weeklyAvgCals": "Weekly Avg Calories",
+    "weekLabel": "W{n}",
+    "carbShort": "C",
+    "proteinShort": "P",
+    "fatShort": "F",
+    "scoreLabels": {
+      "calories": "Calorie Control",
+      "balance": "Nutrition Balance",
+      "sodium": "Sodium",
+      "fiber": "Fiber",
+      "consistency": "Consistency"
+    },
+    "proOnly": "PRO plan only.",
+    "noMealData": "No meal records to analyze.\nPlease log your meals first."
   },
   "Community": {
     "title": "Community",
@@ -708,10 +786,22 @@
       "title": "Store on this device only",
       "tag": "LOCAL · FREE",
       "items": [
-        { "text": "Privacy first — no server transfer", "warn": false },
-        { "text": "Available only on this device", "warn": false },
-        { "text": "Limited community features like neighbor/feed sharing", "warn": false },
-        { "text": "Data recovery impossible if device is lost", "warn": true }
+        {
+          "text": "Privacy first — no server transfer",
+          "warn": false
+        },
+        {
+          "text": "Available only on this device",
+          "warn": false
+        },
+        {
+          "text": "Limited community features like neighbor/feed sharing",
+          "warn": false
+        },
+        {
+          "text": "Data recovery impossible if device is lost",
+          "warn": true
+        }
       ]
     },
     "cloud": {

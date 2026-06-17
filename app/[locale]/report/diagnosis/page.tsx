@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { FaSpinner } from 'react-icons/fa';
 import { useAuth } from '@/lib/auth-context';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 
 interface Meal {
   id: string;
@@ -44,9 +45,6 @@ interface DiagnosisRecord {
   mealCountAtAnalysis: number;
 }
 
-const SCORE_LABELS: Record<string, string> = {
-  calories: '칼로리 관리', balance: '영양 균형', sodium: '나트륨', fiber: '식이섬유', consistency: '기록 일관성',
-};
 const SEVERITY_COLOR: Record<string, string> = { high: '#ef4444', medium: '#f59e0b', low: '#6b7280' };
 const GRADE_COLOR: Record<string, string> = {
   'A+': '#6B21A8', A: '#6B21A8', 'B+': '#000', B: '#000', 'C+': '#f59e0b', C: '#f59e0b', D: '#ef4444',
@@ -117,6 +115,7 @@ function saveHistory(record: DiagnosisRecord) {
 
 export default function DiagnosisPage() {
   const { token } = useAuth();
+  const t = useTranslations('Report');
   const [meals, setMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(false);
   const [current, setCurrent] = useState<DiagnosisRecord | null>(null);
@@ -125,6 +124,7 @@ export default function DiagnosisPage() {
   const [activeTab, setActiveTab] = useState<'overview' | 'detail' | 'plan' | 'trend'>('overview');
   const [plan, setPlan] = useState<string | null>(null);
   const [refreshBanner, setRefreshBanner] = useState<string | null>(null);
+  const SCORE_LABELS: Record<string, string> = t.raw('scoreLabels') as Record<string, string>;
 
   useEffect(() => {
     const cached = localStorage.getItem('mybob_diagnosis_v2');
@@ -216,9 +216,9 @@ export default function DiagnosisPage() {
       });
       const data = await res.json();
 
-      if (res.status === 403) { setError('PRO 플랜 전용 기능입니다.'); return; }
-      if (res.status === 422 && data.error === 'NO_DATA') { setError('분석할 식단 기록이 없습니다.\n식단을 먼저 기록해주세요.'); return; }
-      if (!res.ok) { setError(data.error || '분석 중 오류가 발생했습니다.'); return; }
+      if (res.status === 403) { setError(t('proOnly')); return; }
+      if (res.status === 422 && data.error === 'NO_DATA') { setError(t('noMealData')); return; }
+      if (!res.ok) { setError(data.error || t('noData')); return; }
 
       const now = new Date().toISOString();
       const label = new Date().toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });

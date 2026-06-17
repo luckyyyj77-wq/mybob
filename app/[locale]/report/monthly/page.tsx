@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceLine, Cell, PieChart, Pie } from 'recharts';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { useAuth } from '@/lib/auth-context';
+import { useTranslations } from 'next-intl';
 
 interface Meal {
   id: string;
@@ -42,6 +43,7 @@ function toKSTDay(iso: string): number {
 
 export default function MonthlyReportPage() {
   const { token } = useAuth();
+  const t = useTranslations('Report');
   const [allMeals, setAllMeals] = useState<Meal[]>([]);
   const [monthOffset, setMonthOffset] = useState(0);
   const [targetCalories, setTargetCalories] = useState(2000);
@@ -107,7 +109,7 @@ export default function MonthlyReportPage() {
   }, [monthMeals, dailyData, targetCalories]);
 
   const pieData = stats && (stats.carbs + stats.protein + stats.fat) > 0
-    ? [{ name: '탄수화물', value: stats.carbs }, { name: '단백질', value: stats.protein }, { name: '지방', value: stats.fat }]
+    ? [{ name: t('carbs'), value: stats.carbs }, { name: t('protein'), value: stats.protein }, { name: t('fat'), value: stats.fat }]
     : [];
 
   return (
@@ -122,7 +124,7 @@ export default function MonthlyReportPage() {
           <FaChevronLeft size={14} color="black" />
         </button>
         <div style={{ textAlign: 'center' }}>
-          <p style={{ fontSize: '16px', fontWeight: 400, color: 'black' }}>{year}년 {month + 1}월</p>
+          <p style={{ fontSize: '16px', fontWeight: 400, color: 'black' }}>{t('monthTitle', { year, month: month + 1 })}</p>
           {isCurrentMonth && <span style={{ fontSize: '9px', letterSpacing: '2px', color: '#6B21A8', textTransform: 'uppercase' }}>THIS MONTH</span>}
         </div>
         <button
@@ -135,18 +137,18 @@ export default function MonthlyReportPage() {
       </div>
 
       {!stats ? (
-        <div style={{ textAlign: 'center', padding: '60px 0', color: '#9ca3af', fontSize: '13px' }}>이 달의 기록이 없습니다.</div>
+        <div style={{ textAlign: 'center', padding: '60px 0', color: '#9ca3af', fontSize: '13px' }}>{t('noMonthlyData')}</div>
       ) : (
         <>
           {/* 요약 카드 */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '16px' }}>
             {[
-              { label: '총 칼로리',    value: stats.totalCal.toLocaleString(), unit: 'kcal', hi: false },
-              { label: '일 평균',      value: stats.avgCal.toLocaleString(),   unit: 'kcal', hi: stats.avgCal > targetCalories },
-              { label: '기록일',       value: `${stats.recordedDays}`,         unit: `/ ${daysInMonth}일`, hi: false },
-              { label: '목표 달성일',  value: `${stats.goalDays}`,             unit: '일',   hi: false },
-              { label: '나트륨 합계',  value: Math.round(stats.sodium / 1000 * 10) / 10, unit: 'g', hi: stats.sodium / (stats.recordedDays || 1) > 2000 },
-              { label: '식이섬유 합계',value: Math.round(stats.fiber),         unit: 'g',   hi: false },
+              { label: t('totalCal'),    value: stats.totalCal.toLocaleString(), unit: 'kcal', hi: false },
+              { label: t('dailyAvg'),    value: stats.avgCal.toLocaleString(),   unit: 'kcal', hi: stats.avgCal > targetCalories },
+              { label: t('recordDays'),  value: `${stats.recordedDays}`,         unit: `/ ${daysInMonth}`, hi: false },
+              { label: t('goalDays'),    value: `${stats.goalDays}`,             unit: '',   hi: false },
+              { label: t('sodiumTotal'), value: Math.round(stats.sodium / 1000 * 10) / 10, unit: 'g', hi: stats.sodium / (stats.recordedDays || 1) > 2000 },
+              { label: t('fiberTotal'),  value: Math.round(stats.fiber),         unit: 'g',   hi: false },
             ].map(c => (
               <div key={c.label} style={{ border: '1px solid #e5e7eb', padding: '14px 16px' }}>
                 <p style={{ fontSize: '9px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '6px' }}>{c.label}</p>
@@ -159,10 +161,10 @@ export default function MonthlyReportPage() {
 
           {/* 목표 대비 진행 */}
           <div style={{ border: '1px solid #e5e7eb', padding: '16px', marginBottom: '16px' }}>
-            <p style={{ fontSize: '9px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '10px' }}>일 평균 목표 칼로리</p>
+            <p style={{ fontSize: '9px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '10px' }}>{t('avgGoalCal')}</p>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
               <span style={{ fontSize: '13px', color: 'black' }}>{stats.avgCal.toLocaleString()} kcal</span>
-              <span style={{ fontSize: '11px', color: '#9ca3af' }}>목표 {targetCalories.toLocaleString()} kcal</span>
+              <span style={{ fontSize: '11px', color: '#9ca3af' }}>{t('goalLine', { value: targetCalories.toLocaleString() })}</span>
             </div>
             <div style={{ height: '6px', backgroundColor: '#f3f4f6', borderRadius: '3px', overflow: 'hidden' }}>
               <div style={{ height: '100%', width: `${Math.min(100, Math.round(stats.avgCal / targetCalories * 100))}%`,
@@ -170,22 +172,22 @@ export default function MonthlyReportPage() {
             </div>
             <p style={{ fontSize: '11px', color: stats.avgCal > targetCalories ? '#ef4444' : '#6B21A8', marginTop: '6px', textAlign: 'right' }}>
               {stats.avgCal > targetCalories
-                ? `평균 +${(stats.avgCal - targetCalories).toLocaleString()} kcal 초과`
-                : `평균 ${(targetCalories - stats.avgCal).toLocaleString()} kcal 여유`}
+                ? t('calOver', { value: (stats.avgCal - targetCalories).toLocaleString() })
+                : t('calUnder', { value: (targetCalories - stats.avgCal).toLocaleString() })}
             </p>
           </div>
 
           {/* 일별 바차트 */}
           <div style={{ marginBottom: '16px' }}>
-            <p style={{ fontSize: '9px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '12px' }}>일별 칼로리</p>
+            <p style={{ fontSize: '9px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '12px' }}>{t('dailyCal')}</p>
             <div style={{ height: '130px' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={dailyData} barSize={5} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
                   <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#9ca3af' }} interval={Math.floor(daysInMonth / 6)} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#9ca3af' }} />
                   <Tooltip contentStyle={{ border: '1px solid #e5e7eb', borderRadius: 0, fontSize: '11px' }}
-                    formatter={(v) => [`${Number(v).toLocaleString()} kcal`, '칼로리']}
-                    labelFormatter={(l) => `${month + 1}월 ${l}일`} />
+                    formatter={(v) => [`${Number(v).toLocaleString()} kcal`, t('calTooltip')]}
+                    labelFormatter={(l) => `${month + 1}/${l}`} />
                   <ReferenceLine y={targetCalories} stroke="#6B21A8" strokeDasharray="4 4" strokeWidth={1} />
                   <Bar dataKey="calories" radius={[2, 2, 0, 0]}>
                     {dailyData.map((e, i) => (
@@ -200,7 +202,7 @@ export default function MonthlyReportPage() {
           {/* 영양 밸런스 + 카테고리 TOP3 */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
             <div style={{ border: '1px solid #e5e7eb', padding: '14px' }}>
-              <p style={{ fontSize: '9px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px' }}>영양 밸런스</p>
+              <p style={{ fontSize: '9px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px' }}>{t('nutrientBalance')}</p>
               {pieData.length > 0 ? (
                 <>
                   <div style={{ height: '100px' }}>
@@ -214,7 +216,7 @@ export default function MonthlyReportPage() {
                     </ResponsiveContainer>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                    {[{ label: '탄', v: stats.carbs, c: '#000000' }, { label: '단', v: stats.protein, c: '#6B21A8' }, { label: '지', v: stats.fat, c: '#9ca3af' }].map(n => (
+                    {[{ label: t('carbShort'), v: stats.carbs, c: '#000000' }, { label: t('proteinShort'), v: stats.protein, c: '#6B21A8' }, { label: t('fatShort'), v: stats.fat, c: '#9ca3af' }].map(n => (
                       <div key={n.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: n.c }} />
@@ -225,13 +227,13 @@ export default function MonthlyReportPage() {
                     ))}
                   </div>
                 </>
-              ) : <p style={{ fontSize: '11px', color: '#9ca3af', textAlign: 'center', paddingTop: '30px' }}>데이터 없음</p>}
+              ) : <p style={{ fontSize: '11px', color: '#9ca3af', textAlign: 'center', paddingTop: '30px' }}>{t('noData')}</p>}
             </div>
 
             <div style={{ border: '1px solid #e5e7eb', padding: '14px' }}>
-              <p style={{ fontSize: '9px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px' }}>카테고리 TOP 3</p>
+              <p style={{ fontSize: '9px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px' }}>{t('topCat3')}</p>
               {stats.topCats.length === 0
-                ? <p style={{ fontSize: '11px', color: '#9ca3af', textAlign: 'center', paddingTop: '30px' }}>데이터 없음</p>
+                ? <p style={{ fontSize: '11px', color: '#9ca3af', textAlign: 'center', paddingTop: '30px' }}>{t('noData')}</p>
                 : <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', paddingTop: '4px' }}>
                     {stats.topCats.map(([cat, count], i) => {
                       const pct = Math.round(count / monthMeals.length * 100);
@@ -253,7 +255,7 @@ export default function MonthlyReportPage() {
 
           {/* 주차별 평균 */}
           <div style={{ border: '1px solid #e5e7eb', padding: '16px' }}>
-            <p style={{ fontSize: '9px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '12px' }}>주차별 평균 칼로리</p>
+            <p style={{ fontSize: '9px', color: '#9ca3af', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '12px' }}>{t('weeklyAvgCals')}</p>
             {Array.from({ length: Math.ceil(daysInMonth / 7) }, (_, w) => {
               const s = w * 7 + 1, e = Math.min(s + 6, daysInMonth);
               const wm = monthMeals.filter(m => { const d = toKSTDay(m.created_at); return d >= s && d <= e; });
@@ -261,7 +263,7 @@ export default function MonthlyReportPage() {
               const wa = wd > 0 ? Math.round(wm.reduce((sum, m) => sum + m.calories, 0) / wd) : 0;
               return (
                 <div key={w} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '11px', color: '#9ca3af', width: '24px', flexShrink: 0 }}>{w + 1}주</span>
+                  <span style={{ fontSize: '11px', color: '#9ca3af', width: '24px', flexShrink: 0 }}>{t('weekLabel', { n: w + 1 })}</span>
                   <div style={{ flex: 1, height: '6px', backgroundColor: '#f3f4f6', borderRadius: '3px', overflow: 'hidden' }}>
                     <div style={{ height: '100%', width: wa > 0 ? `${Math.min(100, Math.round(wa / targetCalories * 100))}%` : '0%',
                       backgroundColor: wa > targetCalories ? '#ef4444' : '#000000', borderRadius: '3px' }} />

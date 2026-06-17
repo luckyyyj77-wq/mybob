@@ -257,9 +257,18 @@
       "dataDesc": "통계 · 내보내기"
     },
     "coach": {
-      "robot": { "name": "분석형", "desc": "수치와 데이터로 말합니다" },
-      "cat": { "name": "직관형", "desc": "예상 못한 한마디를 던집니다" },
-      "dog": { "name": "응원형", "desc": "무조건 당신 편이에요" }
+      "robot": {
+        "name": "분석형",
+        "desc": "수치와 데이터로 말합니다"
+      },
+      "cat": {
+        "name": "직관형",
+        "desc": "예상 못한 한마디를 던집니다"
+      },
+      "dog": {
+        "name": "응원형",
+        "desc": "무조건 당신 편이에요"
+      }
     },
     "legal": {
       "terms": "이용약관",
@@ -361,11 +370,33 @@
     "privacyModal": {
       "title": "개인정보 처리방침",
       "items": [
-        { "icon": "📁", "title": "사진 저장 위치", "cloud": "사진은 암호화된 서버에 안전하게 저장됩니다. 본인 계정 외 접근이 불가합니다.", "local": "사진은 이 기기의 브라우저 저장소(IndexedDB)에만 보관됩니다. 서버로 전송되지 않습니다." },
-        { "icon": "🔐", "title": "인증 방식", "content": "JWT 토큰 기반 인증을 사용합니다. 로그인하지 않은 상태에서는 클라우드 저장이 이루어지지 않으며, 모든 기록은 이 기기에만 보관됩니다." },
-        { "icon": "🗄️", "title": "영양 데이터 저장", "cloud": "영양 기록은 암호화된 서버에 안전하게 저장됩니다. 본인 계정에 귀속되며 타인이 접근할 수 없습니다.", "local": "영양 기록은 이 기기의 로컬 스토리지(mybob_meals)에만 저장됩니다. 서버로 전송되지 않습니다." },
-        { "icon": "🤖", "title": "AI 분석 데이터", "content": "음식 사진은 Google Gemini API로 전송되어 분석됩니다. 분석 후 원본 이미지는 Gemini 서버에 저장되지 않습니다(Google 정책 기준)." },
-        { "icon": "🚫", "title": "제3자 제공", "content": "이름·이메일·식단 기록 등 개인 식별 정보는 제3자에게 제공되지 않습니다." }
+        {
+          "icon": "📁",
+          "title": "사진 저장 위치",
+          "cloud": "사진은 암호화된 서버에 안전하게 저장됩니다. 본인 계정 외 접근이 불가합니다.",
+          "local": "사진은 이 기기의 브라우저 저장소(IndexedDB)에만 보관됩니다. 서버로 전송되지 않습니다."
+        },
+        {
+          "icon": "🔐",
+          "title": "인증 방식",
+          "content": "JWT 토큰 기반 인증을 사용합니다. 로그인하지 않은 상태에서는 클라우드 저장이 이루어지지 않으며, 모든 기록은 이 기기에만 보관됩니다."
+        },
+        {
+          "icon": "🗄️",
+          "title": "영양 데이터 저장",
+          "cloud": "영양 기록은 암호화된 서버에 안전하게 저장됩니다. 본인 계정에 귀속되며 타인이 접근할 수 없습니다.",
+          "local": "영양 기록은 이 기기의 로컬 스토리지(mybob_meals)에만 저장됩니다. 서버로 전송되지 않습니다."
+        },
+        {
+          "icon": "🤖",
+          "title": "AI 분석 데이터",
+          "content": "음식 사진은 Google Gemini API로 전송되어 분석됩니다. 분석 후 원본 이미지는 Gemini 서버에 저장되지 않습니다(Google 정책 기준)."
+        },
+        {
+          "icon": "🚫",
+          "title": "제3자 제공",
+          "content": "이름·이메일·식단 기록 등 개인 식별 정보는 제3자에게 제공되지 않습니다."
+        }
       ]
     }
   },
@@ -481,7 +512,7 @@
     "weekly": "주간",
     "monthly": "월간",
     "diagnosis": "정밀 진단",
-    "noData": "데이터가 충분하지 않습니다",
+    "noData": "데이터 없음",
     "totalCalories": "총 섭취 칼로리",
     "nutrientRatio": "영양 섭취 비율",
     "goalAchieved": "목표 달성",
@@ -497,7 +528,54 @@
     "maxCalories": "최대 섭취",
     "nutrientStats": "영양 성분 통계",
     "achieveStats": "달성 기록",
-    "achieveRate": "달성률"
+    "achieveRate": "달성률",
+    "layoutTitle": "리포트",
+    "tabDaily": "일간",
+    "tabWeekly": "주간",
+    "tabMonthly": "월간",
+    "tabDiagnosis": "진단",
+    "noWeeklyData": "이 주의 기록이 없습니다.",
+    "weeklyTotalCal": "주간 총 칼로리",
+    "weeklyAvgCal": "일 평균 칼로리",
+    "recordedDays": "기록일",
+    "totalMeals": "총 기록 횟수",
+    "goalLabel": "목표 {value}",
+    "dayCalories": "일별 칼로리",
+    "weeklyBalance": "주간 영양 밸런스",
+    "topCategory": "많이 먹은 카테고리",
+    "calTooltip": "칼로리",
+    "dayOfWeek": "{label}요일",
+    "goalLine": "목표 {value} kcal",
+    "overGoal": "목표 초과",
+    "dayLabels": "월,화,수,목,금,토,일",
+    "noMonthlyData": "이 달의 기록이 없습니다.",
+    "monthTitle": "{year}년 {month}월",
+    "totalCal": "총 칼로리",
+    "dailyAvg": "일 평균",
+    "recordDays": "기록일",
+    "goalDays": "목표 달성일",
+    "sodiumTotal": "나트륨 합계",
+    "fiberTotal": "식이섬유 합계",
+    "avgGoalCal": "일 평균 목표 칼로리",
+    "calOver": "평균 +{value} kcal 초과",
+    "calUnder": "평균 {value} kcal 여유",
+    "dailyCal": "일별 칼로리",
+    "nutrientBalance": "영양 밸런스",
+    "topCat3": "카테고리 TOP 3",
+    "weeklyAvgCals": "주차별 평균 칼로리",
+    "weekLabel": "{n}주",
+    "carbShort": "탄",
+    "proteinShort": "단",
+    "fatShort": "지",
+    "scoreLabels": {
+      "calories": "칼로리 관리",
+      "balance": "영양 균형",
+      "sodium": "나트륨",
+      "fiber": "식이섬유",
+      "consistency": "기록 일관성"
+    },
+    "proOnly": "PRO 플랜 전용 기능입니다.",
+    "noMealData": "분석할 식단 기록이 없습니다.\n식단을 먼저 기록해주세요."
   },
   "Community": {
     "title": "커뮤니티",
@@ -523,8 +601,8 @@
     "accept": "수락",
     "reject": "거절",
     "cancel": "거절"
-    },
-    "Terms": {
+  },
+  "Terms": {
     "title": "이용약관",
     "lastUpdated": "최종 수정일: 2026년 5월 26일",
     "sections": [
@@ -573,8 +651,8 @@
         "content": "이용약관에 대한 문의는 luckyyyj77@gmail.com으로 연락해 주세요."
       }
     ]
-    },
-    "Privacy": {
+  },
+  "Privacy": {
     "title": "개인정보처리방침",
     "lastUpdated": "최종 수정일: 2026년 5월 26일",
     "sections": [
@@ -615,8 +693,8 @@
         "content": "개인정보처리방침이 변경되는 경우 앱 내 공지를 통해 사전 안내합니다. 변경된 방침은 공지 후 7일이 경과한 날부터 효력이 발생합니다."
       }
     ]
-    },
-    "Refund": {
+  },
+  "Refund": {
     "title": "환불 정책",
     "lastUpdated": "최종 수정일: 2026년 5월 26일",
     "summary": {
@@ -653,8 +731,8 @@
         "content": "본 환불 정책은 전자상거래 등에서의 소비자보호에 관한 법률 및 관계 법령을 준수합니다. 법령에서 정한 소비자 권리는 본 정책보다 우선 적용됩니다."
       }
     ]
-    },
-    "Partnership": {
+  },
+  "Partnership": {
     "title": "제휴문의",
     "about": {
       "title": "ABOUT",
@@ -675,8 +753,8 @@
       "copied": "복사됨",
       "guide": "메일 제목에 [제휴문의]를 포함해 보내주세요."
     }
-    },
-    "Onboarding": {
+  },
+  "Onboarding": {
     "welcome": "환영합니다",
     "intro": [
       {
@@ -708,10 +786,22 @@
       "title": "이 기기에만 저장",
       "tag": "LOCAL · 무료",
       "items": [
-        { "text": "개인정보 보호 최우선 — 서버 전송 없음", "warn": false },
-        { "text": "이 기기에서만 사용 가능", "warn": false },
-        { "text": "이웃·피드 공유 등 커뮤니티 기능 제한", "warn": false },
-        { "text": "기기 분실 시 데이터 복구 불가", "warn": true }
+        {
+          "text": "개인정보 보호 최우선 — 서버 전송 없음",
+          "warn": false
+        },
+        {
+          "text": "이 기기에서만 사용 가능",
+          "warn": false
+        },
+        {
+          "text": "이웃·피드 공유 등 커뮤니티 기능 제한",
+          "warn": false
+        },
+        {
+          "text": "기기 분실 시 데이터 복구 불가",
+          "warn": true
+        }
       ]
     },
     "cloud": {
@@ -745,4 +835,3 @@
     "noAccount": "계정이 없으신가요?"
   }
 }
-

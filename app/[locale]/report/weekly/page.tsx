@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceLine, PieChart, Pie, Cell } from 'recharts';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { useAuth } from '@/lib/auth-context';
+import { useTranslations } from 'next-intl';
 
 interface Meal {
   id: string;
@@ -39,10 +40,11 @@ function getMonday(date: Date): Date {
 }
 
 const COLORS = ['#000000', '#6B21A8', '#9ca3af'];
-const DAY_LABELS = ['월', '화', '수', '목', '금', '토', '일'];
 
 export default function WeeklyReportPage() {
   const { token } = useAuth();
+  const t = useTranslations('Report');
+  const DAY_LABELS = t('dayLabels').split(',');
   const [allMeals, setAllMeals] = useState<Meal[]>([]);
   const [weekOffset, setWeekOffset] = useState(0);
   const [targetCalories, setTargetCalories] = useState(2000);
@@ -81,8 +83,9 @@ export default function WeeklyReportPage() {
   const isThisWeek = weekOffset === 0;
 
   const fmtRange = (start: Date, end: Date) => {
-    const s = start.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
-    const e = end.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+    const locale = t('dayLabels').includes('월') ? 'ko-KR' : 'en-US';
+    const s = start.toLocaleDateString(locale, { month: 'short', day: 'numeric' });
+    const e = end.toLocaleDateString(locale, { month: 'short', day: 'numeric' });
     return `${s} — ${e}`;
   };
 
@@ -123,9 +126,9 @@ export default function WeeklyReportPage() {
   );
 
   const chartData = [
-    { name: '탄수화물', value: Math.round(nutrients.carbs) },
-    { name: '단백질',   value: Math.round(nutrients.protein) },
-    { name: '지방',     value: Math.round(nutrients.fat) },
+    { name: t('carbs'), value: Math.round(nutrients.carbs) },
+    { name: t('protein'), value: Math.round(nutrients.protein) },
+    { name: t('fat'), value: Math.round(nutrients.fat) },
   ].filter(d => d.value > 0);
 
   // 카테고리 TOP 3
@@ -159,19 +162,19 @@ export default function WeeklyReportPage() {
 
       {weekMeals.length === 0 ? (
         <div style={{ padding: '60px 24px', textAlign: 'center', backgroundColor: 'white' }}>
-          <p style={{ fontSize: '13px', color: '#9ca3af' }}>이 주의 기록이 없습니다.</p>
+          <p style={{ fontSize: '13px', color: '#9ca3af' }}>{t('noWeeklyData')}</p>
         </div>
       ) : (
         <>
           {/* 요약 카드 */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1px', backgroundColor: '#e5e7eb' }}>
             {[
-              { label: '주간 총 칼로리', value: totalCalories.toLocaleString(), unit: 'kcal',
-                sub: `목표 ${weekTarget.toLocaleString()}`, over: totalCalories > weekTarget },
-              { label: '일 평균 칼로리', value: avgCalories.toLocaleString(), unit: 'kcal',
-                sub: `목표 ${targetCalories.toLocaleString()}`, over: avgCalories > targetCalories },
-              { label: '기록일', value: recordedDays.length, unit: '일', sub: '/ 7일', over: false },
-              { label: '총 기록 횟수', value: weekMeals.length, unit: '회', sub: '', over: false },
+              { label: t('weeklyTotalCal'), value: totalCalories.toLocaleString(), unit: 'kcal',
+                sub: t('goalLabel', { value: weekTarget.toLocaleString() }), over: totalCalories > weekTarget },
+              { label: t('weeklyAvgCal'), value: avgCalories.toLocaleString(), unit: 'kcal',
+                sub: t('goalLabel', { value: targetCalories.toLocaleString() }), over: avgCalories > targetCalories },
+              { label: t('recordedDays'), value: recordedDays.length, unit: '/ 7', sub: '', over: false },
+              { label: t('totalMeals'), value: weekMeals.length, unit: '', sub: '', over: false },
             ].map(s => (
               <div key={s.label} style={{ padding: '16px', backgroundColor: 'white' }}>
                 <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '6px' }}>{s.label}</p>
@@ -185,7 +188,7 @@ export default function WeeklyReportPage() {
 
           {/* 막대 그래프 */}
           <div style={{ padding: '20px', backgroundColor: 'white' }}>
-            <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '16px' }}>일별 칼로리</p>
+            <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '16px' }}>{t('dayCalories')}</p>
             <div style={{ height: '160px' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={weekData} barSize={24} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
@@ -193,8 +196,8 @@ export default function WeeklyReportPage() {
                   <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#9ca3af' }} />
                   <Tooltip
                     contentStyle={{ border: '1px solid #e5e7eb', borderRadius: 0, fontSize: '11px' }}
-                    formatter={(v) => [`${Number(v).toLocaleString()} kcal`, '칼로리']}
-                    labelFormatter={(label) => `${label}요일`}
+                    formatter={(v) => [`${Number(v).toLocaleString()} kcal`, t('calTooltip')]}
+                    labelFormatter={(label) => t('dayOfWeek', { label })}
                   />
                   <ReferenceLine y={targetCalories} stroke="#6B21A8" strokeDasharray="4 4" strokeWidth={1} />
                   <Bar dataKey="calories" radius={[2, 2, 0, 0]}>
@@ -211,11 +214,11 @@ export default function WeeklyReportPage() {
             <div style={{ display: 'flex', gap: '16px', marginTop: '8px', flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <span style={{ width: '10px', height: '2px', backgroundColor: '#6B21A8', display: 'inline-block', borderTop: '1px dashed #6B21A8' }} />
-                <span style={{ fontSize: '10px', color: '#9ca3af' }}>목표 {targetCalories.toLocaleString()} kcal</span>
+                <span style={{ fontSize: '10px', color: '#9ca3af' }}>{t('goalLine', { value: targetCalories.toLocaleString() })}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <span style={{ width: '8px', height: '8px', backgroundColor: '#ef4444', display: 'inline-block' }} />
-                <span style={{ fontSize: '10px', color: '#9ca3af' }}>목표 초과</span>
+                <span style={{ fontSize: '10px', color: '#9ca3af' }}>{t('overGoal')}</span>
               </div>
             </div>
           </div>
@@ -223,7 +226,7 @@ export default function WeeklyReportPage() {
           {/* 영양 밸런스 도넛 */}
           {chartData.length > 0 && (
             <div style={{ padding: '20px', backgroundColor: 'white' }}>
-              <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '16px' }}>주간 영양 밸런스</p>
+              <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '16px' }}>{t('weeklyBalance')}</p>
               <div style={{ height: '150px' }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -249,7 +252,7 @@ export default function WeeklyReportPage() {
           {topCats.length > 0 && (
             <div style={{ backgroundColor: 'white' }}>
               <div style={{ padding: '14px 20px', borderBottom: '1px solid #e5e7eb' }}>
-                <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase' }}>많이 먹은 카테고리</p>
+                <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase' }}>{t('topCategory')}</p>
               </div>
               {topCats.map(([cat, count], i) => {
                 const total = weekMeals.length;
