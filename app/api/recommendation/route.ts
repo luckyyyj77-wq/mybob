@@ -124,7 +124,13 @@ ${streakNote ? `[연속달성] ${streakNote}` : ''}
     }
 
     const geminiResult = await geminiRes.json();
-    const analysis = JSON.parse(geminiResult.candidates[0].content.parts[0].text);
+    let analysis: any;
+    try {
+      analysis = JSON.parse(geminiResult.candidates[0].content.parts[0].text);
+    } catch {
+      console.error('[recommendation] Gemini JSON parse failed');
+      return NextResponse.json({ error: 'AI 피드백 생성에 실패했습니다.' }, { status: 500 });
+    }
 
     // ── Step 2: cdbapi로 페르소나 코멘트 생성 (4초 타임아웃) ──
     const CDB_FALLBACK: Record<string, string[]> = {

@@ -33,16 +33,19 @@ export async function POST(request: Request) {
       .eq('user_id', user.id)
       .single();
 
+    // 현재 카운트 조회 (toggle 전)
+    const { count: currentCount } = await admin
+      .from('meal_likes')
+      .select('*', { count: 'exact', head: true })
+      .eq('meal_id', mealId);
+    const base = currentCount ?? 0;
+
     if (existing) {
-      // 좋아요 취소
       await admin.from('meal_likes').delete().eq('id', existing.id);
-      const { count } = await admin.from('meal_likes').select('*', { count: 'exact', head: true }).eq('meal_id', mealId);
-      return NextResponse.json({ liked: false, count: count ?? 0 });
+      return NextResponse.json({ liked: false, count: Math.max(0, base - 1) });
     } else {
-      // 좋아요 추가
       await admin.from('meal_likes').insert({ meal_id: mealId, user_id: user.id });
-      const { count } = await admin.from('meal_likes').select('*', { count: 'exact', head: true }).eq('meal_id', mealId);
-      return NextResponse.json({ liked: true, count: count ?? 0 });
+      return NextResponse.json({ liked: true, count: base + 1 });
     }
   } catch (error: unknown) {
     console.error('[likes POST]', error instanceof Error ? error.message : error);

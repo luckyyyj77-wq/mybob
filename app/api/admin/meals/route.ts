@@ -39,6 +39,7 @@ export async function GET(request: Request) {
 
     if (category && category !== 'all') query = query.eq('category', category);
     if (search) {
+      if (search.length > 100) return NextResponse.json({ error: '검색어가 너무 깁니다.' }, { status: 400 });
       const escaped = search.replace(/[\\%_]/g, '\\$&');
       query = query.ilike('food_name', `%${escaped}%`);
     }

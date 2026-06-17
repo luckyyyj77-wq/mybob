@@ -93,7 +93,7 @@ export async function GET(request: Request) {
       .from('meals')
       .select('id, user_id, food_name, calories, category, photo_url, created_at, portion, visibility')
       .eq('visibility', 'public')
-      .not('user_id', 'in', `(${excludeIds.map(id => `"${id}"`).join(',')})`)
+      .not('user_id', 'in', excludeIds)
       .order('created_at', { ascending: false })
       .limit(50);
 

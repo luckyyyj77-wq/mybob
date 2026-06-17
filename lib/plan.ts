@@ -97,30 +97,34 @@ export async function getOrCreateProfile(adminSupabase: AnySupabaseClient, userI
   return profile;
 }
 
-// 천인회 슬롯 선점 시도 (atomic increment)
+// 천인회 슬롯 선점 시도 (optimistic lock + 1회 재시도)
 async function tryClaimFoundingSlot(adminSupabase: AnySupabaseClient): Promise<boolean> {
-  try {
-    const today = getKSTDateString();
-    if (today > FOUNDING_PROMOTION_END) return false;
+  const today = getKSTDateString();
+  if (today > FOUNDING_PROMOTION_END) return false;
 
-    const { data } = await adminSupabase
-      .from('founding_slots')
-      .select('total_slots, used_slots')
-      .eq('id', 1)
-      .single();
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const { data } = await adminSupabase
+        .from('founding_slots')
+        .select('total_slots, used_slots')
+        .eq('id', 1)
+        .single();
 
-    if (!data || data.used_slots >= data.total_slots) return false;
+      if (!data || data.used_slots >= data.total_slots) return false;
 
-    const { error } = await adminSupabase
-      .from('founding_slots')
-      .update({ used_slots: data.used_slots + 1, updated_at: new Date().toISOString() })
-      .eq('id', 1)
-      .eq('used_slots', data.used_slots); // optimistic lock
+      const { error } = await adminSupabase
+        .from('founding_slots')
+        .update({ used_slots: data.used_slots + 1, updated_at: new Date().toISOString() })
+        .eq('id', 1)
+        .eq('used_slots', data.used_slots); // optimistic lock
 
-    return !error;
-  } catch {
-    return false;
+      if (!error) return true;
+      // 동시 요청으로 lock 충돌 시 재시도
+    } catch {
+      return false;
+    }
   }
+  return false;
 }
 
 // 천인회 슬롯 반환 (탈퇴 시)

@@ -499,8 +499,10 @@ export async function POST(request: Request) {
     }
 
     // 비인증 요청만 IP rate limit 적용 (인증 유저는 DB 카운트로 관리)
+    // x-forwarded-for는 스푸핑 가능하므로 단독 사용하지 않고 fallback 식별자로만 활용
     if (!isAuthenticated) {
-      const ip = (request.headers.get('x-forwarded-for') ?? 'unknown').split(',')[0].trim();
+      const forwarded = request.headers.get('x-forwarded-for') ?? '';
+      const ip = forwarded.split(',')[0].trim().slice(0, 45) || 'unknown';
       const ipLimit = rateLimit(`analyze-ip:${ip}`, 20, 60 * 1000);
       if (ipLimit.limited) {
         return NextResponse.json({ error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' }, { status: 429 });

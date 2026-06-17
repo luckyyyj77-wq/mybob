@@ -119,10 +119,23 @@ export async function POST(request: Request) {
       return isNaN(n) ? null : n;
     };
 
+    const NUTRIENT_KEYS = new Set([
+      'calories', 'carbohydrates', 'protein', 'fat', 'fiber', 'sugar',
+      'sodium', 'caffeine', 'vitaminA', 'vitaminC', 'vitaminD',
+      'calcium', 'iron', 'potassium', 'saturated_fat', 'trans_fat',
+    ]);
     const rawNutrient = mealData.nutrients ?? mealData.nutrient ?? null;
     const cleanNutrient = rawNutrient ? Object.fromEntries(
-      Object.entries(rawNutrient).map(([k, v]) => [k, toNum(v)])
+      Object.entries(rawNutrient)
+        .filter(([k]) => NUTRIENT_KEYS.has(k))
+        .map(([k, v]) => [k, toNum(v)])
     ) : null;
+
+    // 미래 날짜 차단 (클라이언트 조작 방지)
+    const createdAt = mealData.created_at ? new Date(mealData.created_at) : null;
+    if (createdAt && createdAt.getTime() > Date.now() + 60 * 1000) {
+      return NextResponse.json({ error: '잘못된 날짜입니다.' }, { status: 400 });
+    }
 
     const dataToInsert = {
       user_id: user.id,
