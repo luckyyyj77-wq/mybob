@@ -115,7 +115,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1, duration: 0.5 }}
                 style={{ fontSize: '12px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase' }}
               >
-                식단 기록 & AI 분석
+                {tNav('tagline')}
               </motion.p>
             </motion.div>
           ) : (
@@ -145,14 +145,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             }}
           >
             <div style={{ flex: 1 }}>
-              <p style={{ fontSize: '13px', color: 'black', marginBottom: '4px' }}>MyBob 앱으로 설치</p>
+              <p style={{ fontSize: '13px', color: 'black', marginBottom: '4px' }}>{tNav('installBannerTitle')}</p>
               {isIOS ? (
-                <p style={{ fontSize: '11px', color: '#6b7280', lineHeight: 1.5 }}>
-                  Safari 하단의 <strong>공유</strong> 버튼(□↑)을 탭한 후<br />
-                  <strong>홈 화면에 추가</strong>를 선택하세요.
-                </p>
+                <p style={{ fontSize: '11px', color: '#6b7280', lineHeight: 1.5 }}
+                  dangerouslySetInnerHTML={{ __html: tNav('installBannerIOS') }}
+                />
               ) : (
-                <p style={{ fontSize: '11px', color: '#9ca3af' }}>홈 화면에 추가하면 앱처럼 사용할 수 있어요</p>
+                <p style={{ fontSize: '11px', color: '#9ca3af' }}>{tNav('installBannerAndroid')}</p>
               )}
             </div>
             {!isIOS && (
@@ -160,7 +159,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 onClick={handleInstall}
                 style={{ padding: '8px 14px', backgroundColor: 'black', color: 'white', border: 'none', fontSize: '12px', cursor: 'pointer', letterSpacing: '0.5px', flexShrink: 0 }}
               >
-                설치
+                {tNav('installBtn')}
               </button>
             )}
             <button
@@ -186,7 +185,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <button
                 onClick={() => setIsMenuOpen(false)}
                 style={{ display: 'flex', flexDirection: 'column', gap: '5px', padding: '8px', background: 'none', border: 'none', cursor: 'pointer' }}
-                aria-label="메뉴 닫기"
+                aria-label={tNav('closeMenu')}
               >
                 <span style={{ display: 'block', width: '26px', height: '2px', backgroundColor: 'black', transform: 'translateY(7px) rotate(45deg)', transformOrigin: 'center' }} />
                 <span style={{ display: 'block', width: '26px', height: '2px', backgroundColor: 'black', transform: 'rotate(-45deg)', transformOrigin: 'center' }} />
@@ -213,7 +212,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   <div>
                     <span style={{ fontSize: '18px', letterSpacing: '-0.3px', color: 'black', display: 'block' }}>{tNav('install')}</span>
                     <span style={{ fontSize: '11px', color: '#9ca3af' }}>
-                      {isIOS ? 'Safari 공유 → 홈 화면에 추가' : '홈 화면에 추가'}
+                      {isIOS ? tNav('installIOSShort') : tNav('installAndroidShort')}
                     </span>
                   </div>
                 </button>
@@ -257,7 +256,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <button
               onClick={() => setIsMenuOpen(prev => !prev)}
               style={{ display: 'flex', flexDirection: 'column', gap: '5px', padding: '8px', background: 'none', border: 'none', cursor: 'pointer', width: '42px', alignItems: 'center' }}
-              aria-label="메뉴"
+              aria-label={tNav('openMenu')}
             >
               <span style={{ display: 'block', width: '24px', height: '1px', backgroundColor: 'black' }} />
               <span style={{ display: 'block', width: '24px', height: '1px', backgroundColor: 'black' }} />
@@ -271,7 +270,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
             <Link href="/history" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', textDecoration: 'none', color: 'black', width: '42px' }}>
               <FaHistory size={20} />
-              <span style={{ fontSize: '9px', letterSpacing: '1px', color: '#6B21A8', textTransform: 'uppercase' }}>TIMELINE</span>
+              <span style={{ fontSize: '9px', letterSpacing: '1px', color: '#6B21A8', textTransform: 'uppercase' }}>{tNav('timeline')}</span>
             </Link>
           </nav>
         </div>

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Link, useRouter } from '@/i18n/routing';
 import { supabase } from '@/lib/supabase/client';
 import { isOnboardingDone } from '@/lib/storage-mode';
+import { useTranslations } from 'next-intl';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -11,6 +12,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const t = useTranslations('Auth');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,20 +45,20 @@ export default function LoginPage() {
           MYBOB
         </h1>
         <p style={{ fontSize: '12px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', paddingBottom: '24px' }}>
-          식단 기록 & AI 분석
+          {t('tagline')}
         </p>
       </div>
 
       {/* Form */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '40px 32px' }}>
         <h2 style={{ fontSize: '22px', fontWeight: 400, color: 'black', marginBottom: '32px' }}>
-          로그인
+          {t('login')}
         </h2>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div>
             <label style={{ display: 'block', fontSize: '11px', color: '#6b7280', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px' }}>
-              이메일
+              {t('email')}
             </label>
             <input
               type="email"
@@ -79,7 +81,7 @@ export default function LoginPage() {
 
           <div>
             <label style={{ display: 'block', fontSize: '11px', color: '#6b7280', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px' }}>
-              비밀번호
+              {t('password')}
             </label>
             <input
               type="password"
@@ -122,7 +124,7 @@ export default function LoginPage() {
               marginTop: '8px',
             }}
           >
-            {loading ? '로그인 중...' : '로그인'}
+            {loading ? t('loggingIn') : t('login')}
           </button>
         </form>
 
@@ -150,19 +152,19 @@ export default function LoginPage() {
             <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
             <path fill="none" d="M0 0h48v48H0z"/>
           </svg>
-          Google로 로그인
+          {t('googleLogin')}
         </button>
 
         <p style={{ marginTop: '16px', textAlign: 'center' }}>
           <Link href="/auth/reset-password" style={{ fontSize: '13px', color: '#9ca3af', textDecoration: 'none' }}>
-            비밀번호를 잊으셨나요?
+            {t('forgotPassword')}
           </Link>
         </p>
 
         <p style={{ marginTop: '12px', fontSize: '14px', color: '#6b7280', textAlign: 'center' }}>
-          계정이 없으신가요?{' '}
+          {t('noAccount')}{' '}
           <Link href="/auth/signup" style={{ color: '#6B21A8', textDecoration: 'none' }}>
-            회원가입
+            {t('signup')}
           </Link>
         </p>
       </div>

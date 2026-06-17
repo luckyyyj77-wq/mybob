@@ -31,7 +31,17 @@
     "installed": "Installed",
     "login": "Login",
     "myAccount": "My Account",
-    "capture": "Capture"
+    "capture": "Capture",
+    "tagline": "Meal Log & AI Analysis",
+    "closeMenu": "Close menu",
+    "openMenu": "Menu",
+    "timeline": "TIMELINE",
+    "installBannerTitle": "Install MyBob as an app",
+    "installBannerIOS": "Tap the <strong>Share</strong> button (□↑) at the bottom of Safari,<br />then select <strong>Add to Home Screen</strong>.",
+    "installBannerAndroid": "Add to home screen to use it like a native app",
+    "installBtn": "Install",
+    "installIOSShort": "Safari Share → Add to Home Screen",
+    "installAndroidShort": "Add to Home Screen"
   },
   "Plan": {
     "free": "Free",
@@ -722,5 +732,16 @@
     "cloudConsent": "Privacy Consent: Choosing cloud storage means meal photos and nutrition logs are sent to the server.\nSome data may be visible to other users when community features are enabled.\nYou can request deletion in settings anytime.",
     "startBtn": "Start",
     "reselect": "Choose again"
+  },
+  "Auth": {
+    "tagline": "Meal Log & AI Analysis",
+    "login": "Login",
+    "loggingIn": "Logging in...",
+    "signup": "Sign up",
+    "email": "Email",
+    "password": "Password",
+    "googleLogin": "Continue with Google",
+    "forgotPassword": "Forgot your password?",
+    "noAccount": "Don't have an account?"
   }
 }
