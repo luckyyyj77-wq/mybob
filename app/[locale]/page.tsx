@@ -332,7 +332,7 @@ export default function Home() {
       )}
       {foundingBanner.type === 'available' && (
         <Link href="/settings/plan" style={{ flexShrink: 0, backgroundColor: '#f5f3ff', borderBottom: '1px solid #e9d5ff', padding: '10px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', textDecoration: 'none' }}>
-          <span style={{ fontSize: '12px', color: '#6B21A8', letterSpacing: '0.3px' }}>{t('foundingAvailable', { count: foundingBanner.remainingSlots })}</span>
+          <span style={{ fontSize: '12px', color: '#6B21A8', letterSpacing: '0.3px' }}>{t('foundingAvailable', { count: foundingBanner.remainingSlots ?? 0 })}</span>
           <span style={{ fontSize: '11px', color: '#a855f7' }}>{t('viewDetail')}</span>
         </Link>
       )}
