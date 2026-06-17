@@ -117,7 +117,7 @@ export default function SettingsPage() {
             localStorage.setItem('mybob_coach_persona', coachPersona);
             const keys = Object.keys(localStorage);
             keys.forEach(k => { if (k.startsWith('mybob_coach_') && k !== 'mybob_coach_persona') localStorage.removeItem(k); });
-            alert(t('coachChanged', { emoji: COACH_OPTIONS.find(o => o.id === coachPersona)?.emoji }));
+            alert(t('coachChanged', { emoji: COACH_OPTIONS.find(o => o.id === coachPersona)?.emoji ?? '' }));
           }}
           style={{
             width: '100%', padding: '14px',

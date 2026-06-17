@@ -624,15 +624,15 @@ export default function CameraCapturePage() {
             </p>
             <p style={{ fontSize: '13px', color: '#9ca3af', lineHeight: 1.6 }}>
               {isFree
-                ? t('limit.freeDesc', { limit: current?.limit, type: typeLabel })
-                : t('limit.desc', { limit: current?.limit })}
+                ? t('limit.freeDesc', { limit: current?.limit ?? 0, type: typeLabel })
+                : t('limit.desc', { limit: current?.limit ?? 0 })}
             </p>
           </div>
 
           {isFree && (
             <div style={{ backgroundColor: '#f5f3ff', border: '1px solid #e9d5ff', padding: '16px', marginBottom: '16px', textAlign: 'center' }}>
               <p style={{ fontSize: '12px', color: '#6B21A8', marginBottom: '4px' }}>🎖️ {t('Home.foundingMember')}</p>
-              <p style={{ fontSize: '11px', color: '#9ca3af', lineHeight: 1.5 }}>{t('limit.desc', { limit: current?.limit })}</p>
+              <p style={{ fontSize: '11px', color: '#9ca3af', lineHeight: 1.5 }}>{t('limit.desc', { limit: current?.limit ?? 0 })}</p>
             </div>
           )}
 
