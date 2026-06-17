@@ -929,7 +929,7 @@ export default function CameraCapturePage() {
                         <div>
                           <p style={{ fontSize: '11px', color: '#6B21A8', fontWeight: 500 }}>{t('ocrGuide')}</p>
                           <p style={{ fontSize: '10px', color: '#7c3aed', marginTop: '1px' }}>
-                            {t('servingSize', { size: ocrMeta.serving_size || analysis.amount })}
+                            {t('servingSize', { size: ocrMeta.serving_size || analysis.amount || '' })}
                             {ocrMeta.servings_per_container != null && t('totalServings', { count: ocrMeta.servings_per_container })}
                           </p>
                         </div>
