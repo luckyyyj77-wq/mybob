@@ -86,7 +86,17 @@ async function shareOrDownload(meals: Meal[], type: 'json' | 'csv', noDataMsg: s
 
 export default function DataPage() {
   const t = useTranslations('Settings');
+  const tHistory = useTranslations('History');
   const locale = useLocale();
+  const CATEGORY_LABEL: Record<string, string> = {
+    '한식': tHistory('categories.korean'),
+    '중식': tHistory('categories.chinese'),
+    '일식': tHistory('categories.japanese'),
+    '양식': tHistory('categories.western'),
+    '간식': tHistory('categories.snack'),
+    '음료': tHistory('categories.drink'),
+    '기타': tHistory('categories.etc'),
+  };
   const [meals, setMeals] = useState<Meal[]>([]);
   const [stats, setStats] = useState<Stats>({ total: 0, avgCaloriesPerDay: 0, topFood: null, firstDate: null, lastDate: null, topCategory: null });
 
@@ -134,7 +144,7 @@ export default function DataPage() {
             <p style={{ fontSize: '10px', color: '#9ca3af', marginBottom: '6px' }}>{t('topFood')}</p>
             {stats.topFood ? (
               <div>
-                <p style={{ fontSize: '9px', color: '#9ca3af', marginBottom: '2px' }}>{stats.topFood.mealType} · {stats.topFood.category}</p>
+                <p style={{ fontSize: '9px', color: '#9ca3af', marginBottom: '2px' }}>{stats.topFood.mealType} · {CATEGORY_LABEL[stats.topFood.category] ?? stats.topFood.category}</p>
                 <p style={{ fontSize: '12px', color: '#6B21A8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{stats.topFood.foodName}</p>
               </div>
             ) : <p style={{ fontSize: '14px', color: 'black' }}>-</p>}
@@ -154,7 +164,7 @@ export default function DataPage() {
             {stats.topCategory && (
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 16px', backgroundColor: 'white' }}>
                 <span style={{ fontSize: '12px', color: '#9ca3af' }}>{t('topCategory')}</span>
-                <span style={{ fontSize: '12px', color: '#6B21A8' }}>{stats.topCategory}</span>
+                <span style={{ fontSize: '12px', color: '#6B21A8' }}>{CATEGORY_LABEL[stats.topCategory] ?? stats.topCategory}</span>
               </div>
             )}
           </div>

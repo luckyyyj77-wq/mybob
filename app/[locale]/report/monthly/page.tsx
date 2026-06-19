@@ -27,8 +27,8 @@ function calcTargetCalories(height: number, weight: number, goal: string): numbe
   if (!height || !weight) return 2000;
   const bmr = 10 * weight + 6.25 * height - 5 * 30;
   const tdee = Math.round(bmr * 1.375);
-  if (goal === 'diet' || goal === '다이어트') return Math.round(tdee * 0.8);
-  if (goal === 'bulk' || goal === '증량') return Math.round(tdee * 1.15);
+  if (goal === 'diet') return Math.round(tdee * 0.8);
+  if (goal === 'bulk') return Math.round(tdee * 1.15);
   return tdee;
 }
 

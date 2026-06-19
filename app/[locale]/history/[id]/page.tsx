@@ -81,6 +81,17 @@ function MealDetailContent() {
     { value: 0, emoji: '😞', label: t('ratingLabels.poor') },
   ], [t]);
 
+  const tHistory = useTranslations('History');
+  const CATEGORY_MAP: Record<string, string> = useMemo(() => ({
+    '한식': tHistory('categories.korean'),
+    '중식': tHistory('categories.chinese'),
+    '일식': tHistory('categories.japanese'),
+    '양식': tHistory('categories.western'),
+    '간식': tHistory('categories.snack'),
+    '음료': tHistory('categories.drink'),
+    '기타': tHistory('categories.etc'),
+  }), [tHistory]);
+
   const tNutrients = useTranslations('Capture.nutrients');
   const NUTRIENT_LABELS: Record<string, string> = useMemo(() => ({
     carbohydrates: tNutrients('carbohydrates'),
@@ -336,7 +347,7 @@ function MealDetailContent() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
               <div style={{ flex: 1, marginRight: '12px' }}>
                 {isEditing ? <input value={editFoodName} onChange={e => setEditFoodName(e.target.value)} onFocus={selectAll} style={{ fontSize: '22px', fontWeight: 400, border: '2px solid #e5e7eb', borderRadius: '4px', padding: '4px 8px', width: '100%', outline: 'none', backgroundColor: '#fafafa' }} /> : <h2 style={{ fontSize: '24px', fontWeight: 400 }}>{meal.food_name}{meal.is_edited && <span style={{ fontSize: '10px', color: '#9ca3af', marginLeft: '6px' }}>{t('edited')}</span>}</h2>}
-                <p style={{ fontSize: '14px', color: '#6B21A8', marginTop: '2px' }}>{meal.category || '기타'}</p>
+                <p style={{ fontSize: '14px', color: '#6B21A8', marginTop: '2px' }}>{CATEGORY_MAP[meal.category || '기타'] ?? meal.category}</p>
               </div>
               <div style={{ textAlign: 'right' }}>
                 {isEditing ? <input value={editCalories} onChange={e => handleNumericInput('calories', e.target.value, setEditCalories)} onFocus={selectAll} inputMode="decimal" style={{ fontSize: '24px', color: '#6B21A8', border: `2px solid ${invalidFields.has('calories') ? '#ef4444' : '#e5e7eb'}`, borderRadius: '4px', padding: '2px 6px', width: '80px', textAlign: 'right', outline: 'none', backgroundColor: '#fafafa', transition: 'border-color 0.2s' }} /> : <p style={{ fontSize: '28px', color: 'black', lineHeight: 1 }}>{meal.calories}</p>}

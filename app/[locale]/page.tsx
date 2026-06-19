@@ -186,8 +186,8 @@ export default function Home() {
           const bmr = 10 * w + 6.25 * h - 5 * 30;
           const tdee = Math.round(bmr * 1.375);
           const goal = gd.goal || 'maintain';
-          goalCalories = (goal === 'diet' || goal === '다이어트') ? Math.round(tdee * 0.8)
-                       : (goal === 'bulk' || goal === '증량') ? Math.round(tdee * 1.15)
+          goalCalories = (goal === 'diet') ? Math.round(tdee * 0.8)
+                       : (goal === 'bulk') ? Math.round(tdee * 1.15)
                        : tdee;
         }
       } catch { }

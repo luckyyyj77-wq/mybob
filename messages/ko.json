@@ -181,10 +181,13 @@
     },
     "sourceLabel": {
       "gemini": "AI추론",
+      "haiku": "AI추론",
       "korean_db": "한식DB",
       "korean_db_gemini": "한식DB+AI",
+      "korean_db_haiku": "한식DB+AI",
       "global_db": "글로벌DB",
       "global_db_gemini": "글로벌DB+AI",
+      "global_db_haiku": "글로벌DB+AI",
       "ocr": "영양표 직접 인식",
       "barcode_db": "바코드 DB",
       "barcode_ocr": "바코드+영양표",

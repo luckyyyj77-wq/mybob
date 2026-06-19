@@ -181,10 +181,13 @@
     },
     "sourceLabel": {
       "gemini": "AI Inference",
+      "haiku": "AI Inference",
       "korean_db": "Korean DB",
       "korean_db_gemini": "K-DB + AI",
+      "korean_db_haiku": "K-DB + AI",
       "global_db": "Global DB",
       "global_db_gemini": "Global DB + AI",
+      "global_db_haiku": "Global DB + AI",
       "ocr": "OCR Recognition",
       "barcode_db": "Barcode DB",
       "barcode_ocr": "Barcode + OCR",
