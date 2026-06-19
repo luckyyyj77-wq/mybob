@@ -66,48 +66,68 @@ async function searchOpenFoodFacts(foodName: string) {
   } catch { return null; }
 }
 
-async function analyzeWithGemini(base64Data: string, apiKey: string, dbNutrients: any | null, dbSource: string | null, estimatedPortion: number, isPro = false, locale = 'ko'): Promise<{ success: boolean; food?: any; modelUsed?: string; tokensIn?: number; tokensOut?: number; error?: string }> {
-  const modelsToTry = isPro ? ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash'] : ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite'];
-
-  const nutritionContext = locale === 'en' 
+function buildNutritionPrompt(dbNutrients: any | null, dbSource: string | null, estimatedPortion: number, locale: string): string {
+  const nutritionContext = locale === 'en'
     ? (dbNutrients ? `[DB Base Data - Source: ${dbSource}, Est. Serving: ${estimatedPortion}g] Carbs ${dbNutrients.carbohydrates}g, Protein ${dbNutrients.protein}g, Fat ${dbNutrients.fat}g, Cal ${dbNutrients.calories}kcal. Adjust based on actual cooking state.` : `Analyze visually. Estimate serving weight and nutrients.`)
     : (dbNutrients ? `[DB 기초 데이터 — 출처: ${dbSource}, 추정 1인분: ${estimatedPortion}g] 탄수화물 ${dbNutrients.carbohydrates}g, 단백질 ${dbNutrients.protein}g, 지방 ${dbNutrients.fat}g, 칼로리 ${dbNutrients.calories}kcal. 실제 상태를 분석해 보정하세요.` : `이미지를 시각적으로 분석하세요.`);
 
-  const prompt = locale === 'en'
-    ? `You are a world-class nutrition analysis AI. Analyze the image and respond ONLY in JSON.
-${nutritionContext}
-{
-  "name": "Specific food name in English",
-  "calories": number(kcal),
-  "category": "Korean/Chinese/Japanese/Western/Snack/Drink",
-  "amount": "Est. weight(g) or quantity",
-  "confidence": "high/medium/low",
-  "nutrients": { "carbohydrates": number(g), "protein": number(g), "fat": number(g), "fiber": number(g), "sugar": number(g), "sodium": number(mg), "caffeine": number(mg) or null, "vitaminA": number(μg), "vitaminC": number(mg), "vitaminD": number(μg), "calcium": number(mg), "iron": number(mg), "potassium": number(mg) }
-}`
-    : `당신은 세계 최고 수준의 영양 분석 AI입니다. 이미지를 분석해 아래 JSON 형식으로만 응답하세요.
-${nutritionContext}
-{
-  "name": "구체적인 한국어 음식명",
-  "calories": 숫자(kcal),
-  "category": "한식/중식/일식/양식/간식/음료",
-  "amount": "추정 중량(g) 또는 수량",
-  "confidence": "high/medium/low",
-  "nutrients": { "carbohydrates": 숫자(g), "protein": 숫자(g), "fat": 숫자(g), "fiber": 숫자(g), "sugar": 숫자(g), "sodium": 숫자(mg), "caffeine": 숫자(mg) 또는 null, "vitaminA": 숫자(μg), "vitaminC": 숫자(mg), "vitaminD": 숫자(μg), "calcium": 숫자(mg), "iron": 숫자(mg), "potassium": 숫자(mg) }
-}`;
+  return locale === 'en'
+    ? `You are a world-class nutrition analysis AI. Analyze the image and respond ONLY in JSON.\n${nutritionContext}\n{\n  "name": "Specific food name in English",\n  "calories": number(kcal),\n  "category": "Korean/Chinese/Japanese/Western/Snack/Drink",\n  "amount": "Est. weight(g) or quantity",\n  "confidence": "high/medium/low",\n  "nutrients": { "carbohydrates": number(g), "protein": number(g), "fat": number(g), "fiber": number(g), "sugar": number(g), "sodium": number(mg), "caffeine": number(mg) or null, "vitaminA": number(μg), "vitaminC": number(mg), "vitaminD": number(μg), "calcium": number(mg), "iron": number(mg), "potassium": number(mg) }\n}`
+    : `당신은 세계 최고 수준의 영양 분석 AI입니다. 이미지를 분석해 아래 JSON 형식으로만 응답하세요.\n${nutritionContext}\n{\n  "name": "구체적인 한국어 음식명",\n  "calories": 숫자(kcal),\n  "category": "한식/중식/일식/양식/간식/음료",\n  "amount": "추정 중량(g) 또는 수량",\n  "confidence": "high/medium/low",\n  "nutrients": { "carbohydrates": 숫자(g), "protein": 숫자(g), "fat": 숫자(g), "fiber": 숫자(g), "sugar": 숫자(g), "sodium": 숫자(mg), "caffeine": 숫자(mg) 또는 null, "vitaminA": 숫자(μg), "vitaminC": 숫자(mg), "vitaminD": 숫자(μg), "calcium": 숫자(mg), "iron": 숫자(mg), "potassium": 숫자(mg) }\n}`;
+}
+
+async function analyzeWithGemini(base64Data: string, apiKey: string, dbNutrients: any | null, dbSource: string | null, estimatedPortion: number, isPro = false, locale = 'ko'): Promise<{ success: boolean; food?: any; modelUsed?: string; error?: string }> {
+  const modelsToTry = isPro ? ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash'] : ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite'];
+  const prompt = buildNutritionPrompt(dbNutrients, dbSource, estimatedPortion, locale);
 
   for (const model of modelsToTry) {
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: 'image/jpeg', data: base64Data } }] }], generationConfig: { response_mime_type: 'application/json', temperature: 0.15 } }) });
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: 'image/jpeg', data: base64Data } }] }], generationConfig: { response_mime_type: 'application/json', temperature: 0.15 } }),
+        signal: AbortSignal.timeout(5000),
+      });
       const result = await res.json();
       if (res.ok && result.candidates?.[0]?.content?.parts?.[0]?.text) {
-        return { success: true, food: JSON.parse(result.candidates[0].content.parts[0].text), modelUsed: model, tokensIn: result.usageMetadata?.promptTokenCount, tokensOut: result.usageMetadata?.candidatesTokenCount };
+        return { success: true, food: JSON.parse(result.candidates[0].content.parts[0].text), modelUsed: model };
       }
       if (result.error?.message?.includes('quota')) continue;
       return { success: false, error: result.error?.message };
     } catch { continue; }
   }
-  return { success: false, error: 'Limit exceeded' };
+  return { success: false, error: 'Gemini timeout' };
+}
+
+async function analyzeWithHaiku(base64Data: string, apiKey: string, dbNutrients: any | null, dbSource: string | null, estimatedPortion: number, locale = 'ko'): Promise<{ success: boolean; food?: any; modelUsed?: string; error?: string }> {
+  const prompt = buildNutritionPrompt(dbNutrients, dbSource, estimatedPortion, locale);
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1024,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: base64Data } },
+            { type: 'text', text: prompt },
+          ],
+        }],
+      }),
+      signal: AbortSignal.timeout(10000),
+    });
+    const result = await res.json();
+    if (!res.ok) return { success: false, error: result.error?.message };
+    const text = result.content?.[0]?.text || '';
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return { success: false, error: 'Invalid Haiku response' };
+    return { success: true, food: JSON.parse(jsonMatch[0]), modelUsed: 'claude-haiku-4-5' };
+  } catch {
+    return { success: false, error: 'Haiku timeout' };
+  }
 }
 
 async function lookupBarcode(barcode: string) {
@@ -200,14 +220,22 @@ export async function POST(request: Request) {
     } catch { }
 
     const isPro = plan !== 'free';
+    const anthropicKey = process.env.ANTHROPIC_API_KEY?.trim();
     const koreanHit = foodName ? searchKoreanDB(foodName) : null;
     const [offHit, geminiResult] = await Promise.all([
       (!koreanHit && foodName) ? searchOpenFoodFacts(foodName) : Promise.resolve(null),
       analyzeWithGemini(base64Data, apiKey, koreanHit?.nutrients ?? null, koreanHit?.source ?? null, koreanHit?.portion ?? 250, isPro, locale),
     ]);
 
-    if (!geminiResult.success) return NextResponse.json({ error: geminiResult.error }, { status: 429 });
-    const finalFood = geminiResult.food;
+    let aiResult = geminiResult;
+    let aiSource = 'gemini';
+    if (!geminiResult.success && anthropicKey) {
+      aiResult = await analyzeWithHaiku(base64Data, anthropicKey, koreanHit?.nutrients ?? null, koreanHit?.source ?? null, koreanHit?.portion ?? 250, locale);
+      aiSource = 'haiku';
+    }
+
+    if (!aiResult.success) return NextResponse.json({ error: aiResult.error }, { status: 429 });
+    const finalFood = aiResult.food;
     const dbResult = offHit || koreanHit;
     if (dbResult) {
       if (dbResult.nutrients.calories > 0 && Math.abs(dbResult.nutrients.calories - finalFood.calories) / Math.max(finalFood.calories, 1) < 0.5) {
@@ -220,7 +248,7 @@ export async function POST(request: Request) {
       await incrementAnalysisCount(adminSupabase, userId);
     }
 
-    return NextResponse.json({ success: true, food: finalFood, source: dbResult ? dbResult.source + '+gemini' : 'gemini_only', analysisStatus: { plan } });
+    return NextResponse.json({ success: true, food: finalFood, source: dbResult ? dbResult.source + '+' + aiSource : aiSource + '_only', analysisStatus: { plan } });
 
   } catch (error: any) {
     return NextResponse.json({ error: 'Server Error' }, { status: 500 });
