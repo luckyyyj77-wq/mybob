@@ -80,24 +80,36 @@ async function analyzeWithGemini(base64Data: string, apiKey: string, dbNutrients
   const modelsToTry = isPro ? ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash'] : ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite'];
   const prompt = buildNutritionPrompt(dbNutrients, dbSource, estimatedPortion, locale);
 
-  for (const model of modelsToTry) {
-    try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: 'image/jpeg', data: base64Data } }] }], generationConfig: { response_mime_type: 'application/json', temperature: 0.15 } }),
-        signal: AbortSignal.timeout(5000),
-      });
-      const result = await res.json();
-      if (res.ok && result.candidates?.[0]?.content?.parts?.[0]?.text) {
-        return { success: true, food: JSON.parse(result.candidates[0].content.parts[0].text), modelUsed: model };
-      }
-      if (result.error?.message?.includes('quota')) continue;
-      return { success: false, error: result.error?.message };
-    } catch { continue; }
+  const GEMINI_TOTAL_TIMEOUT = 7000;
+
+  async function tryModel(model: string): Promise<{ success: boolean; food?: any; modelUsed?: string; error?: string }> {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: 'image/jpeg', data: base64Data } }] }], generationConfig: { response_mime_type: 'application/json', temperature: 0.15 } }),
+      signal: AbortSignal.timeout(GEMINI_TOTAL_TIMEOUT),
+    });
+    const result = await res.json();
+    if (res.ok && result.candidates?.[0]?.content?.parts?.[0]?.text) {
+      return { success: true, food: JSON.parse(result.candidates[0].content.parts[0].text), modelUsed: model };
+    }
+    throw new Error(result.error?.message || 'failed');
   }
-  return { success: false, error: 'Gemini timeout' };
+
+  const timeoutPromise = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error('Gemini timeout')), GEMINI_TOTAL_TIMEOUT)
+  );
+
+  // 모든 모델을 병렬로 쏘고 7초 안에 첫 번째 성공 반환, 전부 실패/초과 시 Haiku로 넘김
+  try {
+    return await Promise.race([
+      Promise.any(modelsToTry.map(model => tryModel(model))),
+      timeoutPromise,
+    ]);
+  } catch {
+    return { success: false, error: 'Gemini timeout' };
+  }
 }
 
 async function analyzeWithHaiku(base64Data: string, apiKey: string, dbNutrients: any | null, dbSource: string | null, estimatedPortion: number, locale = 'ko'): Promise<{ success: boolean; food?: any; modelUsed?: string; error?: string }> {
