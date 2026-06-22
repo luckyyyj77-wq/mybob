@@ -1,7 +1,7 @@
 export const LS_VARIANT_IDS = {
-  pro_monthly:  '1774219',
-  pro_6months:  '1774231',
-  pro_yearly:   '1774232',
+  pro_monthly:  '1822506',
+  pro_6months:  '1822494',
+  pro_yearly:   '1822502',
 } as const;
 
 export type LSPlan = keyof typeof LS_VARIANT_IDS;
