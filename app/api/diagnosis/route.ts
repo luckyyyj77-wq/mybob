@@ -42,7 +42,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'PRO_REQUIRED' }, { status: 403 });
     }
 
-    const { meals, goal, bodyInfo, previousScores, achievedStreak = 0, totalAchievedDays = 0 } = await request.json();
+    const { meals, goal, bodyInfo, previousScores, achievedStreak = 0, totalAchievedDays = 0, locale = 'ko' } = await request.json();
     const apiKey = process.env.GEMINI_API_KEY?.trim();
     if (!apiKey) return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
     if (!meals || meals.length === 0) return NextResponse.json({ error: 'NO_DATA' }, { status: 422 });
@@ -107,7 +107,83 @@ export async function POST(request: Request) {
       ? `목표 칼로리 달성 기록: 총 ${totalAchievedDays}일 달성${achievedStreak > 0 ? `, 현재 ${achievedStreak}일 연속 달성 중` : ''}. 칼로리 일관성(consistency) 점수와 ai_message에 이 데이터를 반드시 반영하세요.`
       : '목표 칼로리 달성 기록 없음 (달성 데이터 미집계 또는 0일)';
 
-    const prompt = `당신은 국내 최고 수준의 영양사 겸 헬스 코치입니다.
+    const isEn = locale === 'en';
+
+    const bmrNoteEn = (() => {
+      if (!bodyInfo?.height || !bodyInfo?.weight) return 'No body info (default 2000kcal applied)';
+      const h = Number(bodyInfo.height), w = Number(bodyInfo.weight), age = Number(bodyInfo.age) || 30;
+      const genderOffset = bodyInfo.gender === 'female' ? -161 : 5;
+      const activityMap: Record<string, number> = { sedentary: 1.2, light: 1.375, moderate: 1.55, active: 1.725, very_active: 1.9 };
+      const activityMultiplier = activityMap[bodyInfo.activity] ?? 1.375;
+      const bmr = Math.round(10 * w + 6.25 * h - 5 * age + genderOffset);
+      const tdee = Math.round(bmr * activityMultiplier);
+      return `Height ${h}cm, Weight ${w}kg, Age ${age}, Activity ${bodyInfo.activity || 'moderate'} → BMR ${bmr}kcal, TDEE ${tdee}kcal, Target ${targetCalories}kcal`;
+    })();
+
+    const trendNoteEn = previousScores && previousScores.length > 0
+      ? `Previous diagnosis (recent): ${previousScores.slice(0, 3).map((s: any) => `${s.date} overall ${s.overall_score}pts(${s.grade})`).join(' / ')}`
+      : 'No previous diagnosis (first time)';
+
+    const achievementNoteEn = totalAchievedDays > 0
+      ? `Calorie goal achieved: ${totalAchievedDays} days total${achievedStreak > 0 ? `, currently ${achievedStreak} days streak` : ''}. Reflect this in consistency score and ai_message.`
+      : 'No calorie goal achievement data (0 days)';
+
+    const goalEn = goal === 'diet' || goal === '다이어트' ? 'weight loss' : goal === 'bulk' || goal === '증량' ? 'muscle gain' : 'maintenance';
+
+    const prompt = isEn
+      ? `You are a world-class nutritionist and health coach.
+Analyze the user's meal data from ${periodStart} to ${periodEnd} (${days} days, ${meals.length} records) and write a detailed diagnosis report in JSON.
+
+[User Data]
+- Goal: ${goalEn}
+- ${bmrNoteEn}
+- Daily avg calories: ${avgCal}kcal (target: ${targetCalories}kcal)
+- Macro ratio (carbs:protein:fat): ${carbPct}%:${proteinPct}%:${fatPct}%
+- Daily avg sodium: ${avgSodium}mg (recommended 2000mg)
+- Daily avg fiber: ${avgFiber}g (recommended 25g)
+- Frequent foods: ${topFoods.join(', ') || 'none'}
+- Frequent categories: ${topCats.map(([c, n]) => `${c}(${n}x)`).join(', ') || 'none'}
+- ${trendNoteEn}
+- ${achievementNoteEn}
+
+Respond ONLY in JSON. Write each field in English, concretely and practically.
+If previous diagnosis exists, mention score changes in summary and ai_message.
+
+{
+  "overall_score": integer 0~100,
+  "grade": one of "A+/A/B+/B/C+/C/D",
+  "summary": "2~3 sentences evaluating overall eating habits with specific numbers and trend vs previous.",
+  "scores": {
+    "calories": { "score": 0~100, "comment": "one sentence on calorie management" },
+    "balance": { "score": 0~100, "comment": "one sentence on macro balance" },
+    "sodium": { "score": 0~100, "comment": "one sentence on sodium intake" },
+    "fiber": { "score": 0~100, "comment": "one sentence on fiber intake" },
+    "consistency": { "score": 0~100, "comment": "one sentence on logging consistency" }
+  },
+  "strengths": ["strength 1", "strength 2"],
+  "issues": [
+    { "title": "issue title", "description": "specific description with numbers", "severity": "high/medium/low" },
+    { "title": "issue title 2", "description": "specific description", "severity": "high/medium/low" }
+  ],
+  "recommendations": [
+    { "title": "action title", "description": "specific actionable advice", "priority": "high/medium/low" },
+    { "title": "action title 2", "description": "specific actionable advice", "priority": "high/medium/low" },
+    { "title": "action title 3", "description": "specific actionable advice", "priority": "high/medium/low" }
+  ],
+  "weekly_plan": [
+    { "day": "Mon", "tip": "one specific dietary tip for the day" },
+    { "day": "Tue", "tip": "..." },
+    { "day": "Wed", "tip": "..." },
+    { "day": "Thu", "tip": "..." },
+    { "day": "Fri", "tip": "..." },
+    { "day": "Sat", "tip": "..." },
+    { "day": "Sun", "tip": "..." }
+  ],
+  "ai_message": "A warm, motivating paragraph (3~4 sentences) to the user. Mention growth vs previous diagnosis."
+}
+
+No text outside JSON.`
+      : `당신은 국내 최고 수준의 영양사 겸 헬스 코치입니다.
 아래 사용자의 ${periodStart} ~ ${periodEnd} (${days}일, ${meals.length}개 기록) 식사 데이터를 분석해 정밀 진단 리포트를 JSON으로 작성하세요.
 
 [사용자 데이터]

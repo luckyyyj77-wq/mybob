@@ -212,6 +212,7 @@ export default function DiagnosisPage() {
           previousScores,
           achievedStreak,
           totalAchievedDays,
+          locale,
         }),
       });
       const data = await res.json();

@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { getStorageMode } from '@/lib/storage-mode';
 import { savePhoto } from '@/lib/indexed-db';
 import { updateGoalAchievement } from '@/lib/goal-achievement';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 
 type AnalysisResult = {
   name: string;
@@ -70,6 +70,7 @@ export default function CameraCapturePage() {
   const { token } = useAuth();
   const t = useTranslations('Capture');
   const tc = useTranslations('Common');
+  const locale = useLocale();
   
   const foodVideoRef = useRef<HTMLVideoElement>(null);
   const foodStreamRef = useRef<MediaStream | null>(null);
@@ -344,7 +345,7 @@ export default function CameraCapturePage() {
       const res = await fetch('/api/analyze-food', {
         method: 'POST',
         headers,
-        body: JSON.stringify({ image: imageToSend, mode: apiMode }),
+        body: JSON.stringify({ image: imageToSend, mode: apiMode, locale }),
       });
       const result = await res.json();
 

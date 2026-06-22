@@ -305,6 +305,7 @@ export default function Home() {
           persona: currentPersona,
           mealNames: stats.mealNames,
           currentHour: (new Date().getUTCHours() + 9) % 24,
+          locale,
         }),
       });
       const r = await res.json();
