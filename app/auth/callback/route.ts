@@ -14,5 +14,6 @@ export async function GET(request: Request) {
   }
 
   // 온보딩 여부는 클라이언트에서 판단해야 하므로 중간 페이지로 이동
+  // auth/callback은 locale prefix 없이 유지 (middleware matcher 제외 경로)
   return NextResponse.redirect(`${origin}/auth/callback/complete`);
 }

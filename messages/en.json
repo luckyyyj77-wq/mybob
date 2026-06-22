@@ -1,0 +1,1255 @@
+{
+  "Metadata": {
+    "title": "MyBob — AI Meal Tracker",
+    "description": "AI meal tracking with just a photo. Automatic calorie and nutrient analysis, with daily, weekly, and monthly reports.",
+    "keywords": "meal tracker, calorie counter, AI analysis, diet, nutrition, health"
+  },
+  "Common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "retry": "Retry",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "edit": "Edit",
+    "back": "Back",
+    "next": "Next",
+    "skip": "Skip",
+    "free": "Free",
+    "pro": "Pro",
+    "upgrade": "Upgrade"
+  },
+  "Nav": {
+    "home": "Home",
+    "report": "Report",
+    "community": "Community",
+    "settings": "Settings",
+    "partnership": "Partnership",
+    "install": "Install App",
+    "installed": "Installed",
+    "login": "Login",
+    "myAccount": "My Account",
+    "capture": "Capture",
+    "tagline": "Meal Log & AI Analysis",
+    "closeMenu": "Close menu",
+    "openMenu": "Menu",
+    "timeline": "TIMELINE",
+    "installBannerTitle": "Install MyBob as an app",
+    "installBannerIOS": "Tap the <strong>Share</strong> button (□↑) at the bottom of Safari,<br />then select <strong>Add to Home Screen</strong>.",
+    "installBannerAndroid": "Add to home screen to use it like a native app",
+    "installBtn": "Install",
+    "installIOSShort": "Safari Share → Add to Home Screen",
+    "installAndroidShort": "Add to Home Screen"
+  },
+  "Plan": {
+    "free": "Free",
+    "pro": "PRO",
+    "lifetime": "Lifetime PRO",
+    "founding": "Founding Member",
+    "upgradeToPro": "Upgrade to PRO",
+    "limitReached": "Daily limit reached"
+  },
+  "Storage": {
+    "title": "Change Storage Mode",
+    "local": {
+      "title": "Store on this device only",
+      "tag": "Free",
+      "desc": "Privacy first",
+      "current": "Current",
+      "detail": "Download server data to this device.\nServer data will be deleted after 15 days."
+    },
+    "cloud": {
+      "title": "Cloud Sync",
+      "tag": "Subscription",
+      "desc": "Multiple devices · Community · Challenge",
+      "current": "Current",
+      "detail": "Upload local data to the server.\nWi-Fi recommended.",
+      "beta": "Free during beta"
+    },
+    "wifi": {
+      "title": "Using Mobile Data",
+      "desc": "Current Network: {type}\nData charges may apply when uploading photos.\nConnecting to Wi-Fi is recommended.",
+      "continue": "Continue anyway",
+      "cancel": "Cancel (Later on Wi-Fi)"
+    },
+    "migrating": {
+      "uploading": "Uploading to Cloud...",
+      "downloading": "Downloading to device...",
+      "dontClose": "Do not close the app"
+    },
+    "done": {
+      "title": "Migration Complete",
+      "localDetail": "Server data will be deleted after 15 days.\nYou can cancel this in settings at any time."
+    },
+    "error": {
+      "title": "Migration Failed"
+    }
+  },
+  "Upgrade": {
+    "title": "Upgrade to PRO",
+    "features": [
+      "25 AI analyses per day",
+      "Cloud storage & Multi-device sync",
+      "AI Diagnostic Reports",
+      "Custom nickname & avatar",
+      "No ads"
+    ],
+    "planSelect": "Select Plan",
+    "autoCancel": {
+      "title": "Auto-cancel after {label}",
+      "desc": "It's okay to forget. It ends automatically after {label}."
+    },
+    "payBtn": "Pay {price}",
+    "notes": [
+      "Payments are securely processed through Lemon Squeezy (Merchant of Record).",
+      "Subscriptions auto-renew at the end of each period and can be canceled at any time.",
+      "PRO features remain available until the end of the subscription period after cancellation.",
+      "Full refund within 7 days if unused; no refunds thereafter.",
+      "With auto-cancel, it ends automatically without rebilling."
+    ]
+  },
+  "LSP": {
+    "labels": {
+      "pro_monthly": "PRO Monthly",
+      "pro_6months": "PRO 6 Months",
+      "pro_yearly": "PRO Yearly"
+    },
+    "prices": {
+      "pro_monthly": "$0.99/mo",
+      "pro_6months": "$4.99/6mo",
+      "pro_yearly": "$8.99/yr"
+    },
+    "perMonth": {
+      "pro_monthly": "",
+      "pro_6months": "$0.83/mo · 1 mo free",
+      "pro_yearly": "$0.75/mo · 3 mo free"
+    },
+    "descriptions": {
+      "pro_monthly": "Auto-renews monthly · Cancel anytime",
+      "pro_6months": "Auto-renews every 6 months · Save 17%",
+      "pro_yearly": "Billed annually · Save 25%"
+    },
+    "cancelLabels": {
+      "pro_monthly": "1 month",
+      "pro_6months": "6 months",
+      "pro_yearly": "1 year"
+    }
+  },
+  "Home": {
+    "greeting": "Hello",
+    "question": "What are you eating?",
+    "todayMeals": "{count} meals recorded today.",
+    "noMeals": "Record your meals and start analysis.",
+    "coachComment": "Coach Comment",
+    "startCapture": "Start your first meal",
+    "todayCalories": "Today's Calories",
+    "nutrientBalance": "Nutrient Balance",
+    "noHistory": "Coaching will start as you record more.",
+    "foundingMember": "🎖️ Founding Member · PRO Free",
+    "foundingAvailable": "✨ {count} Founding slots left · Join for free PRO",
+    "viewDetail": "Details →",
+    "carbs": "Carbs",
+    "protein": "Protein",
+    "fat": "Fat"
+  },
+  "Capture": {
+    "title": "Capture Meal",
+    "modes": {
+      "camera": "Camera",
+      "gallery": "Gallery",
+      "ocr": "Nutrients",
+      "manual": "Manual"
+    },
+    "analyzing": "AI Analyzing...",
+    "analyzed": "Analysis Complete",
+    "saveBtn": "Save to Logs",
+    "saving": "Saving...",
+    "saved": "Saved",
+    "ratingLabel": "AI Inference Rating",
+    "ratings": {
+      "excellent": "Good",
+      "good": "Average",
+      "poor": "Poor"
+    },
+    "mealTime": {
+      "breakfast": "Breakfast",
+      "lunch": "Lunch",
+      "dinner": "Dinner",
+      "snack": "Snack"
+    },
+    "sourceLabel": {
+      "gemini": "AI Inference",
+      "haiku": "AI Inference",
+      "korean_db": "Korean DB",
+      "korean_db_gemini": "K-DB + AI",
+      "korean_db_haiku": "K-DB + AI",
+      "global_db": "Global DB",
+      "global_db_gemini": "Global DB + AI",
+      "global_db_haiku": "Global DB + AI",
+      "ocr": "OCR Recognition",
+      "barcode_db": "Barcode DB",
+      "barcode_ocr": "Barcode + OCR",
+      "manual": "Manual Entry"
+    },
+    "permDenied": "Camera permission is blocked",
+    "permDeniedDetail": "Tap the lock icon on the left of the address bar\nand change camera permission to allow.",
+    "permPrompt": "Camera access required",
+    "permPromptDetail": "If you allow, you won't be asked again.",
+    "permRetry": "Retry",
+    "gallerySelect": "Select from Gallery",
+    "ocrGuide": "Read directly from nutrition label",
+    "servingSize": "Serving Size: {size}",
+    "totalServings": " · Total {count} servings",
+    "portionLabel": "Portion",
+    "portionLabelOCR": "Portion (Based on serving size)",
+    "nutrients": {
+      "carbohydrates": "Carbs",
+      "protein": "Protein",
+      "fat": "Fat",
+      "fiber": "Fiber",
+      "sugar": "Sugar",
+      "sodium": "Sodium",
+      "caffeine": "Caffeine",
+      "vitamins": "Vitamins · Minerals"
+    },
+    "visibility": {
+      "private": "Private",
+      "neighbors": "Neighbors",
+      "public": "Public"
+    },
+    "analysisBtn": "Start AI Analysis",
+    "ocrBtn": "📋 Read Label",
+    "retake": "Add Photo",
+    "goHome": "Go Home",
+    "errors": {
+      "busy": "AI is busy.\nPlease try again in 5 minutes. 📸",
+      "notFood": "Doesn't look like food.\nPlease take a photo of food or drink. 🍽️",
+      "ocrFailed": "Failed to read nutrition label.\nPlease retake ensuring the label fills the screen.",
+      "general": "An error occurred during analysis."
+    },
+    "limit": {
+      "title": "Daily {type} limit reached",
+      "desc": "You've used all {limit} times. Resets at midnight.",
+      "freeDesc": "You can {type} up to {limit} times for free daily. Resets at midnight.",
+      "analysis": "AI analysis",
+      "upload": "storage"
+    }
+  },
+  "Settings": {
+    "title": "Settings",
+    "storageMode": "Storage Mode",
+    "goal": "Set Goals",
+    "export": "Export Data",
+    "profile": "Profile",
+    "profileEdit": "Edit Profile",
+    "coachStyle": "Coach Style",
+    "apply": "Apply",
+    "coachChanged": "{emoji} Coach changed.",
+    "menu": {
+      "plan": "Plan",
+      "planDesc": "Status & Upgrade",
+      "goal": "Goals",
+      "goalDesc": "Body Info · Target Calories",
+      "account": "Account",
+      "accountDesc": "Profile · Privacy · Danger Zone",
+      "storage": "Storage Mode",
+      "storageDesc": "Local / Cloud",
+      "data": "Meal Logs",
+      "dataDesc": "Stats · Export"
+    },
+    "coach": {
+      "robot": {
+        "name": "Analytical",
+        "desc": "Speaks with data"
+      },
+      "cat": {
+        "name": "Intuitive",
+        "desc": "Gives unexpected tips"
+      },
+      "dog": {
+        "name": "Supportive",
+        "desc": "Always on your side"
+      }
+    },
+    "legal": {
+      "terms": "Terms of Use",
+      "privacy": "Privacy Policy",
+      "refund": "Refund Policy"
+    },
+    "dangerZone": "Danger Zone",
+    "deleteAccount": "Delete Account",
+    "deleteAllData": "Delete All Data",
+    "account": {
+      "title": "Account",
+      "email": "Email",
+      "nickname": "Nickname",
+      "plan": "Current Plan",
+      "joinDate": "Joined",
+      "logoutBtn": "Logout",
+      "deleteBtn": "Delete Account",
+      "deleteConfirm": "Are you sure you want to delete your account?\nAll data will be immediately deleted and cannot be recovered."
+    },
+    "goalOptions": {
+      "diet": "Diet",
+      "maintain": "Maintain",
+      "bulk": "Bulk"
+    },
+    "activityLevels": {
+      "sedentary": "Sedentary (little or no exercise)",
+      "light": "Light (1-2 days/week)",
+      "moderate": "Moderate (3-5 days/week)",
+      "active": "Active (daily exercise)"
+    },
+    "bodyFields": {
+      "age": "Age",
+      "height": "Height",
+      "weight": "Weight",
+      "targetWeight": "Target Weight"
+    },
+    "csvHeader": "Date,Food,Category,Calories(kcal),Carbs(g),Protein(g),Fat(g),Fiber(g),Sugar(g),Sodium(mg)",
+    "gender": "Gender",
+    "male": "Male",
+    "female": "Female",
+    "activityLabel": "Activity Level",
+    "goalLabel": "Goal",
+    "dailyCalTarget": "Daily Calorie Goal",
+    "recommended": "Recommended",
+    "useRecommended": "Use Recommended",
+    "customInput": "Enter Manually",
+    "kcalPerDay": "kcal/day",
+    "calcHint": "Enter height, weight & activity to calculate",
+    "bmrNote": "Harris-Benedict BMR × activity factor",
+    "bmrDiet": "× 0.8 (diet)",
+    "bmrBulk": "× 1.15 (bulk)",
+    "bmrMaintain": "(maintain)",
+    "saved": "Saved ✓",
+    "saving": "Encrypting...",
+    "save": "Save",
+    "encNote": "🔐 AES-256 encrypted · stored on this device only",
+    "bodyInfo": "Body Info",
+    "lockBtn": "🔓 Lock",
+    "lockedMsg": "Body info is locked",
+    "enterPin": "Enter your PIN to unlock",
+    "decryptErr": "Could not load saved data — it has been reset. Please unlock and re-enter your info.",
+    "verifying": "Verifying...",
+    "unlockBtn": "Unlock",
+    "dataTitle": "Meal Data",
+    "recordStatus": "Record Status",
+    "totalRecords": "Total Records",
+    "dailyAvg": "Daily Average",
+    "topFood": "Most Eaten",
+    "firstRecord": "First Record",
+    "lastRecord": "Last Record",
+    "topCategory": "Top Category",
+    "exportData": "Export Data",
+    "exportDesc": "JSON: best for backup and restore. CSV: open in spreadsheet apps.",
+    "noExportData": "No data to export.",
+    "shareTitle": "MyBob Meal Data",
+    "pinEnter": "Enter PIN",
+    "pinSet": "Set PIN",
+    "pinConfirm": "Confirm PIN",
+    "pinEnterDesc": "Enter your 4-digit PIN",
+    "pinSetDesc": "Choose a 4-digit PIN",
+    "pinConfirmDesc": "Enter it again",
+    "pinCancel": "Cancel",
+    "pinForgot": "Forgot your PIN?",
+    "pinWrong": "Incorrect PIN",
+    "pinWrongWarn": "Incorrect PIN · {left} attempt(s) left before reset",
+    "pinMaxErr": "10 errors — body info will be reset",
+    "pinWarnRemaining": "{remaining} more wrong attempts will reset your body info",
+    "pinMismatch": "PINs do not match",
+    "storageTitle": "Storage",
+    "currentStorage": "Current Storage Mode",
+    "localMode": "Local Storage",
+    "cloudMode": "Cloud Sync",
+    "localBadge": "LOCAL · This device only",
+    "cloudBadge": "CLOUD · Syncing to server",
+    "changeBtn": "Change",
+    "localDesc": "All meal records and photos are stored on this device only. Nothing is sent to the server.",
+    "cloudDesc": "Meal records sync to the server. Access the same data across multiple devices.",
+    "deleteWarning": "Server data will be deleted in {days} days.",
+    "deleteNow": "Delete Now",
+    "cancelDelete": "Cancel (Keep Cloud)",
+    "featureCompare": "Feature Comparison",
+    "features": [
+      {
+        "label": "Meal Storage",
+        "local": "This device only",
+        "cloud": "All devices sync"
+      },
+      {
+        "label": "Meal Editing",
+        "local": "❌ Not available",
+        "cloud": "✅ PRO only"
+      },
+      {
+        "label": "Multi-device",
+        "local": "❌ Not available",
+        "cloud": "✅ Available"
+      },
+      {
+        "label": "Neighbor features",
+        "local": "❌ Not available",
+        "cloud": "✅ Available"
+      },
+      {
+        "label": "Neighbor feed",
+        "local": "❌ Not available",
+        "cloud": "✅ PRO only"
+      },
+      {
+        "label": "Community feed",
+        "local": "✅ (with ads)",
+        "cloud": "✅ PRO: no ads"
+      }
+    ],
+    "localLabel": "📱 Local",
+    "cloudLabel": "☁️ Cloud",
+    "notificationSettings": "Notification Settings",
+    "pushNotif": "Push Notifications",
+    "pushNotifDesc": "Set meal reminder interval",
+    "notifOptions": [
+      "After 1 hour",
+      "After 2 hours",
+      "Manual"
+    ],
+    "deleteConfirm": "Delete server data immediately?",
+    "planTitle": "Plan",
+    "currentPlan": "Current Plan",
+    "usingPlan": "Active",
+    "foundingMemberPro": "🎖️ Founding PRO",
+    "foundingSeats": "🎖️ Founding {n} seats",
+    "promotionDaysLeft": "Promotion ends in",
+    "daysUsed": "Days used so far",
+    "estimatedReward": "Expected reward after end",
+    "rewardMonths": "PRO {n} months credit",
+    "rewardMinDays": "Use 30+ days to earn reward",
+    "seatsLeft": "✨ Founding {n} seats left",
+    "seatsLeftDesc": "Join now for free PRO until Dec 31, 2026.",
+    "aiAnalysisToday": "AI Analysis Today",
+    "cloudSaveToday": "Cloud Saves Today",
+    "promotionNote": "Founding promotion is active. Try PRO for free while seats last.",
+    "autoCancelNote": "⏱️ Auto-cancel is scheduled. You will switch to FREE after your current period ends.",
+    "cancelBtn": "Cancel Subscription",
+    "cancelConfirmTitle": "Are you sure you want to cancel?",
+    "cancelConfirmDesc": "PRO features will end when your current period expires. You can continue using PRO until then.",
+    "cancelConfirmBtn": "Confirm Cancel",
+    "cancelKeepBtn": "Keep",
+    "cancelProcessing": "Processing...",
+    "loginRequired": "Please log in to view your plan.",
+    "proBenefits": "PRO Benefits",
+    "proFeatures": [
+      {
+        "icon": "🤖",
+        "text": "AI Analysis 25x per day"
+      },
+      {
+        "icon": "☁️",
+        "text": "Cloud storage 25 photos/day"
+      },
+      {
+        "icon": "📊",
+        "text": "Precision nutrition diagnosis"
+      },
+      {
+        "icon": "🎯",
+        "text": "Custom calorie goal AI coaching"
+      },
+      {
+        "icon": "👤",
+        "text": "Profile nickname & photo"
+      }
+    ],
+    "upgradeBtn": "Upgrade to PRO",
+    "cancelSuccess": "Cancellation requested. You will switch to FREE after the current period ends.",
+    "cancelNoSub": "No active subscription found.",
+    "cancelError": "An error occurred during cancellation.",
+    "cancelNetworkError": "Network error occurred.",
+    "planLabelFree": "Free",
+    "planLabelPro": "PRO Subscription",
+    "planLabelLifetime": "Lifetime",
+    "daysUnit": "{n} days"
+  },
+  "PIN": {
+    "enter": "Enter PIN",
+    "set": "Set PIN",
+    "confirm": "Confirm PIN",
+    "enterDesc": "Enter 4-digit PIN",
+    "setDesc": "Enter 4-digit PIN to use",
+    "confirmDesc": "Enter it once more",
+    "mismatch": "PIN does not match",
+    "wrong": "Incorrect PIN",
+    "reset": "Reset PIN",
+    "forgot": "Forgot PIN?",
+    "locked": "10 errors — Body info will be reset",
+    "lockedWarn": "{count} more errors until reset",
+    "willReset": "Incorrect PIN · Will reset at {count} remaining"
+  },
+  "Account": {
+    "title": "Account",
+    "profile": "Profile",
+    "privacy": "Privacy",
+    "logout": "Logout",
+    "dangerZone": "Danger Zone",
+    "nickname": "Nickname",
+    "noNickname": "No Nickname",
+    "statusMsg": "Status Message",
+    "suggestedMsg": "Suggested",
+    "otherMsg": "Other messages →",
+    "save": "Save",
+    "saving": "Saving...",
+    "saved": "Saved",
+    "changePhoto": "Change Photo",
+    "photoChanged": "Changed today",
+    "uploading": "Uploading...",
+    "nickRule": "Nickname must be 2-16 characters.",
+    "nickOnce": "Nickname can only be changed once.",
+    "nickWarning": "Cannot be changed again after saving",
+    "privacyPolicy": "Privacy Policy",
+    "resetPassword": "Reset Password",
+    "logoutTitle": "Logout",
+    "logoutDesc": "What would you like to do with your saved meals and photos?",
+    "logoutKeep": "Logout but keep data",
+    "logoutKeepDesc": "Available when you log in next time",
+    "logoutDelete": "Logout and delete data",
+    "logoutDeleteDesc": "Delete local data only (Server data remains)",
+    "withdraw": "Delete Account",
+    "withdrawConfirm": "Are you sure you want to delete your account?",
+    "withdrawWarn": "⚠️ The following info will be deleted immediately",
+    "withdrawList": [
+      "Account & Login info",
+      "All meal logs & photos",
+      "AI analysis history",
+      "Neighbors & Community info",
+      "Local data on this device"
+    ],
+    "withdrawNoRecover": "Deleted data cannot be recovered.",
+    "withdrawBtn": "Delete everything and leave",
+    "withdrawing": "Processing...",
+    "dangerUnlock": "Unlocked",
+    "dangerLock": "Locked",
+    "deleteLocal": "Delete all local logs",
+    "deleteLocalDesc": "Delete all meal logs on this device. This cannot be undone.",
+    "deleteLocalConfirm": "Press again to delete",
+    "withdrawDesc": "Account and all personal info will be permanently deleted.",
+    "emailLabel": "Email Address",
+    "loginRequired": "Login Required",
+    "otp": {
+      "title": "Email Verification",
+      "titleVerify": "Enter Verification Code",
+      "desc": "We will send a 6-digit code to your email. Danger zone PIN will be reset after verification.",
+      "descVerify": "Enter the 6-digit code sent to {email}.",
+      "send": "Send Code",
+      "sending": "Sending...",
+      "verify": "Verify",
+      "verifying": "Verifying...",
+      "resend": "Resend Code",
+      "wrong": "Incorrect code",
+      "expired": "Code expired. Please send again",
+      "fail": "Verification failed"
+    },
+    "privacyModal": {
+      "title": "Privacy Policy",
+      "items": [
+        {
+          "icon": "📁",
+          "title": "Photo Storage",
+          "cloud": "Photos are securely stored on encrypted servers. Only you can access them.",
+          "local": "Photos are stored only in your browser storage (IndexedDB). They are not sent to the server."
+        },
+        {
+          "icon": "🔐",
+          "title": "Authentication",
+          "content": "We use JWT token-based authentication. Cloud storage is only available when logged in."
+        },
+        {
+          "icon": "🗄️",
+          "title": "Nutrition Data",
+          "cloud": "Nutrition logs are securely stored on encrypted servers. Only you can access them.",
+          "local": "Nutrition logs are stored only in your local storage (mybob_meals). They are not sent to the server."
+        },
+        {
+          "icon": "🤖",
+          "title": "AI Analysis",
+          "content": "Food photos are sent to Google Gemini API for analysis. Original images are not stored on Gemini servers (based on Google policy)."
+        },
+        {
+          "icon": "🚫",
+          "title": "Third-party",
+          "content": "Personal info such as name, email, and meal logs are not provided to third parties."
+        }
+      ]
+    }
+  },
+  "History": {
+    "title": "Logs",
+    "viewTimeline": "Timeline",
+    "viewGrid": "Grid",
+    "viewGallery": "Gallery",
+    "searchPlaceholder": "Search food",
+    "results": "{count} results",
+    "zoomIn": "Zoom In",
+    "zoomOut": "Zoom Out",
+    "noResults": "No results found.",
+    "noHistory": "No meals recorded.",
+    "startFirst": "Start recording now →",
+    "loadMore": "+{count} days more",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "manualTag": "Manual",
+    "calories": "Calories",
+    "sort": {
+      "date_desc": "Newest",
+      "date_asc": "Oldest",
+      "cal_desc": "Highest Cal",
+      "cal_asc": "Lowest Cal"
+    },
+    "categories": {
+      "korean": "Korean",
+      "chinese": "Chinese",
+      "japanese": "Japanese",
+      "western": "Western",
+      "snack": "Snack",
+      "drink": "Drink",
+      "etc": "Other"
+    },
+    "mealTime": {
+      "breakfast": "Breakfast",
+      "lunch": "Lunch",
+      "dinner": "Dinner",
+      "snack": "Snack",
+      "latenight": "Night"
+    },
+    "quickLog": {
+      "title": "QUICK LOG",
+      "stepTime": "Select Time",
+      "stepInput": "Enter Food Name",
+      "defaultTime": "Default {time}",
+      "changeTime": "← Change Time",
+      "dateTime": "Date · Time",
+      "foodName": "Food Name",
+      "placeholder": "e.g. Steak, 1 Banana, Coffee",
+      "guide": "AI will automatically calculate calories. Analysis count will not be deducted.",
+      "adding": "AI Calculating...",
+      "addBtn": "Add to Log",
+      "limitError": "Daily limit reached.",
+      "saveError": "Save failed. Please try again."
+    },
+    "tips": [
+      "Chew slowly for better satiety",
+      "A glass of water before meals reduces overeating",
+      "Protein is your best friend for muscles",
+      "Fiber-rich meals prevent blood sugar spikes",
+      "Regular meal times boost metabolism",
+      "Eat vegetables first to reduce calorie absorption",
+      "Reduce sodium to reduce bloating",
+      "Late-night snacks lower sleep quality",
+      "Breakfast is the start of your daily energy",
+      "Writing a food diary reduces overeating by 20%"
+    ],
+    "nutrients": {
+      "carbohydrates": "Carbs",
+      "protein": "Protein",
+      "fat": "Fat",
+      "fiber": "Fiber",
+      "sugar": "Sugar",
+      "sodium": "Sodium",
+      "caffeine": "Caffeine",
+      "vitaminA": "Vit A",
+      "vitaminC": "Vit C",
+      "vitaminD": "Vit D",
+      "calcium": "Calcium",
+      "iron": "Iron",
+      "potassium": "Potassium"
+    },
+    "timeAgo": {
+      "justNow": "Just now",
+      "minutes": "{n}m ago",
+      "hours": "{n}h ago",
+      "days": "{n}d ago"
+    }
+  },
+  "MealDetail": {
+    "title": "Meal Detail",
+    "noImage": "No Image",
+    "aiRating": "AI Rating",
+    "ratingLabels": {
+      "excellent": "Good",
+      "good": "Average",
+      "poor": "Poor"
+    },
+    "edited": "Edited",
+    "editBtn": "Edit",
+    "saveBtn": "Save",
+    "cancelBtn": "Cancel",
+    "nutritionalInfo": "Nutrition Info",
+    "editing": "Editing",
+    "aiOriginal": "AI Original",
+    "showOriginal": "View Original",
+    "showEdited": "View Edited",
+    "proRequired": "Editing is only available in PRO plan.",
+    "cloudRequired": "Editing is only available in Cloud mode.\nPlease switch in Settings > Storage Mode.",
+    "saveFail": "Save failed: {error}",
+    "visibility": {
+      "title": "Visibility",
+      "private": "Private",
+      "privateDesc": "Only me",
+      "neighbors": "Neighbors",
+      "neighborsDesc": "Show in neighbors feed",
+      "public": "Public",
+      "publicDesc": "Show in public feed"
+    },
+    "addNutrient": "+ Add Nutrient",
+    "selectNutrient": "Select Nutrient",
+    "view4": "Grid 4",
+    "view16": "Grid 16",
+    "notFound": "Meal not found.",
+    "goBack": "Go back to logs"
+  },
+  "Report": {
+    "title": "Report",
+    "daily": "Daily",
+    "weekly": "Weekly",
+    "monthly": "Monthly",
+    "diagnosis": "Diagnostic",
+    "noData": "No data",
+    "totalCalories": "Total Calories",
+    "nutrientRatio": "Nutrient Ratio",
+    "goalAchieved": "Goal Achieved",
+    "streak": "{count} day streak!",
+    "totalAchieved": "{count} days total",
+    "carbs": "Carbohydrates",
+    "protein": "Protein",
+    "fat": "Fat",
+    "insight": "AI Analysis Insight",
+    "loading": "Generating report...",
+    "calorieStats": "Calorie Stats",
+    "avgCalories": "Avg Calories",
+    "maxCalories": "Max Calories",
+    "nutrientStats": "Nutrient Stats",
+    "achieveStats": "Achievement Stats",
+    "achieveRate": "Achieve Rate",
+    "layoutTitle": "Report",
+    "tabDaily": "Daily",
+    "tabWeekly": "Weekly",
+    "tabMonthly": "Monthly",
+    "tabDiagnosis": "Diagnosis",
+    "noWeeklyData": "No records for this week.",
+    "weeklyTotalCal": "Weekly Total Calories",
+    "weeklyAvgCal": "Daily Avg Calories",
+    "recordedDays": "Days Logged",
+    "totalMeals": "Total Meals",
+    "goalLabel": "Goal {value}",
+    "dayCalories": "Daily Calories",
+    "weeklyBalance": "Weekly Nutrition Balance",
+    "topCategory": "Top Categories",
+    "calTooltip": "Calories",
+    "dayOfWeek": "{label}",
+    "goalLine": "Goal {value} kcal",
+    "overGoal": "Over Goal",
+    "dayLabels": "Sun,Mon,Tue,Wed,Thu,Fri,Sat",
+    "noMonthlyData": "No records for this month.",
+    "monthTitle": "{year} / {month}",
+    "totalCal": "Total Calories",
+    "dailyAvg": "Daily Avg",
+    "recordDays": "Days Logged",
+    "goalDays": "Goal Days",
+    "sodiumTotal": "Total Sodium",
+    "fiberTotal": "Total Fiber",
+    "avgGoalCal": "Daily Calorie Goal",
+    "calOver": "Avg +{value} kcal over goal",
+    "calUnder": "Avg {value} kcal under goal",
+    "dailyCal": "Daily Calories",
+    "nutrientBalance": "Nutrition Balance",
+    "topCat3": "Category TOP 3",
+    "weeklyAvgCals": "Weekly Avg Calories",
+    "weekLabel": "W{n}",
+    "carbShort": "C",
+    "proteinShort": "P",
+    "fatShort": "F",
+    "scoreLabels": {
+      "calories": "Calorie Control",
+      "balance": "Nutrition Balance",
+      "sodium": "Sodium",
+      "fiber": "Fiber",
+      "consistency": "Consistency"
+    },
+    "proOnly": "PRO plan only.",
+    "noMealData": "No meal records to analyze.\nPlease log your meals first.",
+    "strengths": "✓ Doing Well",
+    "aiCoach": "AI Coach Message",
+    "analyzedToday": "Already analyzed today (retry tomorrow)",
+    "reanalyze": "🔄 Re-analyze",
+    "avgCal": "Avg Daily Calories",
+    "targetCal": "Target Calories",
+    "analysisDays": "Days Analyzed",
+    "totalLogs": "Total Logs",
+    "issues": "Areas to Improve",
+    "recommendations": "Action Steps",
+    "weeklyPlan": "This Week's Plan",
+    "trendTitle": "Overall Score Trend",
+    "trendEmpty": "Trend available after 2+ analyses.\nKeep logging and re-analyzing.",
+    "indicatorTrend": "Indicator Change (Latest vs Previous)",
+    "severityHigh": "HIGH",
+    "severityMedium": "MED",
+    "severityLow": "LOW",
+    "priorityHigh": "PRIORITY",
+    "priorityMedium": "RECOMMEND",
+    "priorityLow": "REFERENCE",
+    "refreshDays": "{n} days since last analysis. Re-analyze recommended.",
+    "refreshMeals": "{n} new meals since last analysis. Re-analyze recommended.",
+    "proOnlyDesc": "AI Precision Diagnosis is available\non PRO plan and above.",
+    "proFeatureList": "PRO Diagnosis Features",
+    "proFeatureItems": [
+      "5-metric health score (A+ to D)",
+      "In-depth issue analysis + action steps",
+      "AI custom weekly meal plan",
+      "Sodium · fiber · nutrition balance evaluation",
+      "Long-term trend score tracking"
+    ],
+    "upgradeSoon": "Upgrade coming soon",
+    "diagTitle": "AI Precision Diagnosis",
+    "diagDesc": "Analyzes your last 30 days of meals.\nCalories · Nutrition · Sodium · Fiber\n5-metric composite score with personalized coaching.",
+    "diagDataCount": "Available data: {n} records",
+    "diagStart": "Start Diagnosis",
+    "analyzing": "AI is analyzing your diet...",
+    "analyzingTime": "Takes about 10–20 seconds",
+    "analysisPeriod": "Period",
+    "mealBase": "Meals",
+    "analyzedAt": "Analyzed at",
+    "gradeLabel": "Grade",
+    "tabOverview": "Overview",
+    "tabDetail": "Detail",
+    "tabPlan": "Plan",
+    "tabTrend": "Trend",
+    "indicatorScores": "Indicator Scores"
+  },
+  "Community": {
+    "title": "Community",
+    "recommendation": "Recommended",
+    "neighbors": "Neighbors",
+    "challenge": "Challenge",
+    "noNeighbors": "No neighbors yet",
+    "findNeighbors": "Find neighbors",
+    "follow": "Follow",
+    "following": "Neighbor",
+    "unfollow": "Unfollow",
+    "challengeJoin": "Join Challenge",
+    "challengeJoined": "Joined",
+    "mealCard": {
+      "like": "Like",
+      "comment": "Comment",
+      "share": "Share"
+    },
+    "searchNeighbors": "Search Neighbors",
+    "neighborRequests": "Requests",
+    "sentRequests": "Sent",
+    "noRequests": "No requests",
+    "accept": "Accept",
+    "reject": "Reject",
+    "cancel": "Cancel",
+    "tabs": {
+      "recommendation": "Feed",
+      "neighbors": "Neighbors",
+      "challenge": "Challenge"
+    },
+    "cloudOnly": "Neighbor features are available in Cloud mode only.",
+    "switchToCloud": "Switch to Cloud Mode",
+    "subTabs": {
+      "feed": "Feed",
+      "neighbors": "Neighbors",
+      "requests": "Requests",
+      "add": "+ Add"
+    },
+    "requestFailed": "Request failed. Please try again.",
+    "timeAgo": {
+      "justNow": "Just now",
+      "minutes": "{n}m ago",
+      "hours": "{n}h ago",
+      "days": "{n}d ago"
+    },
+    "challengeTitle": "Challenge System Coming Soon",
+    "challengeDesc": "Achieve goals with friends and earn points and badges!",
+    "noFeed": "No shared meals yet",
+    "noFeedDesc": "Record your meals and share with neighbors!",
+    "public": "Public",
+    "neighbor": "Neighbor",
+    "feedTab": "Feed",
+    "friendsTab": "Neighbors",
+    "requestsTab": "Requests",
+    "addTab": "+ Add",
+    "proFeedTitle": "PRO Feature",
+    "proFeedDesc": "Upgrade to PRO to see your neighbors's meals in feed.",
+    "noFeedNeighbors": "No shared meals from neighbors yet. Add neighbors or wait for them to share.",
+    "noFriends": "No neighbors yet.",
+    "addNeighbors": "Add a neighbor",
+    "confirmRemove": "Remove?",
+    "confirmBtn": "Confirm",
+    "cancelBtn": "Cancel",
+    "removeBtn": "Remove",
+    "incomingRequests": "Received Requests",
+    "outgoingRequests": "Sent Requests",
+    "noIncoming": "No incoming requests.",
+    "noOutgoing": "No sent requests.",
+    "neighborRequest": "Neighbor request",
+    "pending": "Pending acceptance",
+    "cancelRequest": "Cancel",
+    "searchByNickname": "Search by nickname",
+    "searchPlaceholder": "e.g. banana_lover_123",
+    "sendRequest": "Request",
+    "addGuide": "Enter the exact nickname of the person you want to add. Once accepted, you become neighbors and can share meals.",
+    "cloudOnlyTitle": "Neighbor features are Cloud mode only",
+    "cloudOnlyDesc": "You are currently in Local mode. Neighbor, feed sharing, and other community features require Cloud mode.",
+    "switchNote": "Your existing meal data will be preserved. You can also change this in Settings > Storage.",
+    "comingSoon": "Challenge System Coming Soon",
+    "comingSoonDesc": "Achieve goals together with friends and earn points and badges!",
+    "challengeList": [
+      {
+        "title": "7-Day Clean Eating Challenge",
+        "period": "1 week"
+      },
+      {
+        "title": "No Sugar Challenge",
+        "period": "14 days"
+      },
+      {
+        "title": "Daily Morning Salad",
+        "period": "30 days"
+      }
+    ],
+    "curation": [
+      {
+        "emoji": "🥗",
+        "tag": "Today's Pick",
+        "title": "Chicken Breast Salad",
+        "desc": "High protein, low calorie diet staple. Perfect with cherry tomatoes and avocado."
+      },
+      {
+        "emoji": "🍳",
+        "tag": "Morning Rec",
+        "title": "2 Eggs + Whole Wheat Toast",
+        "desc": "A filling breakfast to start the day. Stay full longer with quality protein."
+      },
+      {
+        "emoji": "🍱",
+        "tag": "K-Food Best",
+        "title": "Brown Rice + Doenjang Stew + Namul",
+        "desc": "Balanced Korean meal. High fiber, no blood sugar spike."
+      },
+      {
+        "emoji": "🥛",
+        "tag": "Snack Rec",
+        "title": "Greek Yogurt + Blueberry",
+        "desc": "Packed with probiotics and antioxidants. The perfect afternoon pick-me-up."
+      },
+      {
+        "emoji": "🐟",
+        "tag": "PRO PICK",
+        "title": "Salmon Poke Bowl",
+        "desc": "Omega-3 rich salmon, avocado, and brown rice. Muscle recovery and satiety in one."
+      }
+    ],
+    "ads": [
+      {
+        "brand": "PROTEINWORKS",
+        "title": "#1 Protein Supplement Brand",
+        "desc": "Fill the golden hour post-workout with 95% absorption whey protein.",
+        "cta": "Get Discount Now"
+      },
+      {
+        "brand": "FRESHBOX",
+        "title": "Fresh Meal Subscription",
+        "desc": "Dietitian-designed healthy lunch boxes 5x/week, 30% off first order.",
+        "cta": "Free Trial"
+      }
+    ]
+  },
+  "Terms": {
+    "title": "Terms of Use",
+    "lastUpdated": "Last updated: May 26, 2026",
+    "sections": [
+      {
+        "title": "Article 1 (Purpose)",
+        "content": "This agreement aims to prescribe the rights, duties, and responsibilities between MyBob (hereinafter referred to as \"Service\") and users regarding the use of AI-based meal recording and analysis services provided by the Service."
+      },
+      {
+        "title": "Article 2 (Definition)",
+        "content": "① \"Service\" refers to all functions provided through the mybob.kr domain.\n② \"User\" refers to a person who agrees to these terms and uses the service.\n③ \"PRO Member\" refers to a user who has paid for a paid subscription plan."
+      },
+      {
+        "title": "Article 3 (Effectiveness and Change)",
+        "content": "① These terms apply to all users who wish to use the service.\n② The service may change these terms within the scope of not violating relevant laws and regulations, and will provide prior guidance through in-app notices when changing."
+      },
+      {
+        "title": "Article 4 (Service Use)",
+        "content": "① The service allows membership registration through social login via Google accounts.\n② Users may not steal other people's information or use the service for illegal purposes.\n③ The service provides functions such as AI food analysis, meal records, and nutrition reports, and does not replace medical diagnosis."
+      },
+      {
+        "title": "Article 5 (Paid Services)",
+        "content": "① The PRO plan is automatically billed a subscription fee of ₩900 per month.\n② Payments are processed through Paddle (paddle.com), and the service does not store card information.\n③ Subscription cancellation is possible through the app settings or Paddle customer center, and PRO functions are maintained until the end of the current subscription period after cancellation."
+      },
+      {
+        "title": "Article 6 (Service Interruption)",
+        "content": "The service may temporarily suspend service provision for inevitable reasons such as system maintenance, natural disasters, or technical problems, in which case users will be informed through prior notice."
+      },
+      {
+        "title": "Article 7 (User Obligations)",
+        "content": "① Users must comply with relevant laws and the provisions of these terms when using the service.\n② Unauthorized collection, storage, and disclosure of other people's personal information is prohibited.\n③ Acts that interfere with the normal operation of the service are prohibited."
+      },
+      {
+        "title": "Article 8 (Limitation of Liability)",
+        "content": "① AI analysis results provided by the service are for reference only and should not be used as a basis for medical judgment.\n② The service is not responsible for service use obstacles caused by user negligence."
+      },
+      {
+        "title": "Article 9 (Personal Information Protection)",
+        "content": "User's personal information is collected, used, and protected according to the Privacy Policy. Please check the Privacy Policy for details."
+      },
+      {
+        "title": "Article 10 (Dispute Resolution)",
+        "content": "In case of a dispute related to the use of the service, the service and the user will strive to resolve it through mutual agreement. If no agreement is reached, it will be handled according to relevant laws and regulations."
+      },
+      {
+        "title": "Contact",
+        "content": "For inquiries about the terms of use, please contact luckyyyj77@gmail.com."
+      }
+    ]
+  },
+  "Privacy": {
+    "title": "Privacy Policy",
+    "lastUpdated": "Last updated: May 26, 2026",
+    "sections": [
+      {
+        "title": "1. Collected Information",
+        "content": "MyBob collects the following personal information to provide services.\n\n· Email address (Google social login)\n· Nickname (Automatically generated or directly entered by PRO members)\n· Profile picture (PRO member, optional)\n· Meal photos and analysis data (When cloud storage is selected)\n· Physical information (Height, weight, age, gender — encrypted and stored on the device)\n· Payment information (Processed by Paddle, MyBob does not store it)"
+      },
+      {
+        "title": "2. Purpose of Collection",
+        "content": "· Member authentication and account management\n· Providing AI food analysis and meal record services\n· Generating nutrition reports and coach comments\n· Subscription plan management and function limit application\n· Service improvement and statistical analysis"
+      },
+      {
+        "title": "3. Storage Method",
+        "content": "MyBob provides two storage methods.\n\n[Local Storage]\nPhotos and meal data are stored only on the device (IndexedDB). No data other than authentication information is sent to the server.\n\n[Cloud Storage]\nPhotos and meal data are encrypted and sent/stored on Supabase (located in the USA) servers. Multi-device synchronization is possible.\n\nPhysical information (height, weight, etc.) is stored encrypted with AES-256-GCM on the device regardless of the storage method."
+      },
+      {
+        "title": "4. Third-party Provision",
+        "content": "MyBob uses the following external services, and only the minimum data necessary for service operation is transferred.\n\n· Google (Authentication): Email\n· Google Gemini API (AI analysis): Meal photos (Not stored after analysis)\n· Supabase (Database/Storage): Meal data, photos (When cloud storage is selected)\n· Paddle (Payment): Email, subscription information (Card information is not stored by MyBob)\n\nWe do not provide personal information to third parties other than for the above purposes."
+      },
+      {
+        "title": "5. Retention and Destruction",
+        "content": "· Upon member withdrawal, all personal information and meal data stored on the server are immediately deleted.\n· When switching from cloud to local, server data is scheduled for automatic deletion after 15 days.\n· Local data can be deleted by the user directly in Settings > Danger Zone.\n· Payment-related records may be kept for a certain period according to relevant laws and regulations."
+      },
+      {
+        "title": "6. User Rights",
+        "content": "Users can exercise the following rights at any time.\n\n· Viewing and exporting own data (Settings > Export)\n· Modifying personal information (Settings > Profile)\n· Withdrawing from service and deleting everything (Settings > Danger Zone > Delete Account)\n· Inquiries about personal information processing (luckyyyj77@gmail.com)"
+      },
+      {
+        "title": "7. Cookies and Tracking",
+        "content": "MyBob does not use separate marketing cookies or third-party tracking tools. Only authentication tokens for session maintenance are stored in local storage."
+      },
+      {
+        "title": "8. Privacy Officer",
+        "content": "For inquiries regarding personal information processing, please contact us below.\n\nEmail: luckyyyj77@gmail.com\nProcessing period: within 3 business days"
+      },
+      {
+        "title": "9. Policy Change",
+        "content": "In case the Privacy Policy is changed, prior guidance will be provided through in-app notices. The changed policy takes effect 7 days after the notice."
+      }
+    ]
+  },
+  "Refund": {
+    "title": "Refund Policy",
+    "lastUpdated": "Last updated: May 26, 2026",
+    "summary": {
+      "title": "Core Summary",
+      "items": [
+        "Within 7 days of payment: Full refund if unused",
+        "Subscription cancellation: Billing stops from the next payment date, available for current month",
+        "Inquiry: luckyyyj77@gmail.com"
+      ]
+    },
+    "sections": [
+      {
+        "title": "1. Subscription Cancellation",
+        "content": "PRO monthly subscription can be canceled at any time.\n\n· Cancel in App Settings > Subscription Management or request via luckyyyj77@gmail.com.\n· PRO functions are maintained until the end of the current billing period (end of month) after cancellation.\n· Automatic billing stops from the month following cancellation."
+      },
+      {
+        "title": "2. Refund Conditions",
+        "content": "[Full refund possible]\n· If the service has not been substantially used within 7 days of the initial payment\n· If PRO functions could not be used for more than 7 consecutive days due to service failure\n\n[Refund not possible]\n· If more than 7 days have passed since payment\n· If PRO functions (AI analysis, cloud storage, etc.) have already been used\n· If you want to cancel the subscription due to a simple change of mind (available for the current month after cancellation)"
+      },
+      {
+        "title": "3. How to Apply for Refund",
+        "content": "If you want a refund, please contact us at the email below.\n\nEmail: luckyyyj77@gmail.com\nSubject: [Refund Request] MyBob PRO Subscription\nContent: Payment date, payment email address, reason for refund\n\nIt will be processed within 3 business days after receipt."
+      },
+      {
+        "title": "4. Refund Processing",
+        "content": "Refunds are processed through Paddle, the payment method, and it may take 3-5 business days for the refund to be reflected depending on the card company."
+      },
+      {
+        "title": "5. Payment Error",
+        "content": "Erroneous charges due to duplicate payments, system errors, etc., will be fully refunded immediately upon confirmation. Please contact us with the same email address."
+      },
+      {
+        "title": "6. Consumer Protection",
+        "content": "This refund policy complies with the Act on Consumer Protection in Electronic Commerce, etc., and relevant laws and regulations. Consumer rights prescribed by law take precedence over this policy."
+      }
+    ]
+  },
+  "Partnership": {
+    "title": "Partnership",
+    "about": {
+      "title": "ABOUT",
+      "content": "MyBob is an AI-based meal analysis and health management platform.\nWe welcome various forms of collaboration such as advertising partnerships, brand collaborations, and service partnerships."
+    },
+    "inquiryType": {
+      "title": "INQUIRY TYPE",
+      "items": [
+        "Advertising & Sponsorship",
+        "Brand Collaboration",
+        "Data Partnership",
+        "Other Business Inquiries"
+      ]
+    },
+    "email": {
+      "title": "EMAIL",
+      "copy": "Copy",
+      "copied": "Copied",
+      "guide": "Please include [Partnership] in the email subject."
+    }
+  },
+  "Onboarding": {
+    "welcome": "Welcome",
+    "intro": [
+      {
+        "icon": "📱",
+        "title": "My records are mine",
+        "desc": "MyBob saves all data only on this device by default. Photos, meal logs, nutrition info — we don't send them to the server."
+      },
+      {
+        "icon": "☁️",
+        "title": "Cloud is optional",
+        "desc": "If you want to use it on multiple devices or want community features, you can choose cloud storage. It will be provided as a subscription service later."
+      },
+      {
+        "icon": "🔄",
+        "title": "Changeable at any time",
+        "desc": "You can freely switch between local and cloud in Settings > Storage Mode. Data moves together when switching."
+      },
+      {
+        "icon": "🗑️",
+        "title": "Right to complete deletion",
+        "desc": "You can request deletion of server data at any time while using the cloud. It is completely deleted after a 15-day grace period."
+      }
+    ],
+    "chooseBtn": "Select Storage Mode →",
+    "step1": "STEP 1 OF 1",
+    "howToUse": "How would you like to use it?",
+    "changeLater": "You can change it anytime in settings later.",
+    "local": {
+      "title": "Store on this device only",
+      "tag": "LOCAL · FREE",
+      "items": [
+        {
+          "text": "Privacy first — no server transfer",
+          "warn": false
+        },
+        {
+          "text": "Available only on this device",
+          "warn": false
+        },
+        {
+          "text": "Limited community features like neighbor/feed sharing",
+          "warn": false
+        },
+        {
+          "text": "Data recovery impossible if device is lost",
+          "warn": true
+        }
+      ]
+    },
+    "cloud": {
+      "title": "Cloud Sync",
+      "tag": "CLOUD · SUB LATER",
+      "items": [
+        "Sync across multiple devices",
+        "Neighbor add & feed sharing available (PRO)",
+        "Community & challenge participation possible",
+        "Recovery possible if device is lost"
+      ]
+    },
+    "next": "Next →",
+    "back": "Back",
+    "confirmTitle": "Starting with {mode}",
+    "confirmLocal": "All data will be saved only on this device.\nYou can switch to cloud anytime in settings.",
+    "confirmCloud": "Meal logs will be synced to the server.\nYou can switch to local and delete server data anytime in settings.",
+    "cloudConsent": "Privacy Consent: Choosing cloud storage means meal photos and nutrition logs are sent to the server.\nSome data may be visible to other users when community features are enabled.\nYou can request deletion in settings anytime.",
+    "startBtn": "Start",
+    "reselect": "Choose again"
+  },
+  "Auth": {
+    "tagline": "Meal Log & AI Analysis",
+    "login": "Login",
+    "loggingIn": "Logging in...",
+    "signup": "Sign up",
+    "email": "Email",
+    "password": "Password",
+    "googleLogin": "Continue with Google",
+    "forgotPassword": "Forgot your password?",
+    "noAccount": "Don't have an account?",
+    "resetTitle": "Reset Password",
+    "newPasswordTitle": "Enter New Password",
+    "resetDesc": "Enter your email and we will send you a reset link.",
+    "newPasswordDesc": "Enter the new password you want to use.",
+    "sendingLink": "Sending...",
+    "sendLink": "Send Reset Link",
+    "newPassword": "New Password",
+    "confirmPassword": "Confirm Password",
+    "passwordPlaceholder": "At least 6 characters",
+    "confirmPlaceholder": "Enter again",
+    "changingPw": "Changing...",
+    "changePw": "Change Password",
+    "backToLogin": "Back to Login",
+    "errSendFailed": "Failed to send email. Please try again.",
+    "errResetSuccess": "Check your email. We sent a reset link.",
+    "errPwMismatch": "Passwords do not match.",
+    "errPwTooShort": "Password must be at least 6 characters.",
+    "errChangeFailed": "Failed to change password. The link may have expired.",
+    "errChangeSuccess": "Password changed successfully.",
+    "emailConfirmTitle": "Check your email",
+    "emailConfirmSent": "We sent a verification email to {email}.",
+    "emailConfirmLink": "Click the link in the email to complete signup.",
+    "emailConfirmSpam": "Did not receive it? Check your spam folder.",
+    "goToLogin": "Go to Login",
+    "signingUp": "Signing up...",
+    "googleContinue": "Continue with Google",
+    "hasAccount": "Already have an account?"
+  },
+  "Pricing": {
+    "title": "Pricing",
+    "intro": "MyBob is free to start. Unlock more with a PRO subscription.",
+    "freeForever": "Free · Forever",
+    "monthlySubscription": "Monthly subscription · Cancel anytime",
+    "recommended": "RECOMMENDED",
+    "freeFeatures": [
+      "AI analysis 10x/day",
+      "Unlimited meal logs",
+      "Daily/weekly/monthly reports",
+      "Local storage (on-device)"
+    ],
+    "proFeatures": [
+      "AI analysis 25x/day",
+      "Cloud storage & multi-device sync",
+      "AI precision nutrition diagnosis",
+      "Nickname & avatar customization",
+      "Ad-free",
+      "Priority support"
+    ],
+    "foundingBannerTitle": "Founding Member Promotion Active",
+    "foundingBannerDesc": "First 1,000 users enjoy FREE PRO until Dec 31, 2026.\nSign up now to become a Founding Member automatically.",
+    "startApp": "Get Started",
+    "paymentNote": "Payment system opens after promotion ends.\n· Subscription auto-renews monthly, cancel anytime\n· See our",
+    "refundPolicy": "Refund Policy",
+    "paymentNoteEnd": "page for details."
+  }
+}

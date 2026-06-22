@@ -24,15 +24,26 @@ export type AnalysisResult = {
   useGemini: boolean;
 };
 
-const SODIUM_KEYWORDS = [
-  '라면', '순대', '찌개', '국밥', '냉면', '짬뽕', '떡볶이',
-  '소시지', '햄', '김치찌개', '된장찌개', '부대찌개', '짜장', '우동', '어묵',
-];
+const SODIUM_KEYWORDS_BY_LOCALE: Record<string, string[]> = {
+  ko: [
+    '라면', '순대', '찌개', '국밥', '냉면', '짬뽕', '떡볶이',
+    '소시지', '햄', '김치찌개', '된장찌개', '부대찌개', '짜장', '우동', '어묵',
+  ],
+  en: [
+    'ramen', 'sausage', 'ham', 'stew', 'soup', 'burger', 'pizza', 'fried chicken',
+    'instant noodles', 'bacon', 'salami', 'pepperoni', 'pickles', 'soy sauce', 'kimchi',
+  ],
+};
 
-// 음식명 유사도 매칭용 — 앞 2글자(한글 기준) 키워드로 그룹핑
-function foodGroupKey(name: string): string {
-  const cleaned = name.trim().replace(/\s+/g, '');
-  return cleaned.slice(0, 2);
+// 음식명 유사도 매칭용 — 로케일별 최적화
+function foodGroupKey(name: string, locale: string = 'ko'): string {
+  const cleaned = name.trim();
+  if (locale === 'ko') {
+    return cleaned.replace(/\s+/g, '').slice(0, 2);
+  }
+  // 영문의 경우 첫 단어의 앞 4글자 사용 (예: "Chicken Salad" -> "chic")
+  const firstWord = cleaned.split(/\s+/)[0].toLowerCase();
+  return firstWord.slice(0, 4);
 }
 
 function toKSTDate(iso: string): string {
@@ -70,8 +81,9 @@ export function analyzeCoach(params: {
   goalProtein: number;
   persona: Persona;
   todayAchieved?: boolean;
+  locale?: string;
 }): AnalysisResult {
-  const { todayMeals, allMeals, goalCalories, goalProtein, persona, todayAchieved } = params;
+  const { todayMeals, allMeals, goalCalories, goalProtein, persona, todayAchieved, locale = 'ko' } = params;
 
   const todayTotal = todayMeals.reduce((s, m) => s + (Number(m.calories) || 0), 0);
   const todayProtein = todayMeals.reduce((s, m) => s + (Number(m.nutrient?.protein) || 0), 0);
@@ -158,11 +170,11 @@ export function analyzeCoach(params: {
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
   const recentMeals = allMeals.filter(m => new Date(m.created_at) >= thirtyDaysAgo);
 
-  // 10. soul_food — 앞 2글자 그룹핑으로 유사 음식 묶어서 카운트
+  // 10. soul_food — 그룹핑으로 유사 음식 묶어서 카운트
   const foodGroupFreq: Record<string, { count: number; topName: string }> = {};
   recentMeals.forEach(m => {
     if (!m.food_name) return;
-    const key = foodGroupKey(m.food_name);
+    const key = foodGroupKey(m.food_name, locale);
     if (!foodGroupFreq[key]) foodGroupFreq[key] = { count: 0, topName: m.food_name };
     foodGroupFreq[key].count += 1;
     // 그룹 내 가장 짧은(대표) 이름 유지
@@ -177,10 +189,11 @@ export function analyzeCoach(params: {
 
   // 11. sodium_warning
   const sodiumCount: Record<string, number> = {};
+  const sodiumKeywords = SODIUM_KEYWORDS_BY_LOCALE[locale] ?? SODIUM_KEYWORDS_BY_LOCALE.ko;
   recentMeals.forEach(m => {
-    const name = m.food_name || '';
-    for (const kw of SODIUM_KEYWORDS) {
-      if (name.includes(kw)) { sodiumCount[kw] = (sodiumCount[kw] || 0) + 1; break; }
+    const name = (m.food_name || '').toLowerCase();
+    for (const kw of sodiumKeywords) {
+      if (name.includes(kw.toLowerCase())) { sodiumCount[kw] = (sodiumCount[kw] || 0) + 1; break; }
     }
   });
   const totalSodiumCount = Object.values(sodiumCount).reduce((s, v) => s + v, 0);

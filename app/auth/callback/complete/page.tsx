@@ -5,20 +5,27 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import { isOnboardingDone } from '@/lib/storage-mode';
 
+function getLocalePrefix() {
+  if (typeof window === 'undefined') return '';
+  const lang = navigator.language || '';
+  return lang.startsWith('ko') ? '/ko' : '';
+}
+
 export default function CallbackComplete() {
   const router = useRouter();
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      const prefix = getLocalePrefix();
       if (!session) {
-        router.replace('/auth/login');
+        router.replace(`${prefix}/auth/login`);
         return;
       }
       // 프로필 초기화 + 천인회 슬롯 선점 (fire-and-forget)
       fetch('/api/upload-status', {
         headers: { Authorization: `Bearer ${session.access_token}` },
       }).catch(() => {});
-      router.replace(isOnboardingDone() ? '/' : '/onboarding');
+      router.replace(isOnboardingDone() ? `${prefix}/` : `${prefix}/onboarding`);
     });
   }, [router]);
 

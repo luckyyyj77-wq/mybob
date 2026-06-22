@@ -10,6 +10,7 @@ import {
   type MigrationProgress,
 } from '@/lib/storage-migration';
 import { type StorageMode } from '@/lib/storage-mode';
+import { useTranslations } from 'next-intl';
 
 interface Props {
   currentMode: StorageMode;
@@ -26,6 +27,8 @@ export function StorageModeModal({ currentMode, onClose, onModeChanged }: Props)
     phase: 'idle', current: 0, total: 0, message: '',
   });
   const [errorMsg, setErrorMsg] = useState('');
+  const t = useTranslations('Storage');
+  const tc = useTranslations('Common');
 
   const startMigration = async (target: StorageMode) => {
     setStep('migrating');
@@ -39,7 +42,7 @@ export function StorageModeModal({ currentMode, onClose, onModeChanged }: Props)
       } else {
         if (!token) {
           // 로그인 안 된 경우 — 모드만 전환 (서버 데이터 없음)
-          setProgress({ phase: 'done', current: 0, total: 0, message: '전환 완료' });
+          setProgress({ phase: 'done', current: 0, total: 0, message: tc('confirm') });
         } else {
           await migrateCloudToLocal(token, setProgress);
         }
@@ -48,7 +51,7 @@ export function StorageModeModal({ currentMode, onClose, onModeChanged }: Props)
       setStep('done');
       onModeChanged(target);
     } catch (e: any) {
-      setErrorMsg(e.message || '전환 중 오류가 발생했습니다.');
+      setErrorMsg(e.message || t('error.title'));
       setStep('error');
     }
   };
@@ -80,7 +83,7 @@ export function StorageModeModal({ currentMode, onClose, onModeChanged }: Props)
         {step === 'select' && (
           <>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ fontSize: '16px', fontWeight: 400 }}>저장 방식 변경</h3>
+              <h3 style={{ fontSize: '16px', fontWeight: 400 }}>{t('title')}</h3>
               <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '20px', color: '#9ca3af', cursor: 'pointer' }}>×</button>
             </div>
 
@@ -93,17 +96,16 @@ export function StorageModeModal({ currentMode, onClose, onModeChanged }: Props)
                 <span style={{ fontSize: '20px' }}>📱</span>
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: '14px', color: 'black' }}>
-                    이 기기에만 저장
-                    <span style={{ fontSize: '11px', color: '#6B21A8', marginLeft: '6px' }}>무료</span>
+                    {t('local.title')}
+                    <span style={{ fontSize: '11px', color: '#6B21A8', marginLeft: '6px' }}>{t('local.tag')}</span>
                   </p>
-                  <p style={{ fontSize: '10px', color: '#9ca3af' }}>개인정보 보호 최우선</p>
+                  <p style={{ fontSize: '10px', color: '#9ca3af' }}>{t('local.desc')}</p>
                 </div>
-                {currentMode === 'local' && <span style={{ fontSize: '11px', color: '#6B21A8' }}>현재</span>}
+                {currentMode === 'local' && <span style={{ fontSize: '11px', color: '#6B21A8' }}>{t('local.current')}</span>}
               </div>
               {currentMode === 'cloud' && (
-                <p style={{ fontSize: '11px', color: '#6b7280', lineHeight: 1.5 }}>
-                  서버 데이터를 이 기기에 다운로드합니다.<br />
-                  <span style={{ color: '#f97316' }}>⚠ 서버 데이터는 15일 후 자동 삭제됩니다.</span>
+                <p style={{ fontSize: '11px', color: '#6b7280', lineHeight: 1.5, whiteSpace: 'pre-line' }}>
+                  {t('local.detail')}
                 </p>
               )}
             </div>
@@ -117,20 +119,19 @@ export function StorageModeModal({ currentMode, onClose, onModeChanged }: Props)
                 <span style={{ fontSize: '20px' }}>☁️</span>
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: '14px', color: 'black' }}>
-                    클라우드 동기화
-                    <span style={{ fontSize: '11px', color: '#9ca3af', marginLeft: '6px' }}>추후 구독</span>
+                    {t('cloud.title')}
+                    <span style={{ fontSize: '11px', color: '#9ca3af', marginLeft: '6px' }}>{t('cloud.tag')}</span>
                   </p>
-                  <p style={{ fontSize: '10px', color: '#9ca3af' }}>여러 기기 · 커뮤니티 · 챌린지</p>
+                  <p style={{ fontSize: '10px', color: '#9ca3af' }}>{t('cloud.desc')}</p>
                 </div>
-                {currentMode === 'cloud' && <span style={{ fontSize: '11px', color: '#0ea5e9' }}>현재</span>}
+                {currentMode === 'cloud' && <span style={{ fontSize: '11px', color: '#0ea5e9' }}>{t('cloud.current')}</span>}
               </div>
               {currentMode === 'local' && (
-                <p style={{ fontSize: '11px', color: '#6b7280', lineHeight: 1.5 }}>
-                  로컬 데이터를 서버로 업로드합니다.<br />
-                  <span style={{ color: '#6B21A8' }}>Wi-Fi 환경 권장</span>
+                <p style={{ fontSize: '11px', color: '#6b7280', lineHeight: 1.5, whiteSpace: 'pre-line' }}>
+                  {t('cloud.detail')}
                 </p>
               )}
-              <p style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px' }}>베타 기간 중 무료 제공</p>
+              <p style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px' }}>{t('cloud.beta')}</p>
             </div>
             <div style={{ height: '8px' }} />
           </>
@@ -141,11 +142,9 @@ export function StorageModeModal({ currentMode, onClose, onModeChanged }: Props)
           <>
             <div style={{ textAlign: 'center', padding: '12px 0 24px' }}>
               <span style={{ fontSize: '40px', display: 'block', marginBottom: '16px' }}>📶</span>
-              <h3 style={{ fontSize: '16px', fontWeight: 400, marginBottom: '10px' }}>모바일 데이터 사용 중</h3>
-              <p style={{ fontSize: '13px', color: '#6b7280', lineHeight: 1.7 }}>
-                현재 네트워크: <strong>{getNetworkType()}</strong><br />
-                사진 업로드 시 데이터 요금이 발생할 수 있습니다.<br />
-                Wi-Fi 연결 후 진행을 권장합니다.
+              <h3 style={{ fontSize: '16px', fontWeight: 400, marginBottom: '10px' }}>{t('wifi.title')}</h3>
+              <p style={{ fontSize: '13px', color: '#6b7280', lineHeight: 1.7, whiteSpace: 'pre-line' }}>
+                {t('wifi.desc', { type: getNetworkType() })}
               </p>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -153,13 +152,13 @@ export function StorageModeModal({ currentMode, onClose, onModeChanged }: Props)
                 onClick={() => startMigration(targetMode!)}
                 style={{ width: '100%', padding: '14px', backgroundColor: 'black', color: 'white', border: 'none', fontSize: '13px', cursor: 'pointer', letterSpacing: '1px' }}
               >
-                데이터 요금을 감수하고 계속
+                {t('wifi.continue')}
               </button>
               <button
                 onClick={onClose}
                 style={{ width: '100%', padding: '12px', backgroundColor: 'white', color: '#9ca3af', border: '1px solid #e5e7eb', fontSize: '13px', cursor: 'pointer' }}
               >
-                취소 (나중에 Wi-Fi에서)
+                {t('wifi.cancel')}
               </button>
             </div>
           </>
@@ -169,7 +168,7 @@ export function StorageModeModal({ currentMode, onClose, onModeChanged }: Props)
         {step === 'migrating' && (
           <div style={{ padding: '16px 0', textAlign: 'center' }}>
             <p style={{ fontSize: '13px', color: '#9ca3af', letterSpacing: '1px', marginBottom: '24px' }}>
-              {targetMode === 'cloud' ? '☁️ 클라우드로 업로드 중' : '📱 기기로 다운로드 중'}
+              {targetMode === 'cloud' ? t('migrating.uploading') : t('migrating.downloading')}
             </p>
 
             {/* 진행 바 */}
@@ -187,7 +186,7 @@ export function StorageModeModal({ currentMode, onClose, onModeChanged }: Props)
             {progress.total > 0 && (
               <p style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px' }}>{pct}%</p>
             )}
-            <p style={{ fontSize: '11px', color: '#9ca3af', marginTop: '16px' }}>앱을 닫지 마세요</p>
+            <p style={{ fontSize: '11px', color: '#9ca3af', marginTop: '16px' }}>{t('migrating.dontClose')}</p>
             <style>{`@keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:1} }`}</style>
           </div>
         )}
@@ -198,21 +197,20 @@ export function StorageModeModal({ currentMode, onClose, onModeChanged }: Props)
             <span style={{ fontSize: '40px', display: 'block', marginBottom: '16px' }}>
               {targetMode === 'cloud' ? '☁️' : '📱'}
             </span>
-            <h3 style={{ fontSize: '16px', fontWeight: 400, marginBottom: '8px' }}>전환 완료</h3>
+            <h3 style={{ fontSize: '16px', fontWeight: 400, marginBottom: '8px' }}>{t('done.title')}</h3>
             <p style={{ fontSize: '13px', color: '#6b7280', lineHeight: 1.7, marginBottom: '8px' }}>
               {progress.message}
             </p>
             {targetMode === 'local' && (
-              <p style={{ fontSize: '12px', color: '#f97316', marginBottom: '20px' }}>
-                서버 데이터는 15일 후 자동 삭제됩니다.<br />
-                설정에서 언제든지 취소할 수 있습니다.
+              <p style={{ fontSize: '12px', color: '#f97316', marginBottom: '20px', whiteSpace: 'pre-line' }}>
+                {t('done.localDetail')}
               </p>
             )}
             <button
               onClick={onClose}
               style={{ padding: '12px 32px', backgroundColor: 'black', color: 'white', border: 'none', fontSize: '13px', cursor: 'pointer', letterSpacing: '1px' }}
             >
-              확인
+              {tc('confirm')}
             </button>
           </div>
         )}
@@ -221,20 +219,20 @@ export function StorageModeModal({ currentMode, onClose, onModeChanged }: Props)
         {step === 'error' && (
           <div style={{ padding: '16px 0', textAlign: 'center' }}>
             <span style={{ fontSize: '40px', display: 'block', marginBottom: '16px' }}>⚠️</span>
-            <h3 style={{ fontSize: '16px', fontWeight: 400, marginBottom: '8px' }}>전환 실패</h3>
+            <h3 style={{ fontSize: '16px', fontWeight: 400, marginBottom: '8px' }}>{t('error.title')}</h3>
             <p style={{ fontSize: '13px', color: '#ef4444', marginBottom: '20px' }}>{errorMsg}</p>
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
               <button
                 onClick={() => setStep('select')}
                 style={{ padding: '10px 20px', backgroundColor: 'white', color: 'black', border: '1px solid #e5e7eb', fontSize: '13px', cursor: 'pointer' }}
               >
-                다시 시도
+                {tc('retry')}
               </button>
               <button
                 onClick={onClose}
                 style={{ padding: '10px 20px', backgroundColor: 'black', color: 'white', border: 'none', fontSize: '13px', cursor: 'pointer' }}
               >
-                닫기
+                {tc('close')}
               </button>
             </div>
           </div>
