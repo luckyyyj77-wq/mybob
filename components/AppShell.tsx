@@ -16,6 +16,10 @@ const MENU_ITEMS = [
   { icon: FaHandshake, label: '제휴문의', href: '/partnership', key: 'partnership' },
 ];
 
+type AppBanner = { message: string; type: 'info' | 'warning' | 'event'; active: boolean } | null;
+
+const BANNER_BG: Record<string, string> = { info: '#1e40af', warning: '#b45309', event: '#6B21A8' };
+
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -25,11 +29,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [showInstallBanner, setShowInstallBanner] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
+  const [appBanner, setAppBanner] = useState<AppBanner>(null);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
   const installPromptRef = useRef<any>(null);
   const tNav = useTranslations('Nav');
 
   const isAuthRoute = pathname?.startsWith('/auth') || false;
   const isCaptureRoute = pathname === '/capture';
+
+  useEffect(() => {
+    fetch('/api/admin/banner')
+      .then(r => r.json())
+      .then(data => { if (data.banner?.active) setAppBanner(data.banner); })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const splashShown = localStorage.getItem('mybob_splash_shown');
@@ -171,6 +184,21 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {appBanner?.active && !bannerDismissed && !isAuthRoute && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9997,
+          backgroundColor: BANNER_BG[appBanner.type] || '#1e40af',
+          color: 'white', padding: '10px 16px',
+          display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', lineHeight: 1.4,
+        }}>
+          <span style={{ flex: 1 }}>{appBanner.message}</span>
+          <button
+            onClick={() => setBannerDismissed(true)}
+            style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', fontSize: '16px', cursor: 'pointer', padding: '0 4px', flexShrink: 0 }}
+          >×</button>
+        </div>
+      )}
 
       <AnimatePresence>
         {isMenuOpen && (

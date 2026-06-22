@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { getFoundingRewardMonths } from '@/lib/plan';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from 'recharts';
 
 type FoundingMember = {
   id: string;
@@ -11,6 +12,8 @@ type FoundingMember = {
   daysUsed: number;
   rewardMonths: number;
 };
+
+type DailyStat = { date: string; count: number };
 
 type SlotInfo = {
   total_slots: number;
@@ -25,6 +28,7 @@ function fmtDate(iso: string) {
 export default function AdminFoundingPage() {
   const [slots, setSlots] = useState<SlotInfo | null>(null);
   const [members, setMembers] = useState<FoundingMember[]>([]);
+  const [dailyStats, setDailyStats] = useState<DailyStat[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -41,6 +45,7 @@ export default function AdminFoundingPage() {
       if (membersRes.ok) {
         const data = await membersRes.json();
         setMembers(data.members || []);
+        setDailyStats(data.dailyStats || []);
       }
       setLoading(false);
     });
@@ -92,6 +97,28 @@ export default function AdminFoundingPage() {
           <div style={{ height: '8px', backgroundColor: '#f3f4f6', borderRadius: '4px', overflow: 'hidden' }}>
             <div style={{ height: '100%', width: `${fillRate}%`, backgroundColor: '#6B21A8', borderRadius: '4px', transition: 'width 0.5s' }} />
           </div>
+        </div>
+      )}
+
+      {/* 일별 가입 추이 차트 */}
+      {dailyStats.length > 0 && (
+        <div style={{ backgroundColor: 'white', border: '1px solid #e5e7eb', padding: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '16px' }}>
+            <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase' }}>일별 가입 추이 (최근 30일)</p>
+            <p style={{ fontSize: '11px', color: '#6B21A8' }}>총 {members.length}명</p>
+          </div>
+          <ResponsiveContainer width="100%" height={120}>
+            <BarChart data={dailyStats} barSize={14} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+              <XAxis dataKey="date" tick={{ fontSize: 9, fill: '#9ca3af' }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+              <YAxis tick={{ fontSize: 9, fill: '#9ca3af' }} tickLine={false} axisLine={false} allowDecimals={false} />
+              <Tooltip contentStyle={{ fontSize: '11px', border: '1px solid #e5e7eb', borderRadius: 0 }} cursor={{ fill: '#f3f4f6' }} />
+              <Bar dataKey="count" name="가입">
+                {dailyStats.map((_, i) => (
+                  <Cell key={i} fill={i === dailyStats.length - 1 ? '#6B21A8' : '#d8b4fe'} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       )}
 

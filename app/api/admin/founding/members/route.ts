@@ -45,5 +45,19 @@ export async function GET(request: Request) {
     };
   });
 
-  return NextResponse.json({ members });
+  // 일별 가입 수 집계 (최근 30일)
+  const dailyMap: Record<string, number> = {};
+  const thirtyDaysAgo = new Date(now - 30 * 86400000);
+  profiles.forEach(p => {
+    if (!p.founding_joined_at) return;
+    const d = new Date(p.founding_joined_at);
+    if (d < thirtyDaysAgo) return;
+    const key = d.toISOString().slice(0, 10);
+    dailyMap[key] = (dailyMap[key] || 0) + 1;
+  });
+  const dailyStats = Object.entries(dailyMap)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, count]) => ({ date: date.slice(5), count }));
+
+  return NextResponse.json({ members, dailyStats });
 }

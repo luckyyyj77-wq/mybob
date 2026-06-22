@@ -18,7 +18,7 @@ const NAV_ITEMS = [
   { href: '/admin/founding',         icon: FaMedal,      label: '천인회',      implemented: true },
   { href: '/admin/reports',          icon: FaFileAlt,    label: '통계 리포트', implemented: true },
   { href: '/admin/feedback',         icon: FaHandshake,  label: '제휴/문의',   implemented: false },
-  { href: '/admin/settings',         icon: FaCog,        label: '앱 설정',     implemented: false },
+  { href: '/admin/settings',         icon: FaCog,        label: '앱 설정',     implemented: true },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
