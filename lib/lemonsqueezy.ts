@@ -69,8 +69,8 @@ export function getLSCheckoutUrl(variantId: string, userEmail: string, userId: s
   const testMode = process.env.NEXT_PUBLIC_LS_TEST_MODE === '1';
   const params = new URLSearchParams({
     'checkout[email]': userEmail,
-    'checkout[custom][user_id]': userId,
-    'checkout[custom][auto_cancel]': autoCancel ? '1' : '0',
+    'checkout[custom_data][user_id]': userId,
+    'checkout[custom_data][auto_cancel]': autoCancel ? '1' : '0',
   });
   params.set('variant', variantId);
   if (testMode) params.set('test', '1');
