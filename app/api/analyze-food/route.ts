@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { checkAnalysisLimit, incrementAnalysisCount } from '@/lib/plan';
 
-export const maxDuration = 60;
+export const maxDuration = 30;
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -192,37 +192,38 @@ PRINCIPLES:
 }
 
 async function analyzeWithGemini(base64Data: string, apiKey: string, dbNutrients: any | null, dbSource: string | null, estimatedPortion: number, isPro = false, locale = 'ko'): Promise<{ success: boolean; food?: any; modelUsed?: string; error?: string }> {
-  const modelsToTry = isPro ? ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash'] : ['gemini-2.5-flash', 'gemini-2.0-flash'];
+  // 병렬 실행: lite 제외하고 flash 계열만 — 가장 먼저 성공한 것 채택
+  const modelsToTry = isPro
+    ? ['gemini-2.5-pro', 'gemini-2.5-flash']
+    : ['gemini-2.5-flash', 'gemini-2.0-flash'];
   const prompt = buildNutritionPrompt(dbNutrients, dbSource, estimatedPortion, locale);
-  const MODEL_TIMEOUT = 20000;
+  const MODEL_TIMEOUT = 8000;
 
-  for (const model of modelsToTry) {
+  async function tryModel(model: string): Promise<{ success: boolean; food?: any; modelUsed?: string }> {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: 'image/jpeg', data: base64Data } }] }],
-          generationConfig: { response_mime_type: 'application/json', temperature: 0.05 },
-        }),
-        signal: AbortSignal.timeout(MODEL_TIMEOUT),
-      });
-      const result = await res.json();
-      if (res.ok && result.candidates?.[0]?.content?.parts?.[0]?.text) {
-        return { success: true, food: JSON.parse(result.candidates[0].content.parts[0].text), modelUsed: model };
-      }
-      const errMsg = result.error?.message || '';
-      // quota/rate limit → 다음 모델 시도
-      if (res.status === 429 || errMsg.toLowerCase().includes('quota') || errMsg.toLowerCase().includes('rate')) continue;
-      // 그 외 API 오류 → 다음 모델 시도
-      continue;
-    } catch (e: any) {
-      // 타임아웃/네트워크 오류 → 다음 모델 시도
-      continue;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: 'image/jpeg', data: base64Data } }] }],
+        generationConfig: { response_mime_type: 'application/json', temperature: 0.05 },
+      }),
+      signal: AbortSignal.timeout(MODEL_TIMEOUT),
+    });
+    const result = await res.json();
+    if (res.ok && result.candidates?.[0]?.content?.parts?.[0]?.text) {
+      return { success: true, food: JSON.parse(result.candidates[0].content.parts[0].text), modelUsed: model };
     }
+    throw new Error(result.error?.message || 'failed');
   }
-  return { success: false, error: 'Gemini timeout' };
+
+  try {
+    // 병렬로 쏘되 8초 안에 가장 먼저 성공한 flash 모델 채택
+    const result = await Promise.any(modelsToTry.map(m => tryModel(m)));
+    return result;
+  } catch {
+    return { success: false, error: 'Gemini timeout' };
+  }
 }
 
 async function analyzeWithHaiku(base64Data: string, apiKey: string, dbNutrients: any | null, dbSource: string | null, estimatedPortion: number, locale = 'ko'): Promise<{ success: boolean; food?: any; modelUsed?: string; error?: string }> {
