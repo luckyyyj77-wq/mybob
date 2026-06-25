@@ -71,45 +71,46 @@ function buildNutritionPrompt(dbNutrients: any | null, dbSource: string | null, 
     ? (dbNutrients ? `[DB Base Data - Source: ${dbSource}, Est. Serving: ${estimatedPortion}g] Carbs ${dbNutrients.carbohydrates}g, Protein ${dbNutrients.protein}g, Fat ${dbNutrients.fat}g, Cal ${dbNutrients.calories}kcal. Adjust based on actual cooking state.` : `Analyze visually. Estimate serving weight and nutrients.`)
     : (dbNutrients ? `[DB 기초 데이터 — 출처: ${dbSource}, 추정 1인분: ${estimatedPortion}g] 탄수화물 ${dbNutrients.carbohydrates}g, 단백질 ${dbNutrients.protein}g, 지방 ${dbNutrients.fat}g, 칼로리 ${dbNutrients.calories}kcal. 실제 상태를 분석해 보정하세요.` : `이미지를 시각적으로 분석하세요.`);
 
+  const drinkHint = locale === 'en'
+    ? `DRINK IDENTIFICATION RULES: Dark liquid in cup → check foam(espresso crema=coffee), opacity(clear=cola/tea, cloudy=latte/milk), color depth(deep black=americano/cola, brown=latte). Ice+dark liquid without foam → likely cola or iced americano, distinguish by color(cola=slightly reddish-brown, americano=pure black). Do NOT guess — use visual evidence.`
+    : `음료 구분 규칙: 컵 안의 어두운 액체 → 거품 유무(크레마=커피), 투명도(맑음=콜라/차, 탁함=라떼/밀크), 색 농도(진한 검정=아메리카노/콜라, 갈색=라떼). 얼음+어두운 액체에서 거품 없으면 콜라 또는 아이스 아메리카노 — 색으로 구분(콜라=약간 적갈색, 아메리카노=순수 검정). 시각적 근거 없이 추측 금지.`;
+
   return locale === 'en'
-    ? `You are a world-class nutrition analysis AI. Analyze the image and respond ONLY in JSON.\n${nutritionContext}\n{\n  "name": "Specific food name in English",\n  "calories": number(kcal),\n  "category": "Korean/Chinese/Japanese/Western/Snack/Drink",\n  "amount": "Est. weight(g) or quantity",\n  "confidence": "high/medium/low",\n  "nutrients": { "carbohydrates": number(g), "protein": number(g), "fat": number(g), "fiber": number(g), "sugar": number(g), "sodium": number(mg), "caffeine": number(mg) or null, "vitaminA": number(μg), "vitaminC": number(mg), "vitaminD": number(μg), "calcium": number(mg), "iron": number(mg), "potassium": number(mg) }\n}`
-    : `당신은 세계 최고 수준의 영양 분석 AI입니다. 이미지를 분석해 아래 JSON 형식으로만 응답하세요.\n${nutritionContext}\n{\n  "name": "구체적인 한국어 음식명",\n  "calories": 숫자(kcal),\n  "category": "한식/중식/일식/양식/간식/음료",\n  "amount": "추정 중량(g) 또는 수량",\n  "confidence": "high/medium/low",\n  "nutrients": { "carbohydrates": 숫자(g), "protein": 숫자(g), "fat": 숫자(g), "fiber": 숫자(g), "sugar": 숫자(g), "sodium": 숫자(mg), "caffeine": 숫자(mg) 또는 null, "vitaminA": 숫자(μg), "vitaminC": 숫자(mg), "vitaminD": 숫자(μg), "calcium": 숫자(mg), "iron": 숫자(mg), "potassium": 숫자(mg) }\n}`;
+    ? `You are a world-class nutrition analysis AI. Analyze the image carefully and respond ONLY in JSON.\n${drinkHint}\n${nutritionContext}\n{\n  "name": "Specific food name in English",\n  "calories": number(kcal),\n  "category": "Korean/Chinese/Japanese/Western/Snack/Drink",\n  "amount": "Est. weight(g) or quantity",\n  "confidence": "high/medium/low",\n  "nutrients": { "carbohydrates": number(g), "protein": number(g), "fat": number(g), "fiber": number(g), "sugar": number(g), "sodium": number(mg), "caffeine": number(mg) or null, "vitaminA": number(μg), "vitaminC": number(mg), "vitaminD": number(μg), "calcium": number(mg), "iron": number(mg), "potassium": number(mg) }\n}`
+    : `당신은 세계 최고 수준의 영양 분석 AI입니다. 이미지를 꼼꼼히 분석해 아래 JSON 형식으로만 응답하세요.\n${drinkHint}\n${nutritionContext}\n{\n  "name": "구체적인 한국어 음식명",\n  "calories": 숫자(kcal),\n  "category": "한식/중식/일식/양식/간식/음료",\n  "amount": "추정 중량(g) 또는 수량",\n  "confidence": "high/medium/low",\n  "nutrients": { "carbohydrates": 숫자(g), "protein": 숫자(g), "fat": 숫자(g), "fiber": 숫자(g), "sugar": 숫자(g), "sodium": 숫자(mg), "caffeine": 숫자(mg) 또는 null, "vitaminA": 숫자(μg), "vitaminC": 숫자(mg), "vitaminD": 숫자(μg), "calcium": 숫자(mg), "iron": 숫자(mg), "potassium": 숫자(mg) }\n}`;
 }
 
-async function analyzeWithGemini(base64Data: string, apiKey: string, dbNutrients: any | null, dbSource: string | null, estimatedPortion: number, isPro = false, locale = 'ko'): Promise<{ success: boolean; food?: any; modelUsed?: string; error?: string }> {
-  const modelsToTry = isPro ? ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash'] : ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite'];
+async function analyzeWithGemini(base64Data: string, apiKey: string, dbNutrients: any | null, dbSource: string | null, estimatedPortion: number, isPro = false, locale = 'ko'): Promise<{ success: boolean; food?: any; modelUsed?: string; error?: string; isQuotaError?: boolean }> {
+  const modelsToTry = isPro ? ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash'] : ['gemini-2.5-flash', 'gemini-2.0-flash'];
   const prompt = buildNutritionPrompt(dbNutrients, dbSource, estimatedPortion, locale);
+  const MODEL_TIMEOUT = 12000;
 
-  const GEMINI_TOTAL_TIMEOUT = 7000;
-
-  async function tryModel(model: string): Promise<{ success: boolean; food?: any; modelUsed?: string; error?: string }> {
+  for (const model of modelsToTry) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: 'image/jpeg', data: base64Data } }] }], generationConfig: { response_mime_type: 'application/json', temperature: 0.15 } }),
-      signal: AbortSignal.timeout(GEMINI_TOTAL_TIMEOUT),
-    });
-    const result = await res.json();
-    if (res.ok && result.candidates?.[0]?.content?.parts?.[0]?.text) {
-      return { success: true, food: JSON.parse(result.candidates[0].content.parts[0].text), modelUsed: model };
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: 'image/jpeg', data: base64Data } }] }], generationConfig: { response_mime_type: 'application/json', temperature: 0.05 } }),
+        signal: AbortSignal.timeout(MODEL_TIMEOUT),
+      });
+      const result = await res.json();
+      if (res.ok && result.candidates?.[0]?.content?.parts?.[0]?.text) {
+        return { success: true, food: JSON.parse(result.candidates[0].content.parts[0].text), modelUsed: model };
+      }
+      const errMsg = result.error?.message || '';
+      // quota/rate limit 오류는 다음 모델 시도
+      if (res.status === 429 || errMsg.toLowerCase().includes('quota') || errMsg.toLowerCase().includes('rate')) continue;
+      // 그 외 API 오류는 quota 아님을 표시하고 반환
+      return { success: false, error: errMsg, isQuotaError: false };
+    } catch (e: any) {
+      // 타임아웃이면 다음 모델 시도
+      if (e?.name === 'TimeoutError' || e?.name === 'AbortError') continue;
+      continue;
     }
-    throw new Error(result.error?.message || 'failed');
   }
-
-  const timeoutPromise = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error('Gemini timeout')), GEMINI_TOTAL_TIMEOUT)
-  );
-
-  // 모든 모델을 병렬로 쏘고 7초 안에 첫 번째 성공 반환, 전부 실패/초과 시 Haiku로 넘김
-  try {
-    return await Promise.race([
-      Promise.any(modelsToTry.map(model => tryModel(model))),
-      timeoutPromise,
-    ]);
-  } catch {
-    return { success: false, error: 'Gemini timeout' };
-  }
+  // 모든 모델 소진 → 타임아웃 계열로 표시 (Haiku 폴백 허용)
+  return { success: false, error: 'Gemini timeout' };
 }
 
 async function analyzeWithHaiku(base64Data: string, apiKey: string, dbNutrients: any | null, dbSource: string | null, estimatedPortion: number, locale = 'ko'): Promise<{ success: boolean; food?: any; modelUsed?: string; error?: string }> {
@@ -241,7 +242,8 @@ export async function POST(request: Request) {
 
     let aiResult = geminiResult;
     let aiSource = 'gemini';
-    if (!geminiResult.success && anthropicKey) {
+    // Haiku 폴백은 타임아웃(Gemini timeout) 케이스에만 허용 — quota/API 오류는 에러 반환
+    if (!geminiResult.success && anthropicKey && geminiResult.error === 'Gemini timeout') {
       aiResult = await analyzeWithHaiku(base64Data, anthropicKey, koreanHit?.nutrients ?? null, koreanHit?.source ?? null, koreanHit?.portion ?? 250, locale);
       aiSource = 'haiku';
     }
