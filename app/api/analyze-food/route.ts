@@ -61,111 +61,107 @@ async function searchOpenFoodFacts(foodName: string) {
     const p = data.products?.[0];
     if (!p) return null;
     const n = p.nutriments || {};
-    const portion = 200;
-    const s = portion / 100;
+    const portion = 200; const s = portion / 100;
     return { source: 'openfoodfacts', portion, nutrients: { carbohydrates: Math.round((n['carbohydrates_100g'] || 0) * s), protein: Math.round((n['proteins_100g'] || 0) * s), fat: Math.round((n['fat_100g'] || 0) * s), fiber: Math.round((n['fiber_100g'] || 0) * s), sugar: Math.round((n['sugars_100g'] || 0) * s), sodium: Math.round((n['sodium_100g'] || 0) * s * 1000), calories: Math.round((n['energy-kcal_100g'] || 0) * s), vitaminC: Math.round((n['vitamin-c_100g'] || 0) * s * 1000), calcium: Math.round((n['calcium_100g'] || 0) * s * 1000), iron: Math.round((n['iron_100g'] || 0) * s * 1000) } };
   } catch { return null; }
 }
 
-function buildNutritionPrompt(dbNutrients: any | null, dbSource: string | null, estimatedPortion: number, locale: string): string {
-  const nutritionContext = locale === 'en'
-    ? (dbNutrients ? `[DB Reference — Source: ${dbSource}, Est. Serving: ${estimatedPortion}g] Carbs ${dbNutrients.carbohydrates}g, Protein ${dbNutrients.protein}g, Fat ${dbNutrients.fat}g, Cal ${dbNutrients.calories}kcal. Verify with visual analysis and adjust if cooking state differs.` : `Use visual analysis to estimate serving weight, portion size, and nutrients.`)
-    : (dbNutrients ? `[DB 기초 데이터 — 출처: ${dbSource}, 추정 1인분: ${estimatedPortion}g] 탄수화물 ${dbNutrients.carbohydrates}g, 단백질 ${dbNutrients.protein}g, 지방 ${dbNutrients.fat}g, 칼로리 ${dbNutrients.calories}kcal. 시각적으로 검증하고 조리 상태가 다르면 보정.` : `시각적 분석으로 1인분 중량, 포션 크기, 영양가 추정.`);
-
+// DB 컨텍스트 없이 순수 시각 분석 프롬프트 — AI가 이름 추출 결과에 끌리지 않도록
+function buildNutritionPrompt(locale: string): string {
   const drinkRules = locale === 'en'
-    ? `DRINK IDENTIFICATION (apply when liquid is visible):
-Step 1 — Liquid color & opacity:
- • Pure black, no red tint → Americano / Black Coffee
- • Black + tan/beige foam layer → Latte / Cappuccino
- • Dark brown-red + visible carbonation bubbles + slight sparkle → Cola / Soft drink
- • Transparent amber/yellow → Tea / Juice
+    ? `DRINK IDENTIFICATION (apply when any liquid is visible):
+Step 1 — Color & opacity of the liquid:
+ • Pure black, zero red tint → Americano / Black Coffee
+ • Black + tan/beige foam layer on top → Latte / Cappuccino
+ • Dark brown-reddish + visible carbonation bubbles + surface sheen → Cola / Soft drink
+ • Transparent amber/yellow → Tea / Juice / Iced Tea
  • Opaque white/beige → Milk / Smoothie
-Step 2 — Ice check (if present):
- • Large irregular ice → Coffee drink (ice added manually)
- • Small uniform ice → Cola (factory-uniform)
-Step 3 — Iced Americano vs Iced Cola:
- • Americano = pure black, ZERO red tint, no bubbles, matte surface
- • Cola = dark brown-RED, VISIBLE carbonation bubbles, slight surface sheen
- Use BOTH color AND bubble evidence — never decide from one clue alone.
-DO NOT classify as Water if any color or opacity is visible.`
-    : `음료 식별 규칙 (액체가 보일 때 적용):
-1단계 — 색상 & 투명도:
+Step 2 — Ice (if present):
+ • Large irregular cubes → Coffee (ice added manually)
+ • Small uniform cubes → Cola / carbonated (factory-standard)
+Step 3 — Iced Americano vs Iced Cola (the most common confusion):
+ • Americano = PURE black liquid, NO red tint, NO visible bubbles, matte flat surface
+ • Cola = dark brown with RED undertone, VISIBLE carbonation micro-bubbles, slight sheen/sparkle
+ → Use BOTH color AND bubble evidence together — never judge from one clue alone.
+NEVER classify as Water unless liquid is completely clear and colorless.`
+    : `음료 식별 규칙 (액체가 보일 때 반드시 적용):
+1단계 — 액체 색상 & 투명도:
  • 순수 검정, 적색 없음 → 아메리카노 / 블랙 커피
- • 검정 + 베이지 거품층 → 라떼 / 카푸치노
- • 진한 갈색-적색 + 탄산 거품 + 반짝임 → 콜라 / 탄산음료
- • 투명 황갈색 → 차 / 주스
+ • 검정 + 상단 베이지/갈색 거품층 → 라떼 / 카푸치노
+ • 진한 갈색+적색 + 탄산 거품 뚜렷 + 표면 반짝임 → 콜라 / 탄산음료
+ • 투명 황갈색/노란색 → 차 / 주스 / 아이스티
  • 불투명 흰색/베이지 → 우유 / 스무디
-2단계 — 얼음 확인 (있을 경우):
- • 크고 불규칙한 얼음 → 커피 음료
- • 작고 균일한 얼음 → 콜라
-3단계 — 아이스 아메리카노 vs 아이스 콜라:
- • 아메리카노 = 순수 검정, 적색 없음, 거품 없음, 무광 표면
- • 콜라 = 진한 갈색+적색, 탄산 거품 뚜렷, 표면 윤기
- 색상과 거품 증거를 반드시 함께 사용 — 하나만으로 판단 금지.
-색상이나 불투명도가 있으면 물로 분류 금지.`;
+2단계 — 얼음 (있을 경우):
+ • 크고 불규칙한 얼음 → 커피 음료 (수동으로 추가된 얼음)
+ • 작고 균일한 얼음 → 콜라 / 탄산음료 (공장 규격)
+3단계 — 아이스 아메리카노 vs 아이스 콜라 (가장 흔한 혼동):
+ • 아메리카노 = 순수 검정, 적색 없음, 거품/기포 없음, 무광 표면
+ • 콜라 = 진한 갈색+적색 톤, 눈에 보이는 탄산 기포, 표면 윤기
+ → 색상과 기포 증거를 반드시 함께 사용 — 하나만으로 절대 판단하지 말 것.
+액체가 완전히 투명하고 무색이 아니면 물로 분류 금지.`;
 
   const solidFoodRules = locale === 'en'
-    ? `SOLID FOOD IDENTIFICATION:
-Texture + Shape rules (critical for preventing misclassification):
- • Golden-yellow + uniform breadcrumb coating + cylindrical/bite-sized → Fried nugget (NOT scone)
- • Pale tan + crumbly dry texture + dome shape + no coating → Scone / Pastry
- • Golden + thin flat single piece + fine breading → Schnitzel / Pork cutlet
- • Golden + irregular skin-like surface → Fried chicken
+    ? `SOLID FOOD IDENTIFICATION — Texture + Shape (critical):
+ • Golden-yellow + uniform fine breadcrumb coating + cylindrical or bite-sized shape → Fried NUGGET (never scone)
+ • Pale tan/cream + crumbly dry texture + dome/biscuit shape + NO coating → SCONE / Pastry
+ • Golden + thin flat single piece + even fine breading → Pork cutlet / Schnitzel
+ • Golden + irregular bumpy skin-like surface, no uniform coating → Fried Chicken
 
-DO NOT classify as Scone if: breadcrumb coating is visible or shape is cylindrical.
-DO NOT classify as Nugget if: no breading, pale/crumbly interior visible.
+HARD RULES:
+ ✗ DO NOT call it Scone if breadcrumb coating is visible or shape is cylindrical.
+ ✗ DO NOT call it Nugget if surface is smooth/crumbly with no breading.
+ ✗ DO NOT call it Japanese if Korean or Chinese ingredients are dominant.
 
-Category rules:
- Korean (한식): fermented ingredients visible (kimchi red, gochujang, doenjang), multiple side dishes, soy-ginger marinade
- Chinese (중식): cornstarch gloss on sauce, soy+scallion without Korean fermentation, wok char marks
- Japanese (일식): fresh/raw focus, light soy, minimal sauce, precise plating, nori/wasabi/soy dip visible
- Exception — noodle soups: Korean noodle = red gochujang broth; Chinese noodle = glossy dark soy broth; Japanese ramen = clear miso/shoyu broth
-DO NOT classify as Japanese if Korean or Chinese ingredients are dominant.`
-    : `고체 음식 식별:
-질감 + 형태 규칙 (오분류 방지 핵심):
- • 황금색 + 균일한 빵가루 코팅 + 원통형/한입 크기 → 튀긴 너겟 (스콘 아님)
- • 옅은 갈색 + 건조하고 부스러지는 식감 + 돔 형태 + 코팅 없음 → 스콘 / 페이스트리
- • 황금색 + 얇고 납작한 단일 조각 + 고운 빵가루 → 돈가스 / 커틀릿
- • 황금색 + 불규칙한 껍질 같은 표면 → 튀긴 치킨
+CATEGORY (when food origin is mixed, pick the dominant culture):
+ Korean: kimchi/gochujang red visible, doenjang, multiple side dishes (반찬), soy-ginger marinade
+ Chinese: cornstarch-glossy sauce, soy+scallion without Korean fermentation, wok char
+ Japanese: fresh/raw focus, light soy, minimal sauce, precise plating, nori/wasabi/soy dip
+ Noodle soups → Korean=red gochujang broth, Chinese=dark glossy soy broth, Japanese=clear miso/shoyu`
+    : `고체 음식 식별 — 질감 + 형태 (핵심):
+ • 황금색 + 균일한 고운 빵가루 코팅 + 원통형 또는 한입 크기 → 튀긴 너겟 (스콘 절대 아님)
+ • 옅은 베이지/크림색 + 건조하고 부스러지는 질감 + 돔/비스킷 형태 + 코팅 없음 → 스콘 / 페이스트리
+ • 황금색 + 얇고 납작한 단일 조각 + 균일한 고운 빵가루 → 돈가스 / 커틀릿
+ • 황금색 + 불규칙한 울퉁불퉁한 껍질 표면, 균일한 코팅 없음 → 튀긴 치킨
 
-빵가루 코팅이 보이거나 원통형이면 스콘으로 분류 금지.
-코팅 없고 속이 옅은 부스러기 식감이면 너겟으로 분류 금지.
+절대 규칙:
+ ✗ 빵가루 코팅이 보이거나 원통형이면 스콘으로 분류 금지.
+ ✗ 표면이 부드럽고 부스러지며 빵가루 없으면 너겟으로 분류 금지.
+ ✗ 한식/중식 재료가 주를 이루면 일식으로 분류 금지.
 
-카테고리 규칙:
- 한식: 발효 재료 보임 (김치 빨간색, 고추장, 된장), 여러 반찬, 간장-생강 양념
- 중식: 소스에 전분 윤기, 간장+파 (한식 발효 없음), 웍 자국
- 일식: 신선/생 위주, 연한 간장, 소스 최소, 정밀 플레이팅, 노리/와사비/간장 딥
- 예외 — 국수 요리: 한식=빨간 고추장 국물, 중식=진한 간장 윤기 국물, 일식=맑은 미소/쇼유 국물
-한식/중식 재료가 주를 이루면 일식으로 분류 금지.`;
+카테고리 (혼합 음식은 지배적인 문화 선택):
+ 한식: 김치/고추장 빨간색, 된장, 여러 반찬 보임, 간장-생강 양념
+ 중식: 전분 윤기 소스, 간장+파 (한식 발효 없음), 웍 자국
+ 일식: 신선/생 위주, 연한 간장, 소스 최소, 정밀 플레이팅, 노리/와사비
+ 국수 요리 → 한식=빨간 고추장 국물, 중식=진한 윤기 간장 국물, 일식=맑은 미소/쇼유`;
 
   const systemInstruction = locale === 'en'
-    ? `You are a world-class food image recognition and nutrition analysis AI. Analyze the image carefully using ALL visual clues (color, texture, shape, opacity, bubbles, coating). Respond ONLY with valid JSON — no explanation, no markdown.
+    ? `You are an expert food image recognition AI. Analyze every visual detail in the image (color, texture, shape, opacity, surface bubbles, coating, broth color) and return ONLY valid JSON with no extra text.
 
-PRINCIPLES:
-1. Use multiple visual clues, never just one feature.
-2. Apply the drink rules when liquid is visible.
-3. Apply the solid food rules to prevent texture/shape misclassification.
-4. If visual evidence is ambiguous, set confidence to "low" and pick the most likely option.
-5. Include a brief "reasoning" field explaining your key identification logic.`
-    : `당신은 세계 최고 수준의 음식 이미지 인식 및 영양 분석 AI입니다. 모든 시각적 단서(색상, 질감, 형태, 투명도, 거품, 코팅)를 활용해 이미지를 꼼꼼히 분석하세요. 유효한 JSON만 응답 — 설명이나 마크다운 없이.
+KEY PRINCIPLES:
+1. Trust your visual analysis — ignore any preconceptions about what the food "should" be.
+2. Always apply drink rules when liquid is visible; always apply solid food rules for solid items.
+3. Use MULTIPLE clues simultaneously — never rely on a single feature.
+4. If genuinely ambiguous, set confidence "low" but still pick the most visually supported answer.
+5. Identify ALL distinct food/drink items visible in the image separately.`
+    : `당신은 음식 이미지 인식 전문 AI입니다. 이미지의 모든 시각적 세부사항(색상, 질감, 형태, 투명도, 표면 기포, 코팅, 국물 색)을 분석하고 유효한 JSON만 반환하세요. 추가 텍스트 없이.
 
-원칙:
-1. 여러 시각적 단서 사용, 하나의 특징으로만 판단 금지.
-2. 액체가 보이면 음료 규칙 적용.
-3. 고체 음식은 질감/형태 규칙으로 오분류 방지.
-4. 시각적 근거가 애매하면 confidence를 "low"로 설정하고 가장 가능성 높은 답 선택.
-5. 핵심 식별 근거를 "reasoning" 필드에 간단히 기재.`;
+핵심 원칙:
+1. 시각적 분석을 신뢰하세요 — 음식이 "무엇이어야 한다"는 선입견 무시.
+2. 액체가 보이면 음료 규칙, 고체 음식은 고체 규칙 반드시 적용.
+3. 여러 단서를 동시에 사용 — 단 하나의 특징에만 의존 금지.
+4. 진짜 애매하면 confidence "low"로 설정하되 시각적으로 가장 지지되는 답 선택.
+5. 이미지에 보이는 모든 음식/음료 품목을 각각 별도로 식별.`;
 
   const jsonSchema = locale === 'en'
     ? `{
   "items": [
     {
       "name": "Specific food name in English",
-      "calories": number (kcal),
+      "calories": number (kcal, for this item only),
       "category": "Korean/Chinese/Japanese/Western/Snack/Drink",
       "amount": "Est. weight(g) or quantity",
       "confidence": "high/medium/low",
-      "reasoning": "Key visual clues used for identification",
+      "reasoning": "2-3 key visual clues that led to this identification",
       "nutrients": {
         "carbohydrates": number (g), "protein": number (g), "fat": number (g),
         "fiber": number (g), "sugar": number (g), "sodium": number (mg),
@@ -176,16 +172,16 @@ PRINCIPLES:
     }
   ]
 }
-IMPORTANT: Always use the "items" array. Single food = array with 1 element. Multiple foods = array with multiple elements (one per distinct food/drink visible).`
+RULE: Always use the "items" array. 1 food = 1 element. Multiple distinct foods/drinks = multiple elements.`
     : `{
   "items": [
     {
       "name": "구체적인 한국어 음식명",
-      "calories": 숫자 (kcal),
+      "calories": 숫자 (kcal, 이 품목만의 칼로리),
       "category": "한식/중식/일식/양식/간식/음료",
       "amount": "추정 중량(g) 또는 수량",
       "confidence": "high/medium/low",
-      "reasoning": "식별에 사용한 핵심 시각적 근거",
+      "reasoning": "이 식별의 근거가 된 핵심 시각적 단서 2-3가지",
       "nutrients": {
         "carbohydrates": 숫자 (g), "protein": 숫자 (g), "fat": 숫자 (g),
         "fiber": 숫자 (g), "sugar": 숫자 (g), "sodium": 숫자 (mg),
@@ -196,20 +192,57 @@ IMPORTANT: Always use the "items" array. Single food = array with 1 element. Mul
     }
   ]
 }
-중요: 반드시 "items" 배열 사용. 단일 음식 = 배열 요소 1개. 여러 음식이 보이면 = 각각 별도 요소로 추가 (보이는 음식/음료 각각 1개씩).`;
+규칙: 반드시 "items" 배열 사용. 음식 1개 = 요소 1개. 여러 음식/음료 = 각각 별도 요소.`;
 
-  return `${systemInstruction}\n\n${drinkRules}\n\n${solidFoodRules}\n\n${nutritionContext}\n\nOUTPUT FORMAT:\n${jsonSchema}`;
+  return `${systemInstruction}\n\n${drinkRules}\n\n${solidFoodRules}\n\nOUTPUT FORMAT (JSON only):\n${jsonSchema}`;
 }
 
-async function analyzeWithGemini(base64Data: string, apiKey: string, dbNutrients: any | null, dbSource: string | null, estimatedPortion: number, isPro = false, locale = 'ko'): Promise<{ success: boolean; food?: any; modelUsed?: string; error?: string }> {
-  // 병렬 실행: lite 제외하고 flash 계열만 — 가장 먼저 성공한 것 채택
+function safeParseItems(text: string): any[] | null {
+  try {
+    // 전체 JSON 파싱 시도
+    const parsed = JSON.parse(text);
+    if (Array.isArray(parsed?.items) && parsed.items.length > 0) return parsed.items;
+    // items 없이 단일 객체로 왔을 때
+    if (parsed?.name && parsed?.calories != null) return [parsed];
+  } catch { /* fallthrough */ }
+
+  // 마크다운 코드블록 제거 후 재시도
+  const stripped = text.replace(/```json|```/g, '').trim();
+  try {
+    const parsed = JSON.parse(stripped);
+    if (Array.isArray(parsed?.items) && parsed.items.length > 0) return parsed.items;
+    if (parsed?.name && parsed?.calories != null) return [parsed];
+  } catch { /* fallthrough */ }
+
+  // items 배열만 추출 시도
+  const itemsMatch = stripped.match(/"items"\s*:\s*(\[[\s\S]*?\])\s*[,}]/);
+  if (itemsMatch) {
+    try { return JSON.parse(itemsMatch[1]); } catch { /* fallthrough */ }
+  }
+
+  // 최후: 첫 번째 {…} 객체 추출
+  const objMatch = stripped.match(/\{[\s\S]*\}/);
+  if (objMatch) {
+    try {
+      const parsed = JSON.parse(objMatch[0]);
+      if (parsed?.name && parsed?.calories != null) return [parsed];
+      if (Array.isArray(parsed?.items)) return parsed.items;
+    } catch { /* fallthrough */ }
+  }
+
+  return null;
+}
+
+async function analyzeWithGemini(
+  base64Data: string, apiKey: string, isPro: boolean, locale: string
+): Promise<{ success: boolean; items?: any[]; modelUsed?: string; error?: string }> {
   const modelsToTry = isPro
     ? ['gemini-2.5-pro', 'gemini-2.5-flash']
     : ['gemini-2.5-flash', 'gemini-2.0-flash'];
-  const prompt = buildNutritionPrompt(dbNutrients, dbSource, estimatedPortion, locale);
+  const prompt = buildNutritionPrompt(locale);
   const MODEL_TIMEOUT = 8000;
 
-  async function tryModel(model: string): Promise<{ success: boolean; food?: any; modelUsed?: string }> {
+  async function tryModel(model: string): Promise<{ success: boolean; items: any[]; modelUsed: string }> {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
     const res = await fetch(url, {
       method: 'POST',
@@ -221,23 +254,25 @@ async function analyzeWithGemini(base64Data: string, apiKey: string, dbNutrients
       signal: AbortSignal.timeout(MODEL_TIMEOUT),
     });
     const result = await res.json();
-    if (res.ok && result.candidates?.[0]?.content?.parts?.[0]?.text) {
-      return { success: true, food: JSON.parse(result.candidates[0].content.parts[0].text), modelUsed: model };
+    const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (res.ok && text) {
+      const items = safeParseItems(text);
+      if (items && items.length > 0) return { success: true, items, modelUsed: model };
     }
     throw new Error(result.error?.message || 'failed');
   }
 
   try {
-    // 병렬로 쏘되 8초 안에 가장 먼저 성공한 flash 모델 채택
-    const result = await Promise.any(modelsToTry.map(m => tryModel(m)));
-    return result;
+    return await Promise.any(modelsToTry.map(m => tryModel(m)));
   } catch {
     return { success: false, error: 'Gemini timeout' };
   }
 }
 
-async function analyzeWithHaiku(base64Data: string, apiKey: string, dbNutrients: any | null, dbSource: string | null, estimatedPortion: number, locale = 'ko'): Promise<{ success: boolean; food?: any; modelUsed?: string; error?: string }> {
-  const prompt = buildNutritionPrompt(dbNutrients, dbSource, estimatedPortion, locale);
+async function analyzeWithHaiku(
+  base64Data: string, apiKey: string, locale: string
+): Promise<{ success: boolean; items?: any[]; modelUsed?: string; error?: string }> {
+  const prompt = buildNutritionPrompt(locale);
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -258,9 +293,9 @@ async function analyzeWithHaiku(base64Data: string, apiKey: string, dbNutrients:
     const result = await res.json();
     if (!res.ok) return { success: false, error: result.error?.message };
     const text = result.content?.[0]?.text || '';
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return { success: false, error: 'Invalid Haiku response' };
-    return { success: true, food: JSON.parse(jsonMatch[0]), modelUsed: 'claude-haiku-4-5' };
+    const items = safeParseItems(text);
+    if (!items) return { success: false, error: 'Invalid Haiku response' };
+    return { success: true, items, modelUsed: 'claude-haiku-4-5' };
   } catch {
     return { success: false, error: 'Haiku timeout' };
   }
@@ -291,7 +326,7 @@ async function analyzeNutritionLabel(base64Data: string, apiKey: string, locale 
       const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: 'image/jpeg', data: base64Data } }] }], generationConfig: { response_mime_type: 'application/json', temperature: 0.05 } }) });
       const result = await res.json();
       if (res.ok && result.candidates?.[0]?.content?.parts?.[0]?.text) {
-        return { success: true, data: JSON.parse(result.candidates[0].content.parts[0].text), modelUsed: model, tokensIn: result.usageMetadata?.promptTokenCount, tokensOut: result.usageMetadata?.candidatesTokenCount };
+        return { success: true, data: JSON.parse(result.candidates[0].content.parts[0].text), modelUsed: model };
       }
       if (result.error?.message?.includes('quota')) continue;
       return { success: false, error: result.error?.message };
@@ -342,47 +377,49 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, food: { name: d.product_name || 'Product', calories: p.calories, category: 'Etc', amount: d.serving_size || '1 serving', nutrients: p }, source, analysisStatus: { plan } });
     }
 
-    // Food mode — 음식 이름 사전 추출 (NOT_FOOD 체크)
-    const namePrompt = locale === 'en' ? 'If food/drink, name it in English briefly. Else "NOT_FOOD".' : '음식이면 한국어로 이름만 짧게, 아니면 "NOT_FOOD".';
-    let foodName = '';
-    try {
-      const nameRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: namePrompt }, { inline_data: { mime_type: 'image/jpeg', data: base64Data } }] }], generationConfig: { temperature: 0.1 } }),
-        signal: AbortSignal.timeout(5000),
-      });
-      const nameResult = await nameRes.json();
-      if (nameRes.ok) {
-        const raw = (nameResult.candidates?.[0]?.content?.parts?.[0]?.text || '').replace(/["\n]/g, '').trim();
-        if (raw === 'NOT_FOOD') return NextResponse.json({ error: 'NOT_FOOD' }, { status: 422 });
-        foodName = raw;
-      }
-    } catch { }
-
+    // ── Food mode ──────────────────────────────────────────────────────────
     const isPro = plan !== 'free';
     const anthropicKey = process.env.ANTHROPIC_API_KEY?.trim();
-    const koreanHit = foodName ? searchKoreanDB(foodName) : null;
-    const [offHit, geminiResult] = await Promise.all([
-      (!koreanHit && foodName) ? searchOpenFoodFacts(foodName) : Promise.resolve(null),
-      analyzeWithGemini(base64Data, apiKey, koreanHit?.nutrients ?? null, koreanHit?.source ?? null, koreanHit?.portion ?? 250, isPro, locale),
+
+    // NOT_FOOD 체크(flash-lite)와 본분석(flash 병렬)을 동시에 시작
+    const namePrompt = locale === 'en'
+      ? 'Is this image food or drink? If yes, reply with just the food name in English. If not food, reply exactly: NOT_FOOD'
+      : '이 이미지가 음식이나 음료인가요? 맞으면 음식 이름만 한국어로 답하고, 음식이 아니면 정확히 NOT_FOOD 라고만 답하세요.';
+
+    const [nameResult, geminiResult] = await Promise.all([
+      // NOT_FOOD 사전 체크 — 실패해도 본분석은 계속
+      fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: namePrompt }, { inline_data: { mime_type: 'image/jpeg', data: base64Data } }] }], generationConfig: { temperature: 0.05 } }),
+        signal: AbortSignal.timeout(5000),
+      }).then(async r => {
+        const d = await r.json();
+        return (d.candidates?.[0]?.content?.parts?.[0]?.text || '').replace(/["\n]/g, '').trim();
+      }).catch(() => ''),
+
+      // 본분석 — 동시에 시작
+      analyzeWithGemini(base64Data, apiKey, isPro, locale),
     ]);
+
+    // NOT_FOOD 판단 (이름 추출이 성공했고 명확히 NOT_FOOD인 경우만 차단)
+    if (nameResult === 'NOT_FOOD') {
+      return NextResponse.json({ error: 'NOT_FOOD' }, { status: 422 });
+    }
 
     let aiResult = geminiResult;
     let aiSource = 'gemini';
-    // Haiku 폴백: Gemini 전체 실패(타임아웃/quota 소진) 시에만
     if (!geminiResult.success && anthropicKey) {
-      aiResult = await analyzeWithHaiku(base64Data, anthropicKey, koreanHit?.nutrients ?? null, koreanHit?.source ?? null, koreanHit?.portion ?? 250, locale);
-      aiSource = 'haiku';
+      const haikuResult = await analyzeWithHaiku(base64Data, anthropicKey, locale);
+      if (haikuResult.success) {
+        aiResult = haikuResult;
+        aiSource = 'haiku';
+      }
     }
 
     if (!aiResult.success) return NextResponse.json({ error: aiResult.error }, { status: 503 });
 
-    // items 배열 추출 — 구형 단일 객체 응답도 허용
-    const rawFood = aiResult.food;
-    const items: any[] = Array.isArray(rawFood?.items) && rawFood.items.length > 0
-      ? rawFood.items
-      : [rawFood];
+    const items = aiResult.items!;
 
     // 복수 품목 합산
     const mergedNutrients: Record<string, number> = {};
@@ -393,13 +430,13 @@ export async function POST(request: Request) {
         mergedNutrients[k] = (mergedNutrients[k] ?? 0) + (v as number);
       }
     }
-    const totalCalories = items.reduce((s, it) => s + (it?.calories ?? 0), 0);
+    const totalCalories = items.reduce((s: number, it: any) => s + (it?.calories ?? 0), 0);
     const combinedName = items.map((it: any) => it?.name).filter(Boolean).join(' + ');
     const primaryCategory = items[0]?.category ?? '';
     const primaryAmount = items.map((it: any) => it?.amount).filter(Boolean).join(', ');
     const primaryConfidence = items[0]?.confidence ?? 'medium';
 
-    const finalFood = {
+    const finalFood: Record<string, any> = {
       name: combinedName,
       calories: totalCalories,
       category: primaryCategory,
@@ -409,14 +446,18 @@ export async function POST(request: Request) {
       itemCount: items.length,
     };
 
-    // DB 보정은 단일 품목일 때만 적용
-    const dbResult = offHit || koreanHit;
-    if (items.length === 1 && dbResult) {
-      if (dbResult.nutrients.calories > 0 && Math.abs(dbResult.nutrients.calories - finalFood.calories) / Math.max(finalFood.calories, 1) < 0.5) {
-        const dbPatch = Object.fromEntries(
-          Object.entries(dbResult.nutrients).filter(([, v]) => v != null && v !== 0)
-        ) as Record<string, number>;
-        finalFood.nutrients = { ...finalFood.nutrients, ...dbPatch };
+    // DB 보정: 단일 품목 + 이름 추출 성공 시에만 (잘못된 DB 데이터로 오염 방지)
+    if (items.length === 1 && nameResult && nameResult !== 'NOT_FOOD') {
+      const koreanHit = searchKoreanDB(nameResult);
+      const dbResult = koreanHit;
+      if (dbResult && dbResult.nutrients.calories > 0) {
+        const ratio = Math.abs(dbResult.nutrients.calories - totalCalories) / Math.max(totalCalories, 1);
+        if (ratio < 0.5) {
+          const dbPatch = Object.fromEntries(
+            Object.entries(dbResult.nutrients).filter(([, v]) => v != null && v !== 0)
+          ) as Record<string, number>;
+          finalFood.nutrients = { ...finalFood.nutrients, ...dbPatch };
+        }
       }
     }
 
@@ -425,7 +466,12 @@ export async function POST(request: Request) {
       await incrementAnalysisCount(adminSupabase, userId);
     }
 
-    return NextResponse.json({ success: true, food: finalFood, source: dbResult ? dbResult.source + '+' + aiSource : aiSource + '_only', analysisStatus: { plan } });
+    return NextResponse.json({
+      success: true,
+      food: finalFood,
+      source: aiSource + '_only',
+      analysisStatus: { plan },
+    });
 
   } catch {
     return NextResponse.json({ error: 'Server Error' }, { status: 500 });

@@ -39,7 +39,7 @@ type Rating = 2 | 1 | 0 | null;
 type CaptureMode = 'food' | 'ocr';
 
 // 클라이언트에서 이미지 리사이즈 (전송 용량 절감)
-function resizeImage(dataUrl: string, maxWidth = 800, quality = 0.88): Promise<string> {
+function resizeImage(dataUrl: string, maxWidth = 1024, quality = 0.92): Promise<string> {
   return new Promise(resolve => {
     const img = new Image();
     img.onload = () => {
