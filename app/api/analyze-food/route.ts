@@ -158,35 +158,45 @@ PRINCIPLES:
 
   const jsonSchema = locale === 'en'
     ? `{
-  "name": "Specific food name in English",
-  "calories": number (kcal),
-  "category": "Korean/Chinese/Japanese/Western/Snack/Drink",
-  "amount": "Est. weight(g) or quantity",
-  "confidence": "high/medium/low",
-  "reasoning": "Key visual clues used for identification",
-  "nutrients": {
-    "carbohydrates": number (g), "protein": number (g), "fat": number (g),
-    "fiber": number (g), "sugar": number (g), "sodium": number (mg),
-    "caffeine": number (mg) or null,
-    "vitaminA": number (μg), "vitaminC": number (mg), "vitaminD": number (μg),
-    "calcium": number (mg), "iron": number (mg), "potassium": number (mg)
-  }
-}`
+  "items": [
+    {
+      "name": "Specific food name in English",
+      "calories": number (kcal),
+      "category": "Korean/Chinese/Japanese/Western/Snack/Drink",
+      "amount": "Est. weight(g) or quantity",
+      "confidence": "high/medium/low",
+      "reasoning": "Key visual clues used for identification",
+      "nutrients": {
+        "carbohydrates": number (g), "protein": number (g), "fat": number (g),
+        "fiber": number (g), "sugar": number (g), "sodium": number (mg),
+        "caffeine": number (mg) or null,
+        "vitaminA": number (μg), "vitaminC": number (mg), "vitaminD": number (μg),
+        "calcium": number (mg), "iron": number (mg), "potassium": number (mg)
+      }
+    }
+  ]
+}
+IMPORTANT: Always use the "items" array. Single food = array with 1 element. Multiple foods = array with multiple elements (one per distinct food/drink visible).`
     : `{
-  "name": "구체적인 한국어 음식명",
-  "calories": 숫자 (kcal),
-  "category": "한식/중식/일식/양식/간식/음료",
-  "amount": "추정 중량(g) 또는 수량",
-  "confidence": "high/medium/low",
-  "reasoning": "식별에 사용한 핵심 시각적 근거",
-  "nutrients": {
-    "carbohydrates": 숫자 (g), "protein": 숫자 (g), "fat": 숫자 (g),
-    "fiber": 숫자 (g), "sugar": 숫자 (g), "sodium": 숫자 (mg),
-    "caffeine": 숫자 (mg) 또는 null,
-    "vitaminA": 숫자 (μg), "vitaminC": 숫자 (mg), "vitaminD": 숫자 (μg),
-    "calcium": 숫자 (mg), "iron": 숫자 (mg), "potassium": 숫자 (mg)
-  }
-}`;
+  "items": [
+    {
+      "name": "구체적인 한국어 음식명",
+      "calories": 숫자 (kcal),
+      "category": "한식/중식/일식/양식/간식/음료",
+      "amount": "추정 중량(g) 또는 수량",
+      "confidence": "high/medium/low",
+      "reasoning": "식별에 사용한 핵심 시각적 근거",
+      "nutrients": {
+        "carbohydrates": 숫자 (g), "protein": 숫자 (g), "fat": 숫자 (g),
+        "fiber": 숫자 (g), "sugar": 숫자 (g), "sodium": 숫자 (mg),
+        "caffeine": 숫자 (mg) 또는 null,
+        "vitaminA": 숫자 (μg), "vitaminC": 숫자 (mg), "vitaminD": 숫자 (μg),
+        "calcium": 숫자 (mg), "iron": 숫자 (mg), "potassium": 숫자 (mg)
+      }
+    }
+  ]
+}
+중요: 반드시 "items" 배열 사용. 단일 음식 = 배열 요소 1개. 여러 음식이 보이면 = 각각 별도 요소로 추가 (보이는 음식/음료 각각 1개씩).`;
 
   return `${systemInstruction}\n\n${drinkRules}\n\n${solidFoodRules}\n\n${nutritionContext}\n\nOUTPUT FORMAT:\n${jsonSchema}`;
 }
@@ -366,10 +376,42 @@ export async function POST(request: Request) {
       aiSource = 'haiku';
     }
 
-    if (!aiResult.success) return NextResponse.json({ error: aiResult.error }, { status: 429 });
-    const finalFood = aiResult.food;
+    if (!aiResult.success) return NextResponse.json({ error: aiResult.error }, { status: 503 });
+
+    // items 배열 추출 — 구형 단일 객체 응답도 허용
+    const rawFood = aiResult.food;
+    const items: any[] = Array.isArray(rawFood?.items) && rawFood.items.length > 0
+      ? rawFood.items
+      : [rawFood];
+
+    // 복수 품목 합산
+    const mergedNutrients: Record<string, number> = {};
+    for (const item of items) {
+      if (!item?.nutrients) continue;
+      for (const [k, v] of Object.entries(item.nutrients)) {
+        if (v == null) continue;
+        mergedNutrients[k] = (mergedNutrients[k] ?? 0) + (v as number);
+      }
+    }
+    const totalCalories = items.reduce((s, it) => s + (it?.calories ?? 0), 0);
+    const combinedName = items.map((it: any) => it?.name).filter(Boolean).join(' + ');
+    const primaryCategory = items[0]?.category ?? '';
+    const primaryAmount = items.map((it: any) => it?.amount).filter(Boolean).join(', ');
+    const primaryConfidence = items[0]?.confidence ?? 'medium';
+
+    const finalFood = {
+      name: combinedName,
+      calories: totalCalories,
+      category: primaryCategory,
+      amount: primaryAmount,
+      confidence: primaryConfidence,
+      nutrients: mergedNutrients,
+      itemCount: items.length,
+    };
+
+    // DB 보정은 단일 품목일 때만 적용
     const dbResult = offHit || koreanHit;
-    if (dbResult) {
+    if (items.length === 1 && dbResult) {
       if (dbResult.nutrients.calories > 0 && Math.abs(dbResult.nutrients.calories - finalFood.calories) / Math.max(finalFood.calories, 1) < 0.5) {
         finalFood.nutrients = { ...finalFood.nutrients, ...Object.fromEntries(Object.entries(dbResult.nutrients).filter(([, v]) => v != null && v !== 0)) };
       }

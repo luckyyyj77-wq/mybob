@@ -16,6 +16,7 @@ type AnalysisResult = {
   category?: string;
   amount?: string;
   confidence?: 'high' | 'medium' | 'low';
+  itemCount?: number;
   nutrients: {
     carbohydrates: number;
     protein: number;
@@ -360,6 +361,11 @@ export default function CameraCapturePage() {
       }
 
       if (res.status === 429) {
+        setAnalysisError(t('errors.busy'));
+        return;
+      }
+
+      if (res.status === 503) {
         setAnalysisError(t('errors.busy'));
         return;
       }
@@ -893,7 +899,14 @@ export default function CameraCapturePage() {
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <div style={{ flex: 1, marginRight: '12px' }}>
-                        <h3 style={{ fontSize: '18px', fontWeight: 400, color: 'black', marginBottom: '4px' }}>{analysis.name}</h3>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                          <h3 style={{ fontSize: '18px', fontWeight: 400, color: 'black' }}>{analysis.name}</h3>
+                          {analysis.itemCount && analysis.itemCount > 1 && (
+                            <span style={{ fontSize: '10px', padding: '2px 6px', backgroundColor: '#f3e8ff', color: '#6B21A8', borderRadius: '10px', flexShrink: 0 }}>
+                              {analysis.itemCount}종
+                            </span>
+                          )}
+                        </div>
                         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
                           {analysis.category && (
                             <span style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '1px' }}>{analysis.category} · {analysis.amount || '1 serving'}</span>
