@@ -413,7 +413,10 @@ export async function POST(request: Request) {
     const dbResult = offHit || koreanHit;
     if (items.length === 1 && dbResult) {
       if (dbResult.nutrients.calories > 0 && Math.abs(dbResult.nutrients.calories - finalFood.calories) / Math.max(finalFood.calories, 1) < 0.5) {
-        finalFood.nutrients = { ...finalFood.nutrients, ...Object.fromEntries(Object.entries(dbResult.nutrients).filter(([, v]) => v != null && v !== 0)) };
+        const dbPatch = Object.fromEntries(
+          Object.entries(dbResult.nutrients).filter(([, v]) => v != null && v !== 0)
+        ) as Record<string, number>;
+        finalFood.nutrients = { ...finalFood.nutrients, ...dbPatch };
       }
     }
 
