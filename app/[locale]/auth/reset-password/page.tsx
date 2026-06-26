@@ -18,9 +18,19 @@ function ResetPasswordContent() {
   const t = useTranslations('Auth');
 
   useEffect(() => {
+    // PKCE flow: URL에 code 파라미터가 있으면 클라이언트에서 직접 세션 교환
+    const code = searchParams.get('code');
     const type = searchParams.get('type');
-    if (type === 'recovery') setStep('update');
 
+    if (code) {
+      supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
+        if (!error) setStep('update');
+      });
+      return;
+    }
+
+    // Legacy hash flow (access_token in hash)
+    if (type === 'recovery') { setStep('update'); return; }
     const hash = window.location.hash;
     if (hash.includes('type=recovery') || hash.includes('access_token')) setStep('update');
   }, [searchParams]);
@@ -30,7 +40,7 @@ function ResetPasswordContent() {
     setLoading(true);
     setMessage(null);
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback?next=/auth/reset-password&type=recovery`,
+      redirectTo: `${window.location.origin}/auth/reset-password`,
     });
     if (error) {
       setMessage({ type: 'error', text: t('errSendFailed') });

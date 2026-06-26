@@ -15,8 +15,17 @@ export default function CallbackComplete() {
   const router = useRouter();
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    async function init() {
       const prefix = getLocalePrefix();
+
+      // code가 있으면 클라이언트에서 세션 교환
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+      if (code) {
+        await supabase.auth.exchangeCodeForSession(code);
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         router.replace(`${prefix}/auth/login`);
         return;
@@ -26,7 +35,8 @@ export default function CallbackComplete() {
         headers: { Authorization: `Bearer ${session.access_token}` },
       }).catch(() => {});
       router.replace(isOnboardingDone() ? `${prefix}/` : `${prefix}/onboarding`);
-    });
+    }
+    init();
   }, [router]);
 
   return (
