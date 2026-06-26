@@ -4,6 +4,8 @@ import { createClient } from '@supabase/supabase-js';
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
+  const next = searchParams.get('next');
+  const type = searchParams.get('type');
 
   if (code) {
     const supabase = createClient(
@@ -13,7 +15,11 @@ export async function GET(request: Request) {
     await supabase.auth.exchangeCodeForSession(code);
   }
 
-  // 온보딩 여부는 클라이언트에서 판단해야 하므로 중간 페이지로 이동
-  // auth/callback은 locale prefix 없이 유지 (middleware matcher 제외 경로)
+  // 비밀번호 재설정 링크 → reset-password 페이지로 직행
+  if (type === 'recovery' || next === '/auth/reset-password') {
+    return NextResponse.redirect(`${origin}/auth/reset-password?type=recovery`);
+  }
+
+  // 일반 로그인/가입 콜백 → 온보딩 여부는 클라이언트 판단
   return NextResponse.redirect(`${origin}/auth/callback/complete`);
 }

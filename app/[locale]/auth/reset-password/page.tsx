@@ -30,7 +30,7 @@ function ResetPasswordContent() {
     setLoading(true);
     setMessage(null);
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/reset-password?type=recovery`,
+      redirectTo: `${window.location.origin}/auth/callback?next=/auth/reset-password&type=recovery`,
     });
     if (error) {
       setMessage({ type: 'error', text: t('errSendFailed') });
