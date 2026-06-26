@@ -130,37 +130,7 @@ async function analyzeWithGemini(
   }
 }
 
-async function analyzeWithHaiku(
-  base64Data: string, apiKey: string, locale: string, confirmedName: string
-): Promise<{ success: boolean; items?: any[]; modelUsed?: string; error?: string }> {
-  const prompt = buildNutritionPrompt(locale, confirmedName);
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1024,
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: base64Data } },
-            { type: 'text', text: prompt },
-          ],
-        }],
-      }),
-      signal: AbortSignal.timeout(15000),
-    });
-    const result = await res.json();
-    if (!res.ok) return { success: false, error: result.error?.message };
-    const text = result.content?.[0]?.text || '';
-    const items = safeParseItems(text);
-    if (!items) return { success: false, error: 'Invalid Haiku response' };
-    return { success: true, items, modelUsed: 'claude-haiku-4-5' };
-  } catch {
-    return { success: false, error: 'Haiku timeout' };
-  }
-}
+
 
 async function lookupBarcode(barcode: string) {
   try {
@@ -240,7 +210,6 @@ export async function POST(request: Request) {
 
     // ── Food mode ──────────────────────────────────────────────────────────
     const isPro = plan !== 'free';
-    const anthropicKey = process.env.ANTHROPIC_API_KEY?.trim();
 
     // 1단계: flash-lite로 이름 확정 (NOT_FOOD 체크 겸용) — 빠르게 선행
     const namePrompt = locale === 'en'
@@ -267,19 +236,9 @@ export async function POST(request: Request) {
     // 2단계: 확정된 이름을 본분석에 주입 — 이름 판단 없이 영양소 추정에만 집중
     const geminiResult = await analyzeWithGemini(base64Data, apiKey, isPro, locale, confirmedName);
 
-    let aiResult = geminiResult;
-    let aiSource = 'gemini';
-    if (!geminiResult.success && anthropicKey) {
-      const haikuResult = await analyzeWithHaiku(base64Data, anthropicKey, locale, confirmedName);
-      if (haikuResult.success) {
-        aiResult = haikuResult;
-        aiSource = 'haiku';
-      }
-    }
+    if (!geminiResult.success) return NextResponse.json({ error: geminiResult.error }, { status: 503 });
 
-    if (!aiResult.success) return NextResponse.json({ error: aiResult.error }, { status: 503 });
-
-    const items = aiResult.items!;
+    const items = geminiResult.items!;
 
     // 복수 품목 합산
     const mergedNutrients: Record<string, number> = {};
@@ -314,7 +273,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       food: finalFood,
-      source: aiSource + '_only',
+      source: 'gemini',
       analysisStatus: { plan },
     });
 
