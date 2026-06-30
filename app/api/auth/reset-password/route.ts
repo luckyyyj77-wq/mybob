@@ -27,7 +27,8 @@ export async function POST(request: Request) {
 
     // 가입된 이메일만 실제 발송
     const anonSupabase = createClient(supabaseUrl, supabaseAnonKey);
-    const { error } = await anonSupabase.auth.resetPasswordForEmail(email, { redirectTo });
+    const finalRedirectTo = redirectTo || 'https://mybob.kr/auth/callback?type=recovery';
+    const { error } = await anonSupabase.auth.resetPasswordForEmail(email, { redirectTo: finalRedirectTo });
     if (error) throw error;
 
     return NextResponse.json({ ok: true });
