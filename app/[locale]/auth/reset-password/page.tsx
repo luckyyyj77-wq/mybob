@@ -39,11 +39,16 @@ function ResetPasswordContent() {
     e.preventDefault();
     setLoading(true);
     setMessage(null);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/reset-password`,
+    const res = await fetch('/api/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email,
+        redirectTo: `${window.location.origin}/auth/callback?type=recovery`,
+      }),
     });
-    if (error) {
-      setMessage({ type: 'error', text: t('errSendFailed') });
+    if (!res.ok) {
+      setMessage({ type: 'error', text: t('errChangeFailed') });
     } else {
       setMessage({ type: 'success', text: t('errResetSuccess') });
     }
