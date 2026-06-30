@@ -18,10 +18,19 @@ function ResetPasswordContent() {
   const t = useTranslations('Auth');
 
   useEffect(() => {
-    // PKCE flow: URL에 code 파라미터가 있으면 클라이언트에서 직접 세션 교환
     const code = searchParams.get('code');
+    const tokenHash = searchParams.get('token_hash');
     const type = searchParams.get('type');
 
+    // token_hash 방식 (이메일 템플릿 직접 조합)
+    if (tokenHash && type === 'recovery') {
+      supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' }).then(({ error }) => {
+        if (!error) setStep('update');
+      });
+      return;
+    }
+
+    // PKCE code 방식
     if (code) {
       supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
         if (!error) setStep('update');
@@ -29,7 +38,7 @@ function ResetPasswordContent() {
       return;
     }
 
-    // Legacy hash flow (access_token in hash)
+    // Legacy hash flow
     if (type === 'recovery') { setStep('update'); return; }
     const hash = window.location.hash;
     if (hash.includes('type=recovery') || hash.includes('access_token')) setStep('update');
