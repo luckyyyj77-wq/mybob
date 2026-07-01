@@ -25,7 +25,7 @@ export default function UpgradeModal({ userEmail, userId, onClose }: Props) {
   function handleCheckout() {
     const variantId = LS_VARIANT_IDS[selected];
     const url = getLSCheckoutUrl(variantId, userEmail, userId, autoCancel);
-    window.open(url, '_blank');
+    window.location.href = url;
   }
 
   const features = t.raw('features') as string[];
