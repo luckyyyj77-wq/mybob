@@ -72,9 +72,8 @@ export function getLSCheckoutUrl(variantId: string, userEmail: string, userId: s
     'checkout[custom_data][user_id]': userId,
     'checkout[custom_data][auto_cancel]': autoCancel ? '1' : '0',
   });
-  params.set('variant', variantId);
   if (testMode) params.set('test', '1');
-  return `https://${storeSlug}.lemonsqueezy.com/checkout?${params.toString()}`;
+  return `https://${storeSlug}.lemonsqueezy.com/buy/${variantId}?${params.toString()}`;
 }
 
 export function getVariantIdFromPlan(plan: LSPlan): string {
