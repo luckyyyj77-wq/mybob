@@ -8,11 +8,11 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-function buildNutritionPrompt(locale: string, confirmedName: string): string {
-  const nameInstruction = confirmedName
+function buildNutritionPrompt(locale: string, confirmedNames: string[]): string {
+  const nameInstruction = confirmedNames.length > 0
     ? (locale === 'en'
-        ? `The food in this image is "${confirmedName}". Estimate its nutritional values.`
-        : `이 이미지의 음식은 "${confirmedName}"입니다. 영양소 수치를 추정하세요.`)
+        ? `The foods in this image are: ${confirmedNames.map(n => `"${n}"`).join(', ')}. Analyze each one separately and estimate its nutritional values.`
+        : `이 이미지에 있는 음식은 ${confirmedNames.map(n => `"${n}"`).join(', ')}입니다. 각각을 분리하여 영양소 수치를 추정하세요.`)
     : (locale === 'en'
         ? `Analyze the food in this image and return ONLY valid JSON.`
         : `이 이미지의 음식을 분석하고 유효한 JSON만 반환하세요.`);
@@ -55,7 +55,13 @@ function buildNutritionPrompt(locale: string, confirmedName: string): string {
   ]
 }`;
 
-  return `${nameInstruction} Use the "items" array — one element per distinct food or drink.\n\n${jsonSchema}`;
+  const itemCount = confirmedNames.length > 1
+    ? (locale === 'en'
+        ? ` Output exactly ${confirmedNames.length} elements in the "items" array, one per food listed above.`
+        : ` "items" 배열에 위에서 나열한 음식 ${confirmedNames.length}개를 각각 하나의 요소로 출력하세요.`)
+    : '';
+
+  return `${nameInstruction}${itemCount} Use the "items" array — one element per distinct food or drink.\n\n${jsonSchema}`;
 }
 
 function safeParseItems(text: string): any[] | null {
@@ -95,12 +101,12 @@ function safeParseItems(text: string): any[] | null {
 }
 
 async function analyzeWithGemini(
-  base64Data: string, apiKey: string, isPro: boolean, locale: string, confirmedName: string
+  base64Data: string, apiKey: string, isPro: boolean, locale: string, confirmedNames: string[]
 ): Promise<{ success: boolean; items?: any[]; modelUsed?: string; error?: string }> {
   const modelsToTry = isPro
     ? ['gemini-2.5-pro', 'gemini-2.5-flash']
     : ['gemini-2.5-flash', 'gemini-2.0-flash'];
-  const prompt = buildNutritionPrompt(locale, confirmedName);
+  const prompt = buildNutritionPrompt(locale, confirmedNames);
   const MODEL_TIMEOUT = 8000;
 
   async function tryModel(model: string): Promise<{ success: boolean; items: any[]; modelUsed: string }> {
@@ -211,12 +217,12 @@ export async function POST(request: Request) {
     // ── Food mode ──────────────────────────────────────────────────────────
     const isPro = plan !== 'free';
 
-    // 1단계: flash-lite로 이름 확정 (NOT_FOOD 체크 겸용) — 빠르게 선행
+    // 1단계: flash-lite로 음식 목록 확정 (NOT_FOOD 체크 겸용) — 빠르게 선행
     const namePrompt = locale === 'en'
-      ? 'What food or drink is in this image? Reply with only the specific name (e.g. "Iced Americano", "Kimchi Jjigae"). If not food, reply exactly: NOT_FOOD'
-      : '이 이미지에 있는 음식이나 음료의 이름이 무엇인가요? 구체적인 이름만 답하세요 (예: 아이스 아메리카노, 김치찌개). 음식이 아니면 정확히 NOT_FOOD 라고만 답하세요.';
+      ? 'List all distinct foods and drinks visible in this image. Reply with ONLY a JSON array of specific names, e.g. ["Iced Americano", "Kimchi Jjigae", "Rice"]. If there is nothing edible, reply exactly: NOT_FOOD'
+      : '이 이미지에 보이는 모든 음식과 음료를 나열하세요. 구체적인 이름을 JSON 배열로만 답하세요 (예: ["아이스 아메리카노", "김치찌개", "공기밥"]). 먹을 수 있는 것이 없으면 정확히 NOT_FOOD 라고만 답하세요.';
 
-    const confirmedName = await fetch(
+    const confirmedNames: string[] = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey}`,
       {
         method: 'POST',
@@ -226,15 +232,25 @@ export async function POST(request: Request) {
       }
     ).then(async r => {
       const d = await r.json();
-      return (d.candidates?.[0]?.content?.parts?.[0]?.text || '').replace(/["\n]/g, '').trim();
-    }).catch(() => '');
+      const raw = (d.candidates?.[0]?.content?.parts?.[0]?.text || '').trim();
+      if (raw === 'NOT_FOOD') return 'NOT_FOOD' as any;
+      // JSON 배열 파싱 시도, 실패 시 단일 문자열을 배열로 감싸기
+      try {
+        const stripped = raw.replace(/```json|```/g, '').trim();
+        const parsed = JSON.parse(stripped);
+        if (Array.isArray(parsed)) return parsed.map((s: any) => String(s).trim()).filter(Boolean);
+      } catch { /* fallthrough */ }
+      // 배열 파싱 실패 → 단일 이름으로 처리
+      const cleaned = raw.replace(/["\n\[\]]/g, '').trim();
+      return cleaned ? [cleaned] : [];
+    }).catch(() => []);
 
-    if (confirmedName === 'NOT_FOOD') {
+    if (confirmedNames === 'NOT_FOOD' as any) {
       return NextResponse.json({ error: 'NOT_FOOD' }, { status: 422 });
     }
 
-    // 2단계: 확정된 이름을 본분석에 주입 — 이름 판단 없이 영양소 추정에만 집중
-    const geminiResult = await analyzeWithGemini(base64Data, apiKey, isPro, locale, confirmedName);
+    // 2단계: 확정된 이름 목록을 본분석에 주입 — 영양소 추정에만 집중
+    const geminiResult = await analyzeWithGemini(base64Data, apiKey, isPro, locale, confirmedNames as string[]);
 
     if (!geminiResult.success) return NextResponse.json({ error: geminiResult.error }, { status: 503 });
 
