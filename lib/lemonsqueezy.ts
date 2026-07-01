@@ -1,7 +1,7 @@
 export const LS_VARIANT_IDS = {
-  pro_monthly:  '1822506',
-  pro_6months:  '1822494',
-  pro_yearly:   '1822502',
+  pro_monthly:  'fb4e4eab-f8a4-46ba-b0f5-e6532d60a58b',
+  pro_6months:  'ee045e96-324b-4a3f-afa1-bb98a20f919a',
+  pro_yearly:   'aeeef086-c266-4cf0-9f49-5fb1884b5fcf',
 } as const;
 
 export type LSPlan = keyof typeof LS_VARIANT_IDS;
@@ -73,7 +73,7 @@ export function getLSCheckoutUrl(variantId: string, userEmail: string, userId: s
     'checkout[custom_data][auto_cancel]': autoCancel ? '1' : '0',
   });
   if (testMode) params.set('test', '1');
-  return `https://${storeSlug}.lemonsqueezy.com/buy/${variantId}?${params.toString()}`;
+  return `https://${storeSlug}.lemonsqueezy.com/checkout/buy/${variantId}?${params.toString()}`;
 }
 
 export function getVariantIdFromPlan(plan: LSPlan): string {
