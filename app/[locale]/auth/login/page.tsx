@@ -22,7 +22,16 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
-      setError(error.message);
+      const msg = error.message.toLowerCase();
+      if (msg.includes('invalid login credentials') || msg.includes('invalid email or password')) {
+        setError(t('errors.invalidCredentials'));
+      } else if (msg.includes('email not confirmed')) {
+        setError(t('errors.emailNotConfirmed'));
+      } else if (msg.includes('too many requests')) {
+        setError(t('errors.tooManyRequests'));
+      } else {
+        setError(t('errors.general'));
+      }
     } else {
       router.push(isOnboardingDone() ? '/' : '/onboarding');
     }

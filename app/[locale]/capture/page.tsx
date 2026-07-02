@@ -79,6 +79,7 @@ export default function CameraCapturePage() {
   const ocrStreamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const [resizedImageSrc, setResizedImageSrc] = useState<string | null>(null);
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
   const [loadingSave, setLoadingSave] = useState(false);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
@@ -337,9 +338,9 @@ export default function CameraCapturePage() {
     try {
       const apiMode = captureMode === 'ocr' ? 'ocr' : 'food';
 
-      const imageToSend = apiMode === 'ocr'
-        ? imageSrc
-        : await resizeImage(imageSrc, 800);
+      const resized = apiMode === 'ocr' ? imageSrc : await resizeImage(imageSrc, 800);
+      if (apiMode !== 'ocr') setResizedImageSrc(resized);
+      const imageToSend = resized;
 
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -448,7 +449,7 @@ export default function CameraCapturePage() {
 
         let serverPhotoUrl: string | null = null;
 
-        const resizedForUpload = await resizeImage(imageSrc, 800);
+        const resizedForUpload = resizedImageSrc ?? await resizeImage(imageSrc, 800);
         const res = await fetch('/api/meals', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -517,7 +518,7 @@ export default function CameraCapturePage() {
 
       setSaved(true);
     } catch {
-      alert(t('errors.general'));
+      setAnalysisError(t('errors.general'));
     } finally {
       setLoadingSave(false);
     }
@@ -525,6 +526,7 @@ export default function CameraCapturePage() {
 
   const retake = () => {
     setImageSrc(null);
+    setResizedImageSrc(null);
     setAnalysis(null);
     setAnalysisSource(null);
     setAnalysisModel(null);
@@ -536,7 +538,7 @@ export default function CameraCapturePage() {
     setCaptureMode('food');
     if (fileInputRef.current) fileInputRef.current.value = '';
     stopOcrCamera();
-    startFoodCamera();
+    // captureMode를 'food'로 바꾸면 useEffect가 startFoodCamera()를 실행함
   };
 
   if (permState === 'checking') {

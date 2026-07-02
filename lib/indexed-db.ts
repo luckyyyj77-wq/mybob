@@ -5,7 +5,10 @@ const DB_NAME = 'mybob_db';
 const DB_VERSION = 1;
 const STORE_PHOTOS = 'photos'; // key: mealId, value: base64 string
 
+let dbInstance: IDBDatabase | null = null;
+
 function openDB(): Promise<IDBDatabase> {
+  if (dbInstance) return Promise.resolve(dbInstance);
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
     req.onupgradeneeded = (e) => {
@@ -14,7 +17,7 @@ function openDB(): Promise<IDBDatabase> {
         db.createObjectStore(STORE_PHOTOS); // keyPath 없이 key 직접 지정
       }
     };
-    req.onsuccess = () => resolve(req.result);
+    req.onsuccess = () => { dbInstance = req.result; resolve(req.result); };
     req.onerror = () => reject(req.error);
   });
 }
@@ -73,6 +76,7 @@ export async function clearAllPhotos(): Promise<void> {
 export async function fetchAndSavePhoto(mealId: string, url: string): Promise<string | null> {
   try {
     const res = await fetch(url);
+    if (!res.ok) return null;
     const blob = await res.blob();
     return new Promise((resolve) => {
       const reader = new FileReader();

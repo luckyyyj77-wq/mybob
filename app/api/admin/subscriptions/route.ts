@@ -1,21 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { verifyAdmin } from '@/lib/admin-auth';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const adminEmail = process.env.ADMIN_EMAIL!;
 const lsApiKey = process.env.LS_API_KEY!;
-
-async function verifyAdmin(request: Request) {
-  const auth = request.headers.get('Authorization');
-  if (!auth?.startsWith('Bearer ')) return null;
-  const token = auth.split(' ')[1];
-  const sb = createClient(supabaseUrl, supabaseAnonKey);
-  const { data: { user }, error } = await sb.auth.getUser(token);
-  if (error || !user || user.email !== adminEmail) return null;
-  return user;
-}
 
 // 구독 중인 유저 목록 조회
 export async function GET(request: Request) {

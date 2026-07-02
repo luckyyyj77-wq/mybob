@@ -1223,7 +1223,13 @@
     "goToLogin": "Go to Login",
     "signingUp": "Signing up...",
     "googleContinue": "Continue with Google",
-    "hasAccount": "Already have an account?"
+    "hasAccount": "Already have an account?",
+    "errors": {
+      "invalidCredentials": "Invalid email or password.",
+      "emailNotConfirmed": "Please confirm your email address.",
+      "tooManyRequests": "Too many requests. Please try again later.",
+      "general": "Login failed. Please try again."
+    }
   },
   "Pricing": {
     "title": "Pricing",

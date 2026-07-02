@@ -1,24 +1,15 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { verifyAdmin } from '@/lib/admin-auth';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const adminEmail = process.env.ADMIN_EMAIL!;
-
-async function verifyAdmin(request: Request) {
-  const authHeader = request.headers.get('Authorization');
-  if (!authHeader?.startsWith('Bearer ')) return null;
-  const supabase = createClient(supabaseUrl, supabaseAnonKey);
-  const { data: { user } } = await supabase.auth.getUser(authHeader.split(' ')[1]);
-  if (!user || user.email !== adminEmail) return null;
-  return user;
-}
 
 // GET: 배너 설정 조회 (인증 불필요 — 앱 전체에서 호출)
 export async function GET() {
-  const adminSupabase = createClient(supabaseUrl, supabaseServiceRoleKey);
-  const { data, error } = await adminSupabase
+  const anonSupabase = createClient(supabaseUrl, supabaseAnonKey);
+  const { data, error } = await anonSupabase
     .from('app_settings')
     .select('value')
     .eq('key', 'banner')

@@ -40,7 +40,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     fetch('/api/admin/banner')
       .then(r => r.json())
-      .then(data => { if (data.banner?.active) setAppBanner(data.banner); })
+      .then(data => {
+        if (data.banner?.active) {
+          setAppBanner(data.banner);
+          if (sessionStorage.getItem('mybob_banner_dismissed') === data.banner.message) {
+            setBannerDismissed(true);
+          }
+        }
+      })
       .catch(() => {});
   }, []);
 
@@ -197,7 +204,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         }}>
           <span style={{ flex: 1 }}>{appBanner.message}</span>
           <button
-            onClick={() => setBannerDismissed(true)}
+            onClick={() => { setBannerDismissed(true); sessionStorage.setItem('mybob_banner_dismissed', appBanner.message); }}
             style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', fontSize: '16px', cursor: 'pointer', padding: '0 4px', flexShrink: 0 }}
           >×</button>
         </div>

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { rateLimit } from '@/lib/rate-limit';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -10,6 +11,11 @@ export async function POST(request: Request) {
     const { email, redirectTo } = await request.json();
     if (!email || typeof email !== 'string') {
       return NextResponse.json({ error: 'invalid' }, { status: 400 });
+    }
+
+    const limit = rateLimit(`reset-pw:${email.toLowerCase()}`, 3, 10 * 60 * 1000);
+    if (limit.limited) {
+      return NextResponse.json({ ok: true }); // 보안상 동일한 성공 응답
     }
 
     const adminSupabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
