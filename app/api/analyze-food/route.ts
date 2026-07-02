@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { consumeAnalysisCredit, refundAnalysisCredit } from '@/lib/plan';
+import { lookupKoreanFoodsDB, normalizeFoodName, type FoodDbEntry } from '@/lib/food-db';
 
 export const maxDuration = 30;
 
@@ -307,14 +308,46 @@ export async function POST(request: Request) {
     }
 
     // 2단계: 확정된 이름 목록을 본분석에 주입 — 영양소 추정에만 집중
-    const geminiResult = await analyzeWithGemini(base64Data, apiKey, isPro, locale, confirmedNames as string[]);
+    // 식약처 DB 조회는 Gemini와 병렬 실행 (추가 지연 없음, 키 없으면 빈 Map)
+    const nameList = confirmedNames as string[];
+    const [geminiResult, dbMap] = await Promise.all([
+      analyzeWithGemini(base64Data, apiKey, isPro, locale, nameList),
+      locale === 'ko' && nameList.length > 0
+        ? lookupKoreanFoodsDB(nameList)
+        : Promise.resolve(new Map<string, FoodDbEntry>()),
+    ]);
 
     if (!geminiResult.success) {
       await refundAnalysisCredit(adminSupabase, userId);
       return NextResponse.json({ error: geminiResult.error }, { status: 503 });
     }
 
-    const items = geminiResult.items!;
+    // 식약처 DB 매칭 품목은 DB 수치로 교체 — Gemini는 중량 추정 담당,
+    // DB가 제공하지 않는 항목(식이섬유·비타민 등)은 Gemini 추정 유지
+    const parseGrams = (amount: unknown): number | null => {
+      const m = String(amount ?? '').match(/(\d+(?:\.\d+)?)\s*g/i);
+      return m ? parseFloat(m[1]) : null;
+    };
+
+    let dbMatchedCount = 0;
+    const items = geminiResult.items!.map((item: any) => {
+      const entry = dbMap.get(normalizeFoodName(String(item?.name ?? '')));
+      if (!entry) return item;
+      const grams = parseGrams(item?.amount) ?? entry.basisGrams;
+      const scale = grams / entry.basisGrams;
+      const dbNutrients = Object.fromEntries(
+        Object.entries(entry.nutrients)
+          .filter(([, v]) => v != null)
+          .map(([k, v]) => [k, Math.round((v as number) * scale * 10) / 10])
+      );
+      dbMatchedCount++;
+      return {
+        ...item,
+        calories: Math.round(entry.calories * scale),
+        confidence: 'high',
+        nutrients: { ...item.nutrients, ...dbNutrients },
+      };
+    });
 
     // 복수 품목 합산
     const mergedNutrients: Record<string, number> = {};
@@ -344,7 +377,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       food: finalFood,
-      source: 'gemini',
+      source: dbMatchedCount > 0 ? 'korean_db+gemini' : 'gemini',
       modelUsed: geminiResult.modelUsed,
       analysisStatus: { plan, used: limitCheck.used, limit: limitCheck.limit },
     });
