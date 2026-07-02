@@ -1,11 +1,13 @@
-// 식약처 식품영양성분DB(I2790) 조회 — AI 추정치 대신 공공 DB 수치를 우선 사용
+// 식약처 식품영양성분DB 조회 — AI 추정치 대신 공공 DB 수치를 우선 사용
 //
-// 인증키 발급: https://www.foodsafetykorea.go.kr/api/ 회원가입 → 마이페이지 → 인증키 발급
-// 환경변수: FOODSAFETY_API_KEY (Vercel + .env.local)
+// API: 공공데이터포털 "식품의약품안전처_식품영양성분DB정보"
+//      https://www.data.go.kr/data/15127578/openapi.do
+// 엔드포인트: apis.data.go.kr/1471000/FoodNtrCpntDbInfo02/getFoodNtrCpntDbInq02
+// 환경변수: FOODSAFETY_API_KEY (data.go.kr 일반 인증키, Vercel + .env.local)
 // 키가 없거나 조회에 실패하면 null을 반환해 기존 Gemini-only 흐름이 그대로 유지됨.
 //
-// I2790 응답 필드 가정: NUTR_CONT1~9는 SERVING_WT(1회제공량 g) 기준 수치.
-// SERVING_WT가 없으면 100g 기준으로 간주.
+// 영양수치 기준량: Z10500(영양성분함량기준량, 예 "100g") 필드 기준.
+// 필드가 없거나 파싱 불가하면 100g으로 간주.
 
 export type FoodDbEntry = {
   name: string;        // DB 식품명
@@ -16,9 +18,8 @@ export type FoodDbEntry = {
     protein: number | null;
     fat: number | null;
     sugar: number | null;
-    sodium: number | null;        // mg
-    saturated_fat: number | null;
-    trans_fat: number | null;
+    fiber: number | null;
+    sodium: number | null;  // mg
   };
 };
 
@@ -36,6 +37,16 @@ export function normalizeFoodName(s: string): string {
   return s.replace(/\s+/g, '').toLowerCase();
 }
 
+// 응답 items에서 검색어와 가장 잘 맞는 행 선택: 완전 일치 > 포함 관계 > 첫 번째
+function pickBestRow(rows: any[], queryNorm: string): any {
+  const named = rows.map(r => ({ row: r, norm: normalizeFoodName(String(r?.FOOD_NM_KR ?? '')) }));
+  return (
+    named.find(n => n.norm === queryNorm)?.row ??
+    named.find(n => n.norm.includes(queryNorm) || queryNorm.includes(n.norm))?.row ??
+    rows[0]
+  );
+}
+
 export async function lookupKoreanFoodDB(foodName: string): Promise<FoodDbEntry | null> {
   const apiKey = process.env.FOODSAFETY_API_KEY?.trim();
   if (!apiKey || !foodName?.trim()) return null;
@@ -46,29 +57,36 @@ export async function lookupKoreanFoodDB(foodName: string): Promise<FoodDbEntry 
 
   let entry: FoodDbEntry | null = null;
   try {
-    const url = `https://openapi.foodsafetykorea.go.kr/api/${apiKey}/I2790/json/1/5/DESC_KOR=${encodeURIComponent(foodName.trim())}`;
+    const url = `https://apis.data.go.kr/1471000/FoodNtrCpntDbInfo02/getFoodNtrCpntDbInq02`
+      + `?serviceKey=${encodeURIComponent(apiKey)}&type=json&pageNo=1&numOfRows=5`
+      + `&FOOD_NM_KR=${encodeURIComponent(foodName.trim())}`;
     const res = await fetch(url, { signal: AbortSignal.timeout(3000) });
     if (res.ok) {
       const data = await res.json();
-      const rows = data?.I2790?.row;
-      if (Array.isArray(rows) && rows.length > 0) {
-        // 식품명 완전 일치 우선, 없으면 첫 번째 결과
-        const row = rows.find((r: any) => normalizeFoodName(String(r?.DESC_KOR ?? '')) === key) ?? rows[0];
-        const servingWt = toNum(row.SERVING_WT);
-        const calories = toNum(row.NUTR_CONT1);
+      const rawItems = data?.body?.items;
+      // items가 [{...}] 또는 [{ item: {...} }] 두 형태 모두 방어
+      const rows: any[] = (Array.isArray(rawItems) ? rawItems : [])
+        .map((it: any) => (it && typeof it === 'object' && 'item' in it ? it.item : it))
+        .filter(Boolean);
+
+      if (rows.length > 0) {
+        const row = pickBestRow(rows, key);
+        const calories = toNum(row.AMT_NUM1);
         if (calories != null && calories > 0) {
+          // Z10500: 영양성분함량기준량 (예 "100g") — 숫자만 추출
+          const basisMatch = String(row.Z10500 ?? '').match(/(\d+(?:\.\d+)?)/);
+          const basisGrams = basisMatch ? parseFloat(basisMatch[1]) : 100;
           entry = {
-            name: String(row.DESC_KOR ?? foodName),
-            basisGrams: servingWt && servingWt > 0 ? servingWt : 100,
+            name: String(row.FOOD_NM_KR ?? foodName),
+            basisGrams: basisGrams > 0 ? basisGrams : 100,
             calories,
             nutrients: {
-              carbohydrates: toNum(row.NUTR_CONT2),
-              protein: toNum(row.NUTR_CONT3),
-              fat: toNum(row.NUTR_CONT4),
-              sugar: toNum(row.NUTR_CONT5),
-              sodium: toNum(row.NUTR_CONT6),
-              saturated_fat: toNum(row.NUTR_CONT8),
-              trans_fat: toNum(row.NUTR_CONT9),
+              protein: toNum(row.AMT_NUM3),
+              fat: toNum(row.AMT_NUM4),
+              carbohydrates: toNum(row.AMT_NUM6),
+              sugar: toNum(row.AMT_NUM7),
+              fiber: toNum(row.AMT_NUM8),
+              sodium: toNum(row.AMT_NUM13),
             },
           };
         }
