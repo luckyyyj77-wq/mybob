@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { checkUploadLimit, incrementUploadCount } from '@/lib/plan';
+import { consumeUploadCredit, refundUploadCredit } from '@/lib/plan';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -60,6 +60,8 @@ async function estimateNutrition(foodName: string): Promise<{
 }
 
 export async function POST(request: Request) {
+  let creditConsumed = false;
+  let creditUserId: string | null = null;
   try {
     const user = await getAuthenticatedUser(request);
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -74,12 +76,14 @@ export async function POST(request: Request) {
     if (!foodName?.trim()) return NextResponse.json({ error: 'foodName required' }, { status: 400 });
     if (foodName.trim().length > 100) return NextResponse.json({ error: '음식명은 100자 이내여야 합니다.' }, { status: 400 });
 
-    // 업로드 횟수 체크 (AI 분석 횟수는 소모 안 함)
+    // 업로드 횟수 원자적 소진 (AI 분석 횟수는 소모 안 함, 실패 시 catch에서 환불)
     const supabaseService = createClient(supabaseUrl, supabaseServiceRoleKey);
-    const limitCheck = await checkUploadLimit(supabaseService, user.id);
+    const limitCheck = await consumeUploadCredit(supabaseService, user.id);
     if (!limitCheck.allowed) {
       return NextResponse.json({ error: 'UPLOAD_LIMIT_EXCEEDED', used: limitCheck.used, limit: limitCheck.limit }, { status: 429 });
     }
+    creditConsumed = true;
+    creditUserId = user.id;
 
     const nutrition = await estimateNutrition(foodName.trim());
 
@@ -102,12 +106,14 @@ export async function POST(request: Request) {
 
     if (insertError) throw insertError;
 
-    await incrementUploadCount(supabaseService, user.id);
-
     return NextResponse.json({ success: true, data: inserted, nutrition });
 
   } catch (error: any) {
     console.error('[quick-log POST]', error?.message);
+    if (creditConsumed && creditUserId) {
+      const supabaseService = createClient(supabaseUrl, supabaseServiceRoleKey);
+      await refundUploadCredit(supabaseService, creditUserId);
+    }
     return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
   }
 }

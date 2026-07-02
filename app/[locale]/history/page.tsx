@@ -202,6 +202,15 @@ export default function HistoryPage() {
     setQlLoading(false);
   };
 
+  // 촬영 페이지 "직접 입력" 링크(/history?quicklog=1)로 진입 시 퀵로그 자동 오픈
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('quicklog') === '1') {
+      openQuickLog();
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleQuickLogSave = useCallback(async () => {
     if (!qlFoodName.trim()) return;
     setQlLoading(true);

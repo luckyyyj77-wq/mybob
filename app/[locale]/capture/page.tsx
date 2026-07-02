@@ -357,12 +357,12 @@ export default function CameraCapturePage() {
     if (!token) return;
     setLoadingAnalysis(true);
     setAnalysisError(null);
+    const apiMode = captureMode === 'ocr' ? 'ocr' : 'food';
+    let imageToSend: string | null = null;
     try {
-      const apiMode = captureMode === 'ocr' ? 'ocr' : 'food';
-
       const resized = apiMode === 'ocr' ? imageSrc : await resizeImage(imageSrc, 800);
       if (apiMode !== 'ocr') setResizedImageSrc(resized);
-      const imageToSend = resized;
+      imageToSend = resized;
 
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -421,7 +421,12 @@ export default function CameraCapturePage() {
         }
       }
     } catch {
-      setAnalysisError(t('errors.general'));
+      // 네트워크 오류(오프라인 등) — 이미지가 준비돼 있으면 pending 큐에 저장해 나중에 자동 분석
+      if (imageToSend && apiMode === 'food') {
+        await savePending(imageToSend);
+      } else {
+        setAnalysisError(t('errors.general'));
+      }
     } finally {
       setLoadingAnalysis(false);
     }
@@ -930,6 +935,12 @@ export default function CameraCapturePage() {
                         {t('retake')}
                       </button>
                     </div>
+                    <Link
+                      href="/history?quicklog=1"
+                      style={{ fontSize: '12px', color: '#6B21A8', textDecoration: 'underline', cursor: 'pointer' }}
+                    >
+                      {t('manualEntry')}
+                    </Link>
                   </div>
                 )}
 

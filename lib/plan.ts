@@ -190,6 +190,89 @@ export async function checkAnalysisLimit(
   return { allowed: used < limit, plan, used, limit };
 }
 
+// AI 분석 크레딧 원자적 소진 — "한도 미만이면 +1"을 단일 RPC로 처리 (동시 요청 레이스 방어)
+// RPC 미배포 환경에서는 기존 체크→증가 방식으로 폴백
+export async function consumeAnalysisCredit(
+  adminSupabase: AnySupabaseClient,
+  userId: string
+): Promise<{ allowed: boolean; plan: Plan; used: number; limit: number }> {
+  const today = getKSTDateString();
+  const profile = await getOrCreateProfile(adminSupabase, userId);
+  const plan = getEffectivePlan(profile);
+  const limit = ANALYSIS_LIMITS[plan];
+
+  const { data, error } = await adminSupabase.rpc('consume_analysis_credit', {
+    p_user_id: userId,
+    p_limit: limit,
+    p_today: today,
+  });
+
+  if (error) {
+    console.warn('[plan] consume_analysis_credit RPC 없음 — 비원자 폴백:', error.message);
+    const used = profile.last_analysis_date === today ? (profile.analyses_today || 0) : 0;
+    if (used >= limit) return { allowed: false, plan, used, limit };
+    await incrementAnalysisCount(adminSupabase, userId);
+    return { allowed: true, plan, used: used + 1, limit };
+  }
+
+  if (data == null || data === -1) return { allowed: false, plan, used: limit, limit };
+  return { allowed: true, plan, used: data, limit };
+}
+
+// AI 분석 크레딧 환불 (분석 실패 시)
+export async function refundAnalysisCredit(
+  adminSupabase: AnySupabaseClient,
+  userId: string
+): Promise<void> {
+  try {
+    await adminSupabase.rpc('refund_analysis_credit', {
+      p_user_id: userId,
+      p_today: getKSTDateString(),
+    });
+  } catch { /* 환불 실패는 치명적이지 않음 */ }
+}
+
+// 업로드 크레딧 원자적 소진 — consumeAnalysisCredit과 동일 구조
+export async function consumeUploadCredit(
+  adminSupabase: AnySupabaseClient,
+  userId: string
+): Promise<{ allowed: boolean; plan: Plan; used: number; limit: number }> {
+  const today = getKSTDateString();
+  const profile = await getOrCreateProfile(adminSupabase, userId);
+  const plan = getEffectivePlan(profile);
+  const limit = UPLOAD_LIMITS[plan];
+
+  const { data, error } = await adminSupabase.rpc('consume_upload_credit', {
+    p_user_id: userId,
+    p_limit: limit,
+    p_today: today,
+  });
+
+  if (error) {
+    console.warn('[plan] consume_upload_credit RPC 없음 — 비원자 폴백:', error.message);
+    const used = profile.last_upload_date === today ? (profile.uploads_today || 0) : 0;
+    if (used >= limit) return { allowed: false, plan, used, limit };
+    await incrementUploadCount(adminSupabase, userId);
+    return { allowed: true, plan, used: used + 1, limit };
+  }
+
+  if (data == null || data === -1) return { allowed: false, plan, used: limit, limit };
+  return { allowed: true, plan, used: data, limit };
+}
+
+// 업로드 크레딧 환불 (저장 실패 시)
+export async function refundUploadCredit(
+  adminSupabase: AnySupabaseClient,
+  userId: string
+): Promise<void> {
+  try {
+    await adminSupabase.rpc('refund_upload_credit', {
+      p_user_id: userId,
+      p_today: getKSTDateString(),
+    });
+  } catch { /* 환불 실패는 치명적이지 않음 */ }
+}
+
 // AI 분석 카운트 +1
 export async function incrementAnalysisCount(
   adminSupabase: AnySupabaseClient,

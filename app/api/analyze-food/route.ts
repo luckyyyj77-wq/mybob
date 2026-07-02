@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { checkAnalysisLimit, incrementAnalysisCount } from '@/lib/plan';
+import { consumeAnalysisCredit, refundAnalysisCredit } from '@/lib/plan';
 
 export const maxDuration = 30;
 
@@ -100,40 +100,80 @@ function safeParseItems(text: string): any[] | null {
   return null;
 }
 
+// Gemini structured output 스키마 — 응답 형식을 API 레벨에서 강제해 파싱 실패 최소화
+const NUTRIENTS_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    carbohydrates: { type: 'NUMBER' },
+    protein: { type: 'NUMBER' },
+    fat: { type: 'NUMBER' },
+    fiber: { type: 'NUMBER' },
+    sugar: { type: 'NUMBER' },
+    sodium: { type: 'NUMBER' },
+    caffeine: { type: 'NUMBER', nullable: true },
+    vitaminA: { type: 'NUMBER' },
+    vitaminC: { type: 'NUMBER' },
+    vitaminD: { type: 'NUMBER' },
+    calcium: { type: 'NUMBER' },
+    iron: { type: 'NUMBER' },
+    potassium: { type: 'NUMBER' },
+  },
+  required: ['carbohydrates', 'protein', 'fat'],
+};
+
+const ITEMS_RESPONSE_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    items: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: {
+          name: { type: 'STRING' },
+          calories: { type: 'NUMBER' },
+          category: { type: 'STRING' },
+          amount: { type: 'STRING' },
+          confidence: { type: 'STRING', enum: ['high', 'medium', 'low'] },
+          nutrients: NUTRIENTS_SCHEMA,
+        },
+        required: ['name', 'calories', 'nutrients'],
+      },
+    },
+  },
+  required: ['items'],
+};
+
 async function analyzeWithGemini(
   base64Data: string, apiKey: string, isPro: boolean, locale: string, confirmedNames: string[]
 ): Promise<{ success: boolean; items?: any[]; modelUsed?: string; error?: string }> {
-  const modelsToTry = isPro
-    ? ['gemini-2.5-pro', 'gemini-2.5-flash']
-    : ['gemini-2.5-flash', 'gemini-2.0-flash'];
+  // PRO는 2.5-pro를 순차 우선 시도(응답이 느려 타임아웃 여유), 실패 시 flash 폴백.
+  // 병렬(Promise.any)로 돌리면 flash가 거의 항상 먼저 끝나 pro 결과를 버리고 비용만 2배가 됨.
+  const modelPlans = isPro
+    ? [{ model: 'gemini-2.5-pro', timeout: 12000 }, { model: 'gemini-2.5-flash', timeout: 8000 }]
+    : [{ model: 'gemini-2.5-flash', timeout: 8000 }, { model: 'gemini-2.0-flash', timeout: 8000 }];
   const prompt = buildNutritionPrompt(locale, confirmedNames);
-  const MODEL_TIMEOUT = 8000;
 
-  async function tryModel(model: string): Promise<{ success: boolean; items: any[]; modelUsed: string }> {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: 'image/jpeg', data: base64Data } }] }],
-        generationConfig: { response_mime_type: 'application/json', temperature: 0.05 },
-      }),
-      signal: AbortSignal.timeout(MODEL_TIMEOUT),
-    });
-    const result = await res.json();
-    const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (res.ok && text) {
-      const items = safeParseItems(text);
-      if (items && items.length > 0) return { success: true, items, modelUsed: model };
-    }
-    throw new Error(result.error?.message || 'failed');
+  for (const { model, timeout } of modelPlans) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: 'image/jpeg', data: base64Data } }] }],
+          generationConfig: { response_mime_type: 'application/json', response_schema: ITEMS_RESPONSE_SCHEMA, temperature: 0.05 },
+        }),
+        signal: AbortSignal.timeout(timeout),
+      });
+      const result = await res.json();
+      const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (res.ok && text) {
+        const items = safeParseItems(text);
+        if (items && items.length > 0) return { success: true, items, modelUsed: model };
+      }
+    } catch { /* 타임아웃/네트워크 오류 → 다음 모델 폴백 */ }
   }
-
-  try {
-    return await Promise.any(modelsToTry.map(m => tryModel(m)));
-  } catch {
-    return { success: false, error: 'Gemini timeout' };
-  }
+  return { success: false, error: 'Gemini timeout' };
 }
 
 
@@ -173,6 +213,8 @@ async function analyzeNutritionLabel(base64Data: string, apiKey: string, locale 
 }
 
 export async function POST(request: Request) {
+  let creditConsumed = false;
+  let creditUserId: string | null = null;
   try {
     const { image, mode, locale = 'ko' } = await request.json();
     const apiKey = process.env.GEMINI_API_KEY?.trim();
@@ -188,22 +230,36 @@ export async function POST(request: Request) {
     if (!user) return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
 
     const userId = user.id;
-    const adminSupabase = createClient(supabaseUrl, supabaseServiceRoleKey);
-    const limitCheck = await checkAnalysisLimit(adminSupabase, user.id);
-    if (!limitCheck.allowed) return NextResponse.json({ error: 'ANALYSIS_LIMIT_EXCEEDED', used: limitCheck.used, limit: limitCheck.limit }, { status: 429 });
-    const plan = limitCheck.plan;
 
+    // 이미지 검증은 크레딧 소진 전에 (잘못된 요청이 크레딧을 깎지 않도록)
+    if (typeof image !== 'string' || image.length === 0) {
+      return NextResponse.json({ error: 'INVALID_IMAGE' }, { status: 400 });
+    }
     const MAX_BASE64_BYTES = 10 * 1024 * 1024; // 10MB base64 (~7.5MB 원본)
     if (image.length > MAX_BASE64_BYTES) {
       return NextResponse.json({ error: 'IMAGE_TOO_LARGE' }, { status: 413 });
     }
 
+    const adminSupabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+    // 원자적 체크+증가 — 실패 경로에서는 refundAnalysisCredit으로 반환
+    const limitCheck = await consumeAnalysisCredit(adminSupabase, user.id);
+    if (!limitCheck.allowed) return NextResponse.json({ error: 'ANALYSIS_LIMIT_EXCEEDED', used: limitCheck.used, limit: limitCheck.limit }, { status: 429 });
+    creditConsumed = true;
+    creditUserId = userId;
+    const plan = limitCheck.plan;
+
     const base64Data = image.includes(',') ? image.split(',')[1] : image;
 
     if (mode === 'ocr') {
       const ocrResult = await analyzeNutritionLabel(base64Data, apiKey, locale);
-      if (!ocrResult.success) return NextResponse.json({ error: ocrResult.error }, { status: 500 });
-      if (!ocrResult.data.readable) return NextResponse.json({ error: 'OCR_NOT_READABLE' }, { status: 422 });
+      if (!ocrResult.success) {
+        await refundAnalysisCredit(adminSupabase, userId);
+        return NextResponse.json({ error: ocrResult.error }, { status: 500 });
+      }
+      if (!ocrResult.data.readable) {
+        await refundAnalysisCredit(adminSupabase, userId);
+        return NextResponse.json({ error: 'OCR_NOT_READABLE' }, { status: 422 });
+      }
       const d = ocrResult.data; let p = d.per_serving; let source = 'ocr';
       if (d.barcode) {
         const barcodeData = await lookupBarcode(d.barcode);
@@ -211,11 +267,7 @@ export async function POST(request: Request) {
           if (barcodeData.per_serving.calories != null) { p = { ...p, ...Object.fromEntries(Object.entries(barcodeData.per_serving).filter(([, v]) => v != null)) }; source = 'barcode+off'; }
         } else source = 'barcode+ocr';
       }
-      if (userId) {
-        const adminSupabase = createClient(supabaseUrl, supabaseServiceRoleKey);
-        await incrementAnalysisCount(adminSupabase, userId);
-      }
-      return NextResponse.json({ success: true, food: { name: d.product_name || 'Product', calories: p.calories, category: 'Etc', amount: d.serving_size || '1 serving', nutrients: p }, source, analysisStatus: { plan } });
+      return NextResponse.json({ success: true, food: { name: d.product_name || 'Product', calories: p.calories, category: 'Etc', amount: d.serving_size || '1 serving', nutrients: p }, source, analysisStatus: { plan, used: limitCheck.used, limit: limitCheck.limit } });
     }
 
     // ── Food mode ──────────────────────────────────────────────────────────
@@ -250,13 +302,17 @@ export async function POST(request: Request) {
     }).catch(() => []);
 
     if (confirmedNames === 'NOT_FOOD' as any) {
+      await refundAnalysisCredit(adminSupabase, userId);
       return NextResponse.json({ error: 'NOT_FOOD' }, { status: 422 });
     }
 
     // 2단계: 확정된 이름 목록을 본분석에 주입 — 영양소 추정에만 집중
     const geminiResult = await analyzeWithGemini(base64Data, apiKey, isPro, locale, confirmedNames as string[]);
 
-    if (!geminiResult.success) return NextResponse.json({ error: geminiResult.error }, { status: 503 });
+    if (!geminiResult.success) {
+      await refundAnalysisCredit(adminSupabase, userId);
+      return NextResponse.json({ error: geminiResult.error }, { status: 503 });
+    }
 
     const items = geminiResult.items!;
 
@@ -285,19 +341,19 @@ export async function POST(request: Request) {
       itemCount: items.length,
     };
 
-    if (userId) {
-      const adminSupabase = createClient(supabaseUrl, supabaseServiceRoleKey);
-      await incrementAnalysisCount(adminSupabase, userId);
-    }
-
     return NextResponse.json({
       success: true,
       food: finalFood,
       source: 'gemini',
-      analysisStatus: { plan },
+      modelUsed: geminiResult.modelUsed,
+      analysisStatus: { plan, used: limitCheck.used, limit: limitCheck.limit },
     });
 
   } catch {
+    if (creditConsumed && creditUserId) {
+      const adminSupabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+      await refundAnalysisCredit(adminSupabase, creditUserId);
+    }
     return NextResponse.json({ error: 'Server Error' }, { status: 500 });
   }
 }

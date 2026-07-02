@@ -223,6 +223,7 @@
     "ocrBtn": "📋 Read Label",
     "retake": "Add Photo",
     "goHome": "Go Home",
+    "manualEntry": "Log manually without a photo",
     "errors": {
       "busy": "AI is busy.\nPlease try again in 5 minutes. 📸",
       "notFood": "Doesn't look like food.\nPlease take a photo of food or drink. 🍽️",
