@@ -1,8 +1,16 @@
+// checkout URL용 UUID + 웹훅에서 오는 숫자 ID 모두 포함
 export const LS_VARIANT_IDS = {
   pro_monthly:  'fb4e4eab-f8a4-46ba-b0f5-e6532d60a58b',
   pro_6months:  'ee045e96-324b-4a3f-afa1-bb98a20f919a',
   pro_yearly:   'aeeef086-c266-4cf0-9f49-5fb1884b5fcf',
 } as const;
+
+// 웹훅 페이로드의 숫자형 variant_id → plan 매핑
+export const LS_VARIANT_ID_MAP: Record<string, 'pro'> = {
+  '1822506': 'pro', // pro_monthly
+  '1822494': 'pro', // pro_6months
+  '1822502': 'pro', // pro_yearly
+};
 
 export type LSPlan = keyof typeof LS_VARIANT_IDS;
 
@@ -82,6 +90,8 @@ export function getVariantIdFromPlan(plan: LSPlan): string {
 
 export function getPlanFromVariantId(variantId: string | number): 'pro' | null {
   const id = String(variantId);
+  // UUID 방식 (체크아웃 URL) 또는 숫자 방식 (웹훅 페이로드) 모두 처리
   if (Object.values(LS_VARIANT_IDS).includes(id as any)) return 'pro';
+  if (LS_VARIANT_ID_MAP[id]) return LS_VARIANT_ID_MAP[id];
   return null;
 }

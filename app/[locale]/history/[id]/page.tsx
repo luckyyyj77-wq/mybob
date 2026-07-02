@@ -41,6 +41,7 @@ type Meal = {
   is_edited?: boolean;
   is_public?: boolean;
   visibility?: 'private' | 'neighbors' | 'public';
+  _unrecognized?: boolean;
 };
 
 type GalleryMode = 'detail' | 'grid4' | 'grid16';
@@ -346,7 +347,12 @@ function MealDetailContent() {
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
               <div style={{ flex: 1, marginRight: '12px' }}>
-                {isEditing ? <input value={editFoodName} onChange={e => setEditFoodName(e.target.value)} onFocus={selectAll} style={{ fontSize: '22px', fontWeight: 400, border: '2px solid #e5e7eb', borderRadius: '4px', padding: '4px 8px', width: '100%', outline: 'none', backgroundColor: '#fafafa' }} /> : <h2 style={{ fontSize: '24px', fontWeight: 400 }}>{meal.food_name}{meal.is_edited && <span style={{ fontSize: '10px', color: '#9ca3af', marginLeft: '6px' }}>{t('edited')}</span>}</h2>}
+                {isEditing ? <input value={editFoodName} onChange={e => setEditFoodName(e.target.value)} onFocus={selectAll} style={{ fontSize: '22px', fontWeight: 400, border: '2px solid #e5e7eb', borderRadius: '4px', padding: '4px 8px', width: '100%', outline: 'none', backgroundColor: '#fafafa' }} /> : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <h2 style={{ fontSize: '24px', fontWeight: 400 }}>{meal.food_name}{meal.is_edited && <span style={{ fontSize: '10px', color: '#9ca3af', marginLeft: '6px' }}>{t('edited')}</span>}</h2>
+                    {meal._unrecognized && <span style={{ fontSize: '10px', padding: '2px 8px', backgroundColor: '#fef3c7', color: '#92400e', borderRadius: '4px', whiteSpace: 'nowrap' }}>{t('unrecognized')}</span>}
+                  </div>
+                )}
                 <p style={{ fontSize: '14px', color: '#6B21A8', marginTop: '2px' }}>{CATEGORY_MAP[meal.category || '기타'] ?? meal.category}</p>
               </div>
               <div style={{ textAlign: 'right' }}>

@@ -20,6 +20,7 @@ type Meal = {
   category?: string;
   nutrient?: any;
   is_manual?: boolean;
+  _unrecognized?: boolean;
 };
 
 type ViewMode = 'full' | 'grid' | 'gallery';
@@ -469,8 +470,15 @@ export default function HistoryPage() {
                               )}
                               <div style={{ padding: '10px 14px' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                                  <h3 style={{ fontSize: '17px', fontWeight: 400, color: 'black', letterSpacing: '-0.3px' }}>{meal.food_name}</h3>
-                                  <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '8px' }}>
+                                  <div style={{ flex: 1, marginRight: '8px' }}>
+                                    <h3 style={{ fontSize: '17px', fontWeight: 400, color: 'black', letterSpacing: '-0.3px' }}>{meal.food_name}</h3>
+                                    {meal._unrecognized && (
+                                      <span style={{ display: 'inline-block', marginTop: '4px', fontSize: '10px', padding: '2px 7px', backgroundColor: '#fef3c7', color: '#92400e', borderRadius: '4px', letterSpacing: '0.3px' }}>
+                                        {t('unrecognized')}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
                                     <p style={{ fontSize: '18px', fontWeight: 400, color: '#6B21A8', lineHeight: 1 }}>{meal.calories}</p>
                                     <p style={{ fontSize: '9px', color: '#9ca3af', letterSpacing: '1px' }}>KCAL</p>
                                   </div>
@@ -495,6 +503,11 @@ export default function HistoryPage() {
                   >
                     {meal.photo_url ? <MealPhoto photoUrl={meal.photo_url} alt={meal.food_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: viewMode === 'grid' ? '48px' : '24px' }}>{CATEGORY_EMOJI[meal.category || '기타'] ?? '🍽️'}</span>}
                     {viewMode === 'grid' && <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '16px 8px 8px', background: 'linear-gradient(to top, rgba(0,0,0,0.55), transparent)', pointerEvents: 'none', display: 'flex', justifyContent: 'center' }}><span style={{ fontSize: '17px', color: 'white', textShadow: '0 1px 4px rgba(0,0,0,0.5)', fontWeight: 400, letterSpacing: '0.5px' }}>{meal.calories}</span></div>}
+                    {meal._unrecognized && (
+                      <div style={{ position: 'absolute', top: '4px', left: '4px', fontSize: '9px', padding: '2px 5px', backgroundColor: 'rgba(254,243,199,0.9)', color: '#92400e', borderRadius: '3px' }}>
+                        {t('unrecognized')}
+                      </div>
+                    )}
                   </div>
                 ))}
               </motion.div>

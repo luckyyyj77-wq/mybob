@@ -1,13 +1,14 @@
-// IndexedDB 래퍼 — 사진(base64) 로컬 저장용
+// IndexedDB 래퍼 — 사진(base64) + pending_meals 로컬 저장용
 // idb 패키지 없이 native API 사용
 
 const DB_NAME = 'mybob_db';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // v2: pending_meals store 추가
 const STORE_PHOTOS = 'photos'; // key: mealId, value: base64 string
+const STORE_PENDING = 'pending_meals';
 
 let dbInstance: IDBDatabase | null = null;
 
-function openDB(): Promise<IDBDatabase> {
+export function openDB(): Promise<IDBDatabase> {
   if (dbInstance) return Promise.resolve(dbInstance);
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
@@ -15,6 +16,9 @@ function openDB(): Promise<IDBDatabase> {
       const db = (e.target as IDBOpenDBRequest).result;
       if (!db.objectStoreNames.contains(STORE_PHOTOS)) {
         db.createObjectStore(STORE_PHOTOS); // keyPath 없이 key 직접 지정
+      }
+      if (!db.objectStoreNames.contains(STORE_PENDING)) {
+        db.createObjectStore(STORE_PENDING);
       }
     };
     req.onsuccess = () => { dbInstance = req.result; resolve(req.result); };

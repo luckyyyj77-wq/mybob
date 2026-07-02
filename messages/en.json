@@ -235,6 +235,10 @@
       "freeDesc": "You can {type} up to {limit} times for free daily. Resets at midnight.",
       "analysis": "AI analysis",
       "upload": "storage"
+    },
+    "pending": {
+      "saved": "Photo saved. It will be analyzed automatically later.",
+      "savedDesc": "AI is temporarily busy.\nWhen you open the app again or go home,\nit will be analyzed in the background and saved."
     }
   },
   "Settings": {
@@ -669,7 +673,8 @@
       "minutes": "{n}m ago",
       "hours": "{n}h ago",
       "days": "{n}d ago"
-    }
+    },
+    "unrecognized": "Unrecognized"
   },
   "MealDetail": {
     "title": "Meal Detail",
@@ -706,7 +711,8 @@
     "view4": "Grid 4",
     "view16": "Grid 16",
     "notFound": "Meal not found.",
-    "goBack": "Go back to logs"
+    "goBack": "Go back to logs",
+    "unrecognized": "Unrecognized"
   },
   "Report": {
     "title": "Report",

@@ -235,6 +235,10 @@
       "freeDesc": "지금은 하루 {limit}회까지 무료로 {type}할 수 있어요. 자정이 지나면 다시 초기화됩니다.",
       "analysis": "AI 분석",
       "upload": "저장"
+    },
+    "pending": {
+      "saved": "사진을 저장했어요. 잠시 후 자동으로 분석됩니다.",
+      "savedDesc": "AI가 바쁜 시간이에요.\n앱을 다시 열거나 홈으로 이동하면\n백그라운드에서 자동으로 인식 후 기록에 저장됩니다."
     }
   },
   "Settings": {
@@ -669,7 +673,8 @@
       "minutes": "{n}분 전",
       "hours": "{n}시간 전",
       "days": "{n}일 전"
-    }
+    },
+    "unrecognized": "미인식"
   },
   "MealDetail": {
     "title": "식단 상세",
@@ -706,7 +711,8 @@
     "view4": "4분할 보기",
     "view16": "16분할 보기",
     "notFound": "기록을 찾을 수 없습니다.",
-    "goBack": "목록으로 돌아가기"
+    "goBack": "목록으로 돌아가기",
+    "unrecognized": "미인식"
   },
   "Report": {
     "title": "리포트",

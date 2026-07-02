@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { getStorageMode } from '@/lib/storage-mode';
 import { savePhoto } from '@/lib/indexed-db';
 import { updateGoalAchievement } from '@/lib/goal-achievement';
+import { enqueuePendingMeal } from '@/lib/pending-meals';
 import { useTranslations, useLocale } from 'next-intl';
 
 type AnalysisResult = {
@@ -97,6 +98,7 @@ export default function CameraCapturePage() {
   const [ocrMeta, setOcrMeta] = useState<{ barcode?: string | null; serving_size?: string; servings_per_container?: number | null } | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [visibility, setVisibility] = useState<'private' | 'neighbors' | 'public'>('private');
+  const [pendingSaved, setPendingSaved] = useState(false);
 
   const SOURCE_LABEL: Record<string, string> = useMemo(() => ({
     'korean_db+gemini':    t('sourceLabel.korean_db_gemini'),
@@ -330,6 +332,26 @@ export default function CameraCapturePage() {
     reader.readAsDataURL(file);
   };
 
+  const savePending = async (resizedImg: string) => {
+    try {
+      const id = Date.now().toString();
+      await enqueuePendingMeal({
+        id,
+        imageBase64: resizedImg,
+        capturedAt: new Date().toISOString(),
+        retryCount: 0,
+        locale,
+        storageMode: getStorageMode(),
+        rating,
+        portion,
+        visibility,
+      });
+      setPendingSaved(true);
+    } catch {
+      setAnalysisError(t('errors.general'));
+    }
+  };
+
   const handleAnalysis = async () => {
     if (!imageSrc) return;
     if (!token) return;
@@ -363,12 +385,12 @@ export default function CameraCapturePage() {
       }
 
       if (res.status === 429) {
-        setAnalysisError(t('errors.busy'));
+        await savePending(imageToSend);
         return;
       }
 
       if (res.status === 503) {
-        setAnalysisError(t('errors.busy'));
+        await savePending(imageToSend);
         return;
       }
 
@@ -535,6 +557,7 @@ export default function CameraCapturePage() {
     setRating(null);
     setOcrMeta(null);
     setAnalysisError(null);
+    setPendingSaved(false);
     setCaptureMode('food');
     if (fileInputRef.current) fileInputRef.current.value = '';
     stopOcrCamera();
@@ -867,7 +890,29 @@ export default function CameraCapturePage() {
                   </div>
                 )}
 
-                {!loadingAnalysis && !analysis && analysisError && (
+                {!loadingAnalysis && !analysis && pendingSaved && (
+                  <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '14px', padding: '0 20px' }}>
+                    <p style={{ fontSize: '28px' }}>📸</p>
+                    <p style={{ fontSize: '14px', color: 'black', fontWeight: 500, textAlign: 'center' }}>{t('pending.saved')}</p>
+                    <p style={{ fontSize: '12px', color: '#9ca3af', textAlign: 'center', lineHeight: 1.7, whiteSpace: 'pre-line' }}>{t('pending.savedDesc')}</p>
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                      <button
+                        onClick={retake}
+                        style={{ padding: '10px 18px', backgroundColor: 'black', color: 'white', border: 'none', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}
+                      >
+                        {t('retake')}
+                      </button>
+                      <Link
+                        href="/"
+                        style={{ padding: '10px 18px', backgroundColor: 'white', color: 'black', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', textDecoration: 'none', display: 'flex', alignItems: 'center' }}
+                      >
+                        {t('goHome')}
+                      </Link>
+                    </div>
+                  </div>
+                )}
+
+                {!loadingAnalysis && !analysis && !pendingSaved && analysisError && (
                   <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', padding: '0 8px' }}>
                     <p style={{ fontSize: '22px' }}>⚠️</p>
                     <p style={{ fontSize: '13px', color: '#ef4444', textAlign: 'center', lineHeight: 1.6, whiteSpace: 'pre-line' }}>{analysisError}</p>
@@ -888,7 +933,7 @@ export default function CameraCapturePage() {
                   </div>
                 )}
 
-                {!loadingAnalysis && !analysis && !analysisError && (
+                {!loadingAnalysis && !analysis && !pendingSaved && !analysisError && (
                   <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <p style={{ fontSize: '13px', color: '#9ca3af' }}>{t('analyzed')}</p>
                   </div>
@@ -1093,7 +1138,7 @@ export default function CameraCapturePage() {
 
               <div style={{ flexShrink: 0, padding: '10px 24px 24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
 
-                {!analysis && !loadingAnalysis && !analysisError && (
+                {!analysis && !loadingAnalysis && !analysisError && !pendingSaved && (
                   <button
                     onClick={handleAnalysis}
                     style={{

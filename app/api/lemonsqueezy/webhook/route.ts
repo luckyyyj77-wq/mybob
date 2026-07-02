@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getPlanFromVariantId, getAutoCancelDate, type LSPlan, LS_VARIANT_IDS } from '@/lib/lemonsqueezy';
+import { getPlanFromVariantId, getAutoCancelDate, type LSPlan, LS_VARIANT_IDS, LS_VARIANT_ID_MAP } from '@/lib/lemonsqueezy';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -36,6 +36,13 @@ function getPlanKeyFromVariantId(variantId: string | number): LSPlan {
   for (const [key, val] of Object.entries(LS_VARIANT_IDS)) {
     if (val === id) return key as LSPlan;
   }
+  // 숫자형 variant_id (웹훅 페이로드) 매핑
+  const numericMap: Record<string, LSPlan> = {
+    '1822506': 'pro_monthly',
+    '1822494': 'pro_6months',
+    '1822502': 'pro_yearly',
+  };
+  if (numericMap[id]) return numericMap[id];
   return 'pro_monthly';
 }
 
@@ -70,6 +77,7 @@ export async function POST(request: Request) {
 
   const valid = await verifySignature(body, signature);
   if (!valid) {
+    console.error('[webhook] signature mismatch. received:', signature.slice(0, 10), '...');
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
   }
 
@@ -83,9 +91,6 @@ export async function POST(request: Request) {
 
   // 구독 생성 → PRO 활성화 + 자동해지 예약 처리
   if (eventName === 'subscription_created') {
-    const userId: string | undefined = customData.user_id;
-    if (!userId) return NextResponse.json({ ok: true });
-
     const variantId = attrs.variant_id;
     const plan = getPlanFromVariantId(variantId);
     if (!plan) return NextResponse.json({ ok: true });
@@ -94,12 +99,30 @@ export async function POST(request: Request) {
     const autoCancel = customData.auto_cancel === '1';
     const planKey = getPlanKeyFromVariantId(attrs.variant_id);
 
-    await admin.from('profiles').update({
+    const updatePayload = {
       plan,
       ls_subscription_id: subscriptionId,
       ls_auto_cancel: autoCancel,
       updated_at: new Date().toISOString(),
-    }).eq('id', userId);
+    };
+
+    const userId: string | undefined = customData.user_id;
+    if (userId) {
+      // 정상 경로: 체크아웃 URL에 user_id가 담긴 경우
+      await admin.from('profiles').update(updatePayload).eq('id', userId);
+    } else {
+      // 폴백: user_id 없으면 결제 이메일로 auth.users 조회 후 매핑
+      const userEmail: string | undefined = attrs.user_email;
+      if (userEmail) {
+        const { data: users } = await admin.auth.admin.listUsers();
+        const matched = users?.users?.find(u => u.email?.toLowerCase() === userEmail.toLowerCase());
+        if (matched) {
+          await admin.from('profiles').update(updatePayload).eq('id', matched.id);
+        } else {
+          console.error('[webhook] subscription_created: user not found for email', userEmail);
+        }
+      }
+    }
 
     // 자동해지 옵션 선택 시 플랜 기간에 맞춰 취소 예약
     if (autoCancel) {
@@ -110,9 +133,9 @@ export async function POST(request: Request) {
     }
   }
 
-  // 구독 갱신 성공 → pro 유지
+  // 구독 갱신 성공 → pro 유지 (data.id는 인보이스 ID, 구독 ID는 attrs.subscription_id)
   if (eventName === 'subscription_payment_success') {
-    const subscriptionId = String(data.id);
+    const subscriptionId = String(attrs.subscription_id ?? data.id);
     await admin.from('profiles')
       .update({ plan: 'pro' })
       .eq('ls_subscription_id', subscriptionId);

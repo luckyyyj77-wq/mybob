@@ -7,6 +7,7 @@ import type { Persona } from '@/lib/coach';
 import { useAuth } from '@/lib/auth-context';
 import { useTranslations, useLocale } from 'next-intl';
 import { Link } from '@/i18n/routing';
+import { processPendingMeals } from '@/lib/process-pending';
 
 type Meal = {
   id: string;
@@ -159,6 +160,24 @@ export default function Home() {
     return () => document.removeEventListener('visibilitychange', onVisible);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // pending 백그라운드 재분석 — token 확보 후 1회 + 탭 복귀 시마다
+  const pendingRunRef = useRef(false);
+  useEffect(() => {
+    if (!token || pendingRunRef.current) return;
+    pendingRunRef.current = true;
+    processPendingMeals(token, locale).catch(() => {});
+  }, [token, locale]);
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible' || !token) return;
+      processPendingMeals(token, locale).catch(() => {});
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, locale]);
 
   const runCoachLocal = (meals: Meal[], currentPersona: Persona, goalRaw: string | null) => {
     const finalStats = computeTodayStats(meals);
