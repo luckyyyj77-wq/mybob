@@ -1,32 +1,48 @@
 // PIN 관련 유틸
 
 export const PIN_KEY = 'mybob_security_pin';
+export const PIN_SALT_KEY = 'mybob_security_pin_salt';
 export const BODY_ENC_KEY = 'mybob_body_enc';
 export const BODY_SALT_KEY = 'mybob_body_salt';
 export const BODY_ATTEMPT_KEY = 'mybob_body_pin_attempts';
 export const BODY_WARN_AT = 5;
 export const BODY_MAX_ATTEMPTS = 10;
 
-export function hashPin(pin: string): string {
-  let hash = 0;
-  for (let i = 0; i < pin.length; i++) {
-    hash = ((hash << 5) - hash) + pin.charCodeAt(i);
-    hash |= 0;
-  }
-  return String(hash);
+async function pbkdf2Hash(pin: string, salt: Uint8Array): Promise<string> {
+  const enc = new TextEncoder();
+  const baseKey = await crypto.subtle.importKey('raw', enc.encode(pin).buffer as ArrayBuffer, 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt: salt.buffer as ArrayBuffer, iterations: 100000, hash: 'SHA-256' },
+    baseKey,
+    256,
+  );
+  return Array.from(new Uint8Array(bits)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 export function getPinHash(): string | null {
   return localStorage.getItem(PIN_KEY);
 }
 
-export function savePin(pin: string) {
-  localStorage.setItem(PIN_KEY, hashPin(pin));
+export function getPinSalt(): Uint8Array | null {
+  const raw = localStorage.getItem(PIN_SALT_KEY);
+  if (!raw) return null;
+  try { return new Uint8Array(JSON.parse(raw)); } catch { return null; }
 }
 
-export function verifyPin(pin: string): boolean {
+export async function savePin(pin: string): Promise<void> {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const hash = await pbkdf2Hash(pin, salt);
+  localStorage.setItem(PIN_SALT_KEY, JSON.stringify(Array.from(salt)));
+  localStorage.setItem(PIN_KEY, hash);
+}
+
+export async function verifyPin(pin: string): Promise<boolean> {
   const stored = getPinHash();
-  return stored !== null && stored === hashPin(pin);
+  if (!stored) return false;
+  const salt = getPinSalt();
+  if (!salt) return false;
+  const hash = await pbkdf2Hash(pin, salt);
+  return hash === stored;
 }
 
 export function getBodyAttempts(): number {

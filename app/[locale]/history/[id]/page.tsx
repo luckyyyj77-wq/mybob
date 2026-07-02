@@ -146,7 +146,7 @@ function MealDetailContent() {
           }
           if (profileRes?.ok) {
             const profileData = await profileRes.json();
-            setUserPlan(profileData.plan || 'free');
+            setUserPlan(profileData.effective_plan || profileData.plan || 'free');
           }
         } catch { }
       } else {

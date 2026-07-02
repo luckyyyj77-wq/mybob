@@ -160,9 +160,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <div style={{ flex: 1 }}>
               <p style={{ fontSize: '13px', color: 'black', marginBottom: '4px' }}>{tNav('installBannerTitle')}</p>
               {isIOS ? (
-                <p style={{ fontSize: '11px', color: '#6b7280', lineHeight: 1.5 }}
-                  dangerouslySetInnerHTML={{ __html: tNav('installBannerIOS') }}
-                />
+                <p style={{ fontSize: '11px', color: '#6b7280', lineHeight: 1.5 }}>
+                  {tNav.rich('installBannerIOS', {
+                    strong: (chunks) => <strong>{chunks}</strong>,
+                    br: () => <br />,
+                  })}
+                </p>
               ) : (
                 <p style={{ fontSize: '11px', color: '#9ca3af' }}>{tNav('installBannerAndroid')}</p>
               )}

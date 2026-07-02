@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
+import { getEffectivePlan } from '@/lib/plan';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -22,11 +23,11 @@ export async function POST(request: Request) {
   // Pro 확인
   const { data: profile } = await adminSupabase
     .from('profiles')
-    .select('plan')
+    .select('plan, is_founding_member, founding_joined_at, pro_credit_expires_at')
     .eq('id', user.id)
     .single();
 
-  if (!profile || profile.plan === 'free') {
+  if (!profile || getEffectivePlan(profile) === 'free') {
     return NextResponse.json({ error: 'PRO_REQUIRED' }, { status: 403 });
   }
 

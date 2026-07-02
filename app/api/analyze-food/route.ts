@@ -179,20 +179,19 @@ export async function POST(request: Request) {
     if (!apiKey) return NextResponse.json({ error: 'No API Key' }, { status: 500 });
 
     const authHeader = request.headers.get('Authorization');
-    let userId: string | null = null;
-    let plan = 'free';
-    if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.split(' ')[1];
-      const supabase = createClient(supabaseUrl, supabaseAnonKey);
-      const { data: { user } } = await supabase.auth.getUser(token);
-      if (user) {
-        userId = user.id;
-        const adminSupabase = createClient(supabaseUrl, supabaseServiceRoleKey);
-        const limitCheck = await checkAnalysisLimit(adminSupabase, user.id);
-        if (!limitCheck.allowed) return NextResponse.json({ error: 'ANALYSIS_LIMIT_EXCEEDED', used: limitCheck.used, limit: limitCheck.limit }, { status: 429 });
-        plan = limitCheck.plan;
-      }
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
     }
+    const token = authHeader.split(' ')[1];
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    const { data: { user } } = await supabase.auth.getUser(token);
+    if (!user) return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
+
+    const userId = user.id;
+    const adminSupabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+    const limitCheck = await checkAnalysisLimit(adminSupabase, user.id);
+    if (!limitCheck.allowed) return NextResponse.json({ error: 'ANALYSIS_LIMIT_EXCEEDED', used: limitCheck.used, limit: limitCheck.limit }, { status: 429 });
+    const plan = limitCheck.plan;
 
     const base64Data = image.includes(',') ? image.split(',')[1] : image;
 

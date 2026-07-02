@@ -37,8 +37,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         if (res.status === 403) { router.replace('/'); return; }
         setChecking(false);
       } catch {
-        // 네트워크 오류 시에도 접근 허용 (대시보드에서 에러 표시)
-        setChecking(false);
+        router.replace('/');
       }
     });
   }, [router]);

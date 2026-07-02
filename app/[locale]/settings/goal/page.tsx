@@ -33,14 +33,14 @@ function PinModal({
   const warned = context === 'body' && attempts >= BODY_WARN_AT && remaining > 0;
   const isLocked = context === 'body' && remaining <= 0;
 
-  const handleDigit = (d: string) => {
+  const handleDigit = async (d: string) => {
     if (isLocked) return;
     if (mode === 'verify') {
       const next = (pin + d).slice(0, 4);
       setPin(next);
       setError('');
       if (next.length === 4) {
-        if (verifyPin(next)) {
+        if (await verifyPin(next)) {
           if (context === 'body') resetBodyAttempts();
           requestAnimationFrame(() => setTimeout(() => onSuccess(next), 80));
         } else {
@@ -302,8 +302,8 @@ export default function GoalPage() {
         <PinModal
           mode={pinModal.mode}
           context={pinModal.context}
-          onSuccess={(pin) => {
-            if (pinModal.mode === 'set') { savePin(pin); setHasPinSet(true); }
+          onSuccess={async (pin) => {
+            if (pinModal.mode === 'set') { await savePin(pin); setHasPinSet(true); }
             pinModal.resolve(true, pin);
           }}
           onCancel={() => { pinModal.resolve(false); setPinModal(null); }}

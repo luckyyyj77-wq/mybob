@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { generateNickname } from '@/lib/nickname';
+import { getEffectivePlan } from '@/lib/plan';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -23,7 +24,7 @@ export async function GET(request: Request) {
   const adminSupabase = createClient(supabaseUrl, supabaseServiceRoleKey);
   const { data: profile } = await adminSupabase
     .from('profiles')
-    .select('plan, nickname, avatar_url, nickname_changed')
+    .select('plan, nickname, avatar_url, nickname_changed, is_founding_member, founding_joined_at, pro_credit_expires_at')
     .eq('id', user.id)
     .single();
 
@@ -39,6 +40,7 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     plan: profile?.plan ?? 'free',
+    effective_plan: getEffectivePlan(profile ?? {}),
     nickname,
     avatar_url: profile?.avatar_url ?? null,
     nickname_changed: profile?.nickname_changed ?? false,
@@ -54,11 +56,11 @@ export async function PATCH(request: Request) {
 
   const { data: profile } = await adminSupabase
     .from('profiles')
-    .select('plan, nickname_changed')
+    .select('plan, nickname_changed, is_founding_member, founding_joined_at, pro_credit_expires_at')
     .eq('id', user.id)
     .single();
 
-  const plan = profile?.plan ?? 'free';
+  const plan = getEffectivePlan(profile ?? {});
 
   const body = await request.json();
   const updates: Record<string, unknown> = {};

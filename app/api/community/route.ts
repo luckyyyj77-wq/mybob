@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getEffectivePlan } from '@/lib/plan';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -29,8 +30,8 @@ export async function GET(request: Request) {
 
     // ── 이웃 피드 (PRO 전용) ──────────────────────────────────────────
     if (type === 'neighbors') {
-      const { data: profile } = await admin.from('profiles').select('plan').eq('id', user.id).single();
-      if (!profile || profile.plan === 'free') {
+      const { data: profile } = await admin.from('profiles').select('plan, is_founding_member, founding_joined_at, pro_credit_expires_at').eq('id', user.id).single();
+      if (!profile || getEffectivePlan(profile) === 'free') {
         return NextResponse.json({ error: 'PRO_REQUIRED' }, { status: 403 });
       }
 

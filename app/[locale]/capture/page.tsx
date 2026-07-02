@@ -331,6 +331,7 @@ export default function CameraCapturePage() {
 
   const handleAnalysis = async () => {
     if (!imageSrc) return;
+    if (!token) return;
     setLoadingAnalysis(true);
     setAnalysisError(null);
     try {

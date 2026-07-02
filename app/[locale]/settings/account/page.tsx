@@ -29,13 +29,13 @@ function PinModal({
   const warned = context === 'body' && attempts >= BODY_WARN_AT && remaining > 0;
   const isLocked = context === 'body' && remaining <= 0;
 
-  const handleDigit = (d: string) => {
+  const handleDigit = async (d: string) => {
     if (isLocked) return;
     if (mode === 'verify') {
       const next = (pin + d).slice(0, 4);
       setPin(next); setError('');
       if (next.length === 4) {
-        if (verifyPin(next)) {
+        if (await verifyPin(next)) {
           if (context === 'body') resetBodyAttempts();
           requestAnimationFrame(() => setTimeout(() => onSuccess(next), 80));
         } else {
@@ -311,7 +311,7 @@ export default function AccountPage() {
 
       {pinModal && (
         <PinModal mode={pinModal.mode} context={pinModal.context}
-          onSuccess={(pin) => { if (pinModal.mode === 'set') { savePin(pin); setHasPinSet(true); } pinModal.resolve(true, pin); }}
+          onSuccess={async (pin) => { if (pinModal.mode === 'set') { await savePin(pin); setHasPinSet(true); } pinModal.resolve(true, pin); }}
           onCancel={() => { pinModal.resolve(false); setPinModal(null); }}
           onForgot={pinModal.context === 'danger' ? () => { setPinModal(null); setShowPinReset(true); } : undefined}
         />
@@ -434,7 +434,7 @@ export default function AccountPage() {
           </div>
 
 
-          <button onClick={() => setPinModal({ mode: 'set', context: 'danger', resolve: (ok, pin) => { setPinModal(null); if (ok && pin) { savePin(pin); setHasPinSet(true); } } })}
+          <button onClick={() => setPinModal({ mode: 'set', context: 'danger', resolve: async (ok, pin) => { setPinModal(null); if (ok && pin) { await savePin(pin); setHasPinSet(true); } } })}
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', backgroundColor: 'white', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left' }}>
             <span style={{ fontSize: '14px', color: 'black' }}>{tpin('reset')}</span>
             <span style={{ fontSize: '16px', color: '#9ca3af' }}>›</span>

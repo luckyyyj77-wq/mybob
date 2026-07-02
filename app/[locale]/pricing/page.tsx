@@ -94,7 +94,7 @@ export default function PricingPage() {
 
         <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '16px' }}>
           <p style={{ fontSize: '11px', color: '#9ca3af', lineHeight: 1.7, textAlign: 'center', whiteSpace: 'pre-line' }}>
-            {t('paymentNote')} <Link href="/legal/refund" style={{ color: '#6B21A8' }}>{t('refundPolicy')}</Link> {t('paymentNoteEnd')}
+            {t('paymentNote')} <Link href="/refund" style={{ color: '#6B21A8' }}>{t('refundPolicy')}</Link> {t('paymentNoteEnd')}
           </p>
         </div>
 
