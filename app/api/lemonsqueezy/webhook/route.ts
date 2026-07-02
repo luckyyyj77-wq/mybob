@@ -40,9 +40,9 @@ function getPlanKeyFromVariantId(variantId: string | number): LSPlan {
 }
 
 // 플랜 기간 후 구독 취소 예약
-async function scheduleCancelAt(subscriptionId: string, plan: LSPlan): Promise<void> {
+async function scheduleCancelAt(subscriptionId: string, plan: LSPlan): Promise<Response> {
   const cancelAt = getAutoCancelDate(plan).toISOString();
-  await fetch(`https://api.lemonsqueezy.com/v1/subscriptions/${subscriptionId}`, {
+  return fetch(`https://api.lemonsqueezy.com/v1/subscriptions/${subscriptionId}`, {
     method: 'PATCH',
     headers: {
       Authorization: `Bearer ${lsApiKey}`,
@@ -98,11 +98,15 @@ export async function POST(request: Request) {
       plan,
       ls_subscription_id: subscriptionId,
       ls_auto_cancel: autoCancel,
+      updated_at: new Date().toISOString(),
     }).eq('id', userId);
 
     // 자동해지 옵션 선택 시 플랜 기간에 맞춰 취소 예약
     if (autoCancel) {
-      await scheduleCancelAt(subscriptionId, planKey);
+      const cancelRes = await scheduleCancelAt(subscriptionId, planKey);
+      if (!cancelRes.ok) {
+        console.error('[webhook] scheduleCancelAt 실패:', subscriptionId, cancelRes.status);
+      }
     }
   }
 
