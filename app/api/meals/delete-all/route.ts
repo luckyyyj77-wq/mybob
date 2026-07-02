@@ -20,6 +20,11 @@ export async function DELETE(request: Request) {
     const user = await getAuthenticatedUser(request);
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+    const { searchParams } = new URL(request.url);
+    if (searchParams.get('confirm') !== 'true') {
+      return NextResponse.json({ error: 'CONFIRM_REQUIRED' }, { status: 400 });
+    }
+
     const adminSupabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
     // Storage 사진 전체 삭제 (해당 유저 폴더)

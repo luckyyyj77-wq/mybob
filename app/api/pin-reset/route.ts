@@ -21,6 +21,11 @@ function generateOtp(): string {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
+async function hashOtp(otp: string): Promise<string> {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(otp));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 // POST /api/pin-reset — 6자리 OTP 생성 후 이메일 발송
 export async function POST(request: Request) {
   const user = await getUser(request);
@@ -33,12 +38,13 @@ export async function POST(request: Request) {
   }
 
   const otp = generateOtp();
+  const otpHash = await hashOtp(otp);
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10분
 
-  // profiles 테이블에 OTP 저장
+  // profiles 테이블에 OTP 해시 저장
   const admin = createClient(supabaseUrl, supabaseServiceKey);
   const { error: dbError } = await admin.from('profiles').update({
-    danger_pin_otp: otp,
+    danger_pin_otp: otpHash,
     danger_pin_otp_expires: expiresAt.toISOString(),
   }).eq('id', user.id);
 
@@ -96,7 +102,8 @@ export async function PUT(request: Request) {
 
   if (!profile?.danger_pin_otp) return NextResponse.json({ error: 'NO_OTP' }, { status: 400 });
   if (new Date() > new Date(profile.danger_pin_otp_expires)) return NextResponse.json({ error: 'OTP_EXPIRED' }, { status: 400 });
-  if (profile.danger_pin_otp !== otp) return NextResponse.json({ error: 'WRONG_OTP' }, { status: 400 });
+  const inputHash = await hashOtp(otp);
+  if (profile.danger_pin_otp !== inputHash) return NextResponse.json({ error: 'WRONG_OTP' }, { status: 400 });
 
   // 검증 성공 — OTP 소진
   await admin.from('profiles').update({

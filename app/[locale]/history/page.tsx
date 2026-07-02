@@ -237,16 +237,17 @@ export default function HistoryPage() {
         });
 
       } else {
-        const res = await fetch('/api/quick-log', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-          body: JSON.stringify({ foodName: qlFoodName.trim(), mealTime: qlMealTime, createdAt }),
-        });
-
         let nutrition = { calories: 0, category: '기타', nutrients: {} };
-        if (res.ok) {
-          const result = await res.json();
-          nutrition = result.nutrition ?? nutrition;
+        if (token) {
+          const res = await fetch('/api/quick-log', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ foodName: qlFoodName.trim(), mealTime: qlMealTime, createdAt }),
+          });
+          if (res.ok) {
+            const result = await res.json();
+            nutrition = result.nutrition ?? nutrition;
+          }
         }
 
         const mealId = Date.now().toString();

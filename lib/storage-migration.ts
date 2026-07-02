@@ -206,7 +206,7 @@ export function cancelCloudDeleteSchedule() {
 
 // 서버 데이터 즉시 삭제 요청
 export async function requestServerDataDeletion(token: string): Promise<void> {
-  const res = await fetch('/api/meals/delete-all', {
+  const res = await fetch('/api/meals/delete-all?confirm=true', {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },
   });

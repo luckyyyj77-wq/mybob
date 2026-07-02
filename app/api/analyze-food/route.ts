@@ -193,6 +193,11 @@ export async function POST(request: Request) {
     if (!limitCheck.allowed) return NextResponse.json({ error: 'ANALYSIS_LIMIT_EXCEEDED', used: limitCheck.used, limit: limitCheck.limit }, { status: 429 });
     const plan = limitCheck.plan;
 
+    const MAX_BASE64_BYTES = 10 * 1024 * 1024; // 10MB base64 (~7.5MB 원본)
+    if (image.length > MAX_BASE64_BYTES) {
+      return NextResponse.json({ error: 'IMAGE_TOO_LARGE' }, { status: 413 });
+    }
+
     const base64Data = image.includes(',') ? image.split(',')[1] : image;
 
     if (mode === 'ocr') {

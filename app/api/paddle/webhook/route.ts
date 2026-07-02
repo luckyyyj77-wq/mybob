@@ -36,9 +36,12 @@ async function verifyPaddleSignature(body: string, signature: string): Promise<b
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
 
-    // 타이밍 공격 방어: 길이 다르면 즉시 false
     if (computed.length !== h1.length) return false;
-    return computed === h1;
+    const a = new TextEncoder().encode(computed);
+    const b = new TextEncoder().encode(h1);
+    let diff = 0;
+    for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+    return diff === 0;
   } catch {
     return false;
   }

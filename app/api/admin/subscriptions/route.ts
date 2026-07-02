@@ -75,10 +75,15 @@ export async function DELETE(request: Request) {
       .single();
 
     if (profile?.ls_subscription_id && lsApiKey) {
-      await fetch(`https://api.lemonsqueezy.com/v1/subscriptions/${profile.ls_subscription_id}`, {
+      const lsRes = await fetch(`https://api.lemonsqueezy.com/v1/subscriptions/${profile.ls_subscription_id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${lsApiKey}`, Accept: 'application/vnd.api+json' },
       });
+      if (!lsRes.ok && lsRes.status !== 404) {
+        const errText = await lsRes.text().catch(() => '');
+        console.error('[admin/subscriptions DELETE] LS API error:', lsRes.status, errText);
+        return NextResponse.json({ error: `LS_CANCEL_FAILED: ${lsRes.status}` }, { status: 502 });
+      }
     }
 
     await adminSb.from('profiles').update({

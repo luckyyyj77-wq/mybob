@@ -439,7 +439,7 @@ export default function CameraCapturePage() {
         const existing = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
         localStorage.setItem('mybob_meals', JSON.stringify([localMeal, ...existing]));
         updateGoalAchievement();
-        localStorage.removeItem(`mybob_coach_${new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10)}`);
+        { const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' }); Object.keys(localStorage).filter(k => k.startsWith('mybob_coach_') && k.includes(today)).forEach(k => localStorage.removeItem(k)); }
 
       } else {
         if (!token) {
@@ -512,7 +512,7 @@ export default function CameraCapturePage() {
         const existing = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
         localStorage.setItem('mybob_meals', JSON.stringify([localMeal, ...existing]));
         updateGoalAchievement();
-        localStorage.removeItem(`mybob_coach_${new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10)}`);
+        { const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' }); Object.keys(localStorage).filter(k => k.startsWith('mybob_coach_') && k.includes(today)).forEach(k => localStorage.removeItem(k)); }
       }
 
       setSaved(true);
@@ -723,7 +723,7 @@ export default function CameraCapturePage() {
                 <FaUpload size={14} color="white" />
               </button>
             )}
-            <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" style={{ display: 'none' }} />
+            {galleryInput}
 
             {uploadStatus && (
               <div style={{

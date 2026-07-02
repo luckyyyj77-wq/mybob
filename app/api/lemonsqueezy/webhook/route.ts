@@ -21,7 +21,11 @@ async function verifySignature(body: string, signature: string): Promise<boolean
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
     if (computed.length !== signature.length) return false;
-    return computed === signature;
+    const a = new TextEncoder().encode(computed);
+    const b = new TextEncoder().encode(signature);
+    let diff = 0;
+    for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+    return diff === 0;
   } catch {
     return false;
   }

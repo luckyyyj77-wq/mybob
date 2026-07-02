@@ -225,7 +225,7 @@ function MealDetailContent() {
         existing.map(m => m.id === meal.id ? updatedMeal : m)
       ));
       updateGoalAchievement();
-      localStorage.removeItem(`mybob_coach_${new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10)}`);
+      { const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' }); Object.keys(localStorage).filter(k => k.startsWith('mybob_coach_') && k.includes(today)).forEach(k => localStorage.removeItem(k)); }
       setIsEditing(false);
     } catch (err: any) {
       alert(t('saveFail', { error: err.message }));

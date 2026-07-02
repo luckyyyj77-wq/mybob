@@ -85,6 +85,14 @@ export async function PATCH(request: Request) {
     if (plan === 'free') {
       return NextResponse.json({ error: 'PRO_REQUIRED' }, { status: 403 });
     }
+    const supabaseStorageDomain = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).hostname;
+    let parsedUrl: URL;
+    try { parsedUrl = new URL(body.avatar_url); } catch {
+      return NextResponse.json({ error: 'INVALID_AVATAR_URL' }, { status: 400 });
+    }
+    if (parsedUrl.hostname !== supabaseStorageDomain) {
+      return NextResponse.json({ error: 'INVALID_AVATAR_URL' }, { status: 400 });
+    }
     updates.avatar_url = body.avatar_url;
   }
 
