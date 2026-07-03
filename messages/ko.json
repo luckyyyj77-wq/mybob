@@ -713,7 +713,15 @@
     "view16": "16분할 보기",
     "notFound": "기록을 찾을 수 없습니다.",
     "goBack": "목록으로 돌아가기",
-    "unrecognized": "미인식"
+    "unrecognized": "미인식",
+    "recoverCta": "음식 이름 입력하고 영양정보 채우기",
+    "recoverTitle": "음식 이름 입력",
+    "recoverDesc": "음식 이름을 알려주시면 영양정보를 찾아 기록을 완성해드려요.",
+    "recoverPlaceholder": "예: 김치찌개",
+    "recoverSubmit": "영양정보 받기",
+    "recovering": "찾는 중...",
+    "recoverFail": "조회에 실패했습니다. 잠시 후 다시 시도해주세요.",
+    "recoverLimit": "오늘 AI 분석 횟수를 모두 사용했어요. 내일 다시 시도해주세요."
   },
   "Report": {
     "title": "리포트",

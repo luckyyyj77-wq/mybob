@@ -76,6 +76,11 @@ function MealDetailContent() {
   const [invalidFields, setInvalidFields] = useState<Set<string>>(new Set());
   const [showAddNutrient, setShowAddNutrient] = useState(false);
 
+  const [showRecover, setShowRecover] = useState(false);
+  const [recoverName, setRecoverName] = useState('');
+  const [recovering, setRecovering] = useState(false);
+  const [recoverError, setRecoverError] = useState('');
+
   const RATING_OPTIONS = useMemo(() => [
     { value: 2, emoji: '😊', label: t('ratingLabels.excellent') },
     { value: 1, emoji: '😐', label: t('ratingLabels.good') },
@@ -235,6 +240,59 @@ function MealDetailContent() {
     }
   };
 
+  // 미인식 식단 복구: 이름 입력 → 식약처 DB/Gemini 영양정보 → 식단 업데이트
+  const handleRecover = async () => {
+    if (!meal || !token || !recoverName.trim() || recovering) return;
+    setRecovering(true);
+    setRecoverError('');
+    try {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(meal.id);
+      const res = await fetch('/api/meals/recover', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          mealId: isUuid ? meal.id : undefined,
+          foodName: recoverName.trim(),
+          portion: meal.portion ?? 1,
+        }),
+      });
+      const r = await res.json();
+      if (!res.ok) {
+        setRecoverError(r.error === 'ANALYSIS_LIMIT_EXCEEDED' ? t('recoverLimit') : t('recoverFail'));
+        return;
+      }
+      const { _unrecognized, ...rest } = meal;
+      const updatedMeal: Meal = {
+        ...rest,
+        food_name: r.food.name,
+        calories: r.food.calories,
+        category: r.food.category,
+        nutrient: r.food.nutrients as Nutrient,
+        original_nutrition: { calories: r.base.calories, nutrients: r.base.nutrients as Nutrient },
+      };
+      setMeal(updatedMeal);
+      setEditFoodName(updatedMeal.food_name);
+      setEditCalories(String(updatedMeal.calories));
+      setEditNutrient(
+        Object.fromEntries(
+          Object.entries(updatedMeal.nutrient || {}).map(([k, v]) => [k, v != null ? String(v) : ''])
+        )
+      );
+      const existing: Meal[] = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
+      localStorage.setItem('mybob_meals', JSON.stringify(
+        existing.map(m => m.id === meal.id ? updatedMeal : m)
+      ));
+      updateGoalAchievement();
+      { const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' }); Object.keys(localStorage).filter(k => k.startsWith('mybob_coach_') && k.includes(today)).forEach(k => localStorage.removeItem(k)); }
+      setShowRecover(false);
+      setRecoverName('');
+    } catch {
+      setRecoverError(t('recoverFail'));
+    } finally {
+      setRecovering(false);
+    }
+  };
+
   const handleVisibilityChange = async (v: 'private' | 'neighbors' | 'public') => {
     if (!meal || !token) return;
     const prev = meal.visibility ?? 'private';
@@ -361,6 +419,12 @@ function MealDetailContent() {
               </div>
             </div>
 
+            {meal._unrecognized && token && !isEditing && (
+              <button onClick={() => { setRecoverName(''); setRecoverError(''); setShowRecover(true); }} style={{ width: '100%', padding: '14px', marginBottom: '20px', backgroundColor: '#fffbeb', border: '1px dashed #f59e0b', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', color: '#92400e', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                🔍 {t('recoverCta')}
+              </button>
+            )}
+
             <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
                 <p style={{ fontSize: '11px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase' }}>{t('nutritionalInfo')}</p>
@@ -465,6 +529,35 @@ function MealDetailContent() {
           </div>
         </div>
       )}
+
+      <AnimatePresence>
+        {showRecover && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => !recovering && setShowRecover(false)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 100 }} />
+            <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'tween', duration: 0.25 }} style={{ position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: 'white', borderRadius: '16px 16px 0 0', padding: '24px 24px 36px', zIndex: 101 }}>
+              <p style={{ fontSize: '15px', fontWeight: 600, marginBottom: '6px' }}>{t('recoverTitle')}</p>
+              <p style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '16px' }}>{t('recoverDesc')}</p>
+              <input
+                value={recoverName}
+                onChange={e => setRecoverName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleRecover(); }}
+                placeholder={t('recoverPlaceholder')}
+                autoFocus
+                maxLength={100}
+                style={{ width: '100%', padding: '12px 14px', fontSize: '16px', border: '2px solid #e5e7eb', borderRadius: '8px', outline: 'none', marginBottom: '10px', boxSizing: 'border-box' }}
+              />
+              {recoverError && <p style={{ fontSize: '12px', color: '#ef4444', marginBottom: '10px' }}>{recoverError}</p>}
+              <button
+                onClick={handleRecover}
+                disabled={recovering || !recoverName.trim()}
+                style={{ width: '100%', padding: '14px', fontSize: '14px', fontWeight: 600, backgroundColor: recovering || !recoverName.trim() ? '#e9d5ff' : '#6B21A8', color: 'white', border: 'none', borderRadius: '8px', cursor: recovering || !recoverName.trim() ? 'default' : 'pointer' }}
+              >
+                {recovering ? t('recovering') : t('recoverSubmit')}
+              </button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -14,6 +14,7 @@
 export type FoodDbEntry = {
   name: string;        // DB 식품명
   basisGrams: number;  // 아래 수치의 기준 중량(g)
+  servingGrams: number | null; // 1인분 식품중량(Z10500, 예 270g) — 없으면 null
   calories: number;    // kcal (basisGrams 기준)
   nutrients: {
     carbohydrates: number | null;
@@ -62,7 +63,8 @@ export async function lookupKoreanFoodDB(foodName: string): Promise<FoodDbEntry 
     const url = `https://apis.data.go.kr/1471000/FoodNtrCpntDbInfo02/getFoodNtrCpntDbInq02`
       + `?serviceKey=${encodeURIComponent(apiKey)}&type=json&pageNo=1&numOfRows=5`
       + `&FOOD_NM_KR=${encodeURIComponent(foodName.trim())}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(3000) });
+    // 실측 3~4초 응답 사례 있음 — Gemini와 병렬 실행이라 6초여도 체감 지연 없음
+    const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
     if (res.ok) {
       const data = await res.json();
       const rawItems = data?.body?.items;
@@ -78,9 +80,12 @@ export async function lookupKoreanFoodDB(foodName: string): Promise<FoodDbEntry 
           // SERVING_SIZE: 영양성분함량기준량 (예 "100g") — 숫자만 추출
           const basisMatch = String(row.SERVING_SIZE ?? '').match(/(\d+(?:\.\d+)?)/);
           const basisGrams = basisMatch ? parseFloat(basisMatch[1]) : 100;
+          const servingMatch = String(row.Z10500 ?? '').match(/(\d+(?:\.\d+)?)/);
+          const servingGrams = servingMatch ? parseFloat(servingMatch[1]) : null;
           entry = {
             name: String(row.FOOD_NM_KR ?? foodName),
             basisGrams: basisGrams > 0 ? basisGrams : 100,
+            servingGrams: servingGrams != null && servingGrams > 0 ? servingGrams : null,
             calories,
             nutrients: {
               protein: toNum(row.AMT_NUM3),
@@ -94,7 +99,10 @@ export async function lookupKoreanFoodDB(foodName: string): Promise<FoodDbEntry 
         }
       }
     }
-  } catch { /* 조회 실패 → Gemini 수치 사용 */ }
+  } catch {
+    // 타임아웃/네트워크 실패 → Gemini 수치 사용. 일시 장애일 수 있으니 캐시하지 않음
+    return null;
+  }
 
   if (cache.size >= CACHE_MAX) {
     const oldest = cache.keys().next().value;

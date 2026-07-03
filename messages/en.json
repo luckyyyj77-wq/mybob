@@ -713,7 +713,15 @@
     "view16": "Grid 16",
     "notFound": "Meal not found.",
     "goBack": "Go back to logs",
-    "unrecognized": "Unrecognized"
+    "unrecognized": "Unrecognized",
+    "recoverCta": "Enter food name to fill in nutrition",
+    "recoverTitle": "Enter food name",
+    "recoverDesc": "Tell us what you ate and we'll look up the nutrition info to complete this log.",
+    "recoverPlaceholder": "e.g. Kimchi stew",
+    "recoverSubmit": "Get nutrition info",
+    "recovering": "Looking up...",
+    "recoverFail": "Lookup failed. Please try again later.",
+    "recoverLimit": "You've used all AI analyses for today. Please try again tomorrow."
   },
   "Report": {
     "title": "Report",
