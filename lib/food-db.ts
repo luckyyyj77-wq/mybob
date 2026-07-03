@@ -6,8 +6,10 @@
 // 환경변수: FOODSAFETY_API_KEY (data.go.kr 일반 인증키, Vercel + .env.local)
 // 키가 없거나 조회에 실패하면 null을 반환해 기존 Gemini-only 흐름이 그대로 유지됨.
 //
-// 영양수치 기준량: Z10500(영양성분함량기준량, 예 "100g") 필드 기준.
+// 영양수치 기준량: SERVING_SIZE(영양성분함량기준량, 예 "100g") 필드 기준.
 // 필드가 없거나 파싱 불가하면 100g으로 간주.
+// 주의: Z10500은 식품중량(1인분 총량, 예 "270.000g")이라 기준량이 아님 —
+//       실측 검증(2026-07-03, 김치찌개_꽁치: 수분 83g/에너지 89kcal은 100g 기준에서만 성립)
 
 export type FoodDbEntry = {
   name: string;        // DB 식품명
@@ -73,8 +75,8 @@ export async function lookupKoreanFoodDB(foodName: string): Promise<FoodDbEntry 
         const row = pickBestRow(rows, key);
         const calories = toNum(row.AMT_NUM1);
         if (calories != null && calories > 0) {
-          // Z10500: 영양성분함량기준량 (예 "100g") — 숫자만 추출
-          const basisMatch = String(row.Z10500 ?? '').match(/(\d+(?:\.\d+)?)/);
+          // SERVING_SIZE: 영양성분함량기준량 (예 "100g") — 숫자만 추출
+          const basisMatch = String(row.SERVING_SIZE ?? '').match(/(\d+(?:\.\d+)?)/);
           const basisGrams = basisMatch ? parseFloat(basisMatch[1]) : 100;
           entry = {
             name: String(row.FOOD_NM_KR ?? foodName),
