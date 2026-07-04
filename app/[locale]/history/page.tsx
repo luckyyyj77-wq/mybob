@@ -7,6 +7,7 @@ import { FaThList, FaThLarge, FaTh, FaPlus, FaMinus, FaSearch, FaTimes, FaSpinne
 import { useAuth } from '@/lib/auth-context';
 import { MealPhoto } from '@/components/MealPhoto';
 import { getStorageMode } from '@/lib/storage-mode';
+import { isUnrecognizedMeal } from '@/lib/unrecognized';
 import { useTranslations, useLocale } from 'next-intl';
 
 const DAYS_PER_PAGE = 3;
@@ -481,7 +482,7 @@ export default function HistoryPage() {
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                                   <div style={{ flex: 1, marginRight: '8px' }}>
                                     <h3 style={{ fontSize: '17px', fontWeight: 400, color: 'black', letterSpacing: '-0.3px' }}>{meal.food_name}</h3>
-                                    {meal._unrecognized && (
+                                    {isUnrecognizedMeal(meal) && (
                                       <span style={{ display: 'inline-block', marginTop: '4px', fontSize: '10px', padding: '2px 7px', backgroundColor: '#fef3c7', color: '#92400e', borderRadius: '4px', letterSpacing: '0.3px' }}>
                                         {t('unrecognized')}
                                       </span>
@@ -512,7 +513,7 @@ export default function HistoryPage() {
                   >
                     {meal.photo_url ? <MealPhoto photoUrl={meal.photo_url} alt={meal.food_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: viewMode === 'grid' ? '48px' : '24px' }}>{CATEGORY_EMOJI[meal.category || '기타'] ?? '🍽️'}</span>}
                     {viewMode === 'grid' && <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '16px 8px 8px', background: 'linear-gradient(to top, rgba(0,0,0,0.55), transparent)', pointerEvents: 'none', display: 'flex', justifyContent: 'center' }}><span style={{ fontSize: '17px', color: 'white', textShadow: '0 1px 4px rgba(0,0,0,0.5)', fontWeight: 400, letterSpacing: '0.5px' }}>{meal.calories}</span></div>}
-                    {meal._unrecognized && (
+                    {isUnrecognizedMeal(meal) && (
                       <div style={{ position: 'absolute', top: '4px', left: '4px', fontSize: '9px', padding: '2px 5px', backgroundColor: 'rgba(254,243,199,0.9)', color: '#92400e', borderRadius: '3px' }}>
                         {t('unrecognized')}
                       </div>

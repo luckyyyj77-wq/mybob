@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/lib/auth-context';
 import { MealPhoto } from '@/components/MealPhoto';
 import { updateGoalAchievement } from '@/lib/goal-achievement';
+import { isUnrecognizedMeal } from '@/lib/unrecognized';
 import { useTranslations, useLocale } from 'next-intl';
 
 type Nutrient = {
@@ -408,7 +409,7 @@ function MealDetailContent() {
                 {isEditing ? <input value={editFoodName} onChange={e => setEditFoodName(e.target.value)} onFocus={selectAll} style={{ fontSize: '22px', fontWeight: 400, border: '2px solid #e5e7eb', borderRadius: '4px', padding: '4px 8px', width: '100%', outline: 'none', backgroundColor: '#fafafa' }} /> : (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                     <h2 style={{ fontSize: '24px', fontWeight: 400 }}>{meal.food_name}{meal.is_edited && <span style={{ fontSize: '10px', color: '#9ca3af', marginLeft: '6px' }}>{t('edited')}</span>}</h2>
-                    {meal._unrecognized && <span style={{ fontSize: '10px', padding: '2px 8px', backgroundColor: '#fef3c7', color: '#92400e', borderRadius: '4px', whiteSpace: 'nowrap' }}>{t('unrecognized')}</span>}
+                    {isUnrecognizedMeal(meal) && <span style={{ fontSize: '10px', padding: '2px 8px', backgroundColor: '#fef3c7', color: '#92400e', borderRadius: '4px', whiteSpace: 'nowrap' }}>{t('unrecognized')}</span>}
                   </div>
                 )}
                 <p style={{ fontSize: '14px', color: '#6B21A8', marginTop: '2px' }}>{CATEGORY_MAP[meal.category || '기타'] ?? meal.category}</p>
@@ -419,7 +420,7 @@ function MealDetailContent() {
               </div>
             </div>
 
-            {meal._unrecognized && token && !isEditing && (
+            {isUnrecognizedMeal(meal) && token && !isEditing && (
               <button onClick={() => { setRecoverName(''); setRecoverError(''); setShowRecover(true); }} style={{ width: '100%', padding: '14px', marginBottom: '20px', backgroundColor: '#fffbeb', border: '1px dashed #f59e0b', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', color: '#92400e', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                 🔍 {t('recoverCta')}
               </button>
