@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { FaSpinner } from 'react-icons/fa';
 import { useAuth } from '@/lib/auth-context';
+import { isCacheFresh, markSynced } from '@/lib/meals-cache';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslations, useLocale } from 'next-intl';
 
@@ -139,17 +140,20 @@ export default function DiagnosisPage() {
     if (token === null) return;
     if (!token) { setPlan('free'); return; }
 
-    // 플랜 + 식단 병렬 조회
+    // 플랜 + 식단 병렬 조회 (식단은 캐시가 신선하면 생략)
     Promise.all([
       fetch('/api/upload-status', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-      fetch('/api/meals', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+      isCacheFresh()
+        ? Promise.resolve(null)
+        : fetch('/api/meals', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
     ]).then(([statusData, mealsData]) => {
       setPlan(statusData.plan || 'free');
-      if (mealsData.success && Array.isArray(mealsData.data)) {
+      if (mealsData && mealsData.success && Array.isArray(mealsData.data)) {
         const serverIds = new Set(mealsData.data.map((m: Meal) => m.id));
         const merged = [...mealsData.data, ...local.filter(m => !serverIds.has(m.id))];
         setMeals(merged);
         localStorage.setItem('mybob_meals', JSON.stringify(merged));
+        markSynced();
       }
     }).catch(() => setPlan('free'));
   }, [token]);

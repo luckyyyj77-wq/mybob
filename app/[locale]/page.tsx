@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { analyzeCoach, getCoachMessage } from '@/lib/coach';
 import type { Persona } from '@/lib/coach';
 import { useAuth } from '@/lib/auth-context';
+import { isCacheFresh, markSynced } from '@/lib/meals-cache';
 import { useTranslations, useLocale } from 'next-intl';
 import { Link } from '@/i18n/routing';
 import { processPendingMeals } from '@/lib/process-pending';
@@ -236,7 +237,7 @@ export default function Home() {
     try {
       let merged = localMeals;
 
-      if (accessToken) {
+      if (accessToken && !isCacheFresh()) {
         const res = await fetch('/api/meals', {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
@@ -248,6 +249,7 @@ export default function Home() {
             merged = [...result.data, ...uniqueLocal];
             localStorage.setItem('mybob_meals', JSON.stringify(merged));
             setTodayStats(computeTodayStats(merged));
+            markSynced();
           }
         }
       }

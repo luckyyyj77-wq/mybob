@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceLine, Cell, PieChart, Pie } from 'recharts';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { useAuth } from '@/lib/auth-context';
+import { isCacheFresh, markSynced } from '@/lib/meals-cache';
 import { useTranslations } from 'next-intl';
 
 interface Meal {
@@ -63,6 +64,7 @@ export default function MonthlyReportPage() {
     setTargetCalories(calcTargetCalories(Number(goal.height) || 0, Number(goal.weight) || 0, goal.goal || 'maintain'));
 
     if (token === null) return;
+    if (isCacheFresh()) return;
     fetch('/api/meals', { headers: token ? { Authorization: `Bearer ${token}` } : {} })
       .then(r => r.json()).then(result => {
         if (result.success && Array.isArray(result.data)) {
@@ -70,6 +72,7 @@ export default function MonthlyReportPage() {
           const merged = [...result.data, ...local.filter(m => !serverIds.has(m.id))];
           setAllMeals(merged);
           localStorage.setItem('mybob_meals', JSON.stringify(merged));
+          markSynced();
         }
       }).catch(() => {});
   }, [token]);

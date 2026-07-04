@@ -5,6 +5,7 @@ import { Link, useRouter } from '@/i18n/routing';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaThList, FaThLarge, FaTh, FaPlus, FaMinus, FaSearch, FaTimes, FaSpinner } from 'react-icons/fa';
 import { useAuth } from '@/lib/auth-context';
+import { isCacheFresh, markSynced } from '@/lib/meals-cache';
 import { MealPhoto } from '@/components/MealPhoto';
 import { getStorageMode } from '@/lib/storage-mode';
 import { isUnrecognizedMeal } from '@/lib/unrecognized';
@@ -156,6 +157,7 @@ export default function HistoryPage() {
     setLoading(false);
 
     if (token === null) return;
+    if (isCacheFresh()) return;
     fetch('/api/meals', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json()).then(result => {
         if (result.success && Array.isArray(result.data)) {
@@ -163,6 +165,7 @@ export default function HistoryPage() {
           const merged = [...result.data, ...local.filter(m => !serverIds.has(m.id))];
           setMeals(sorted(merged));
           localStorage.setItem('mybob_meals', JSON.stringify(merged));
+          markSynced();
         }
       }).catch(() => {});
   }, [token]);

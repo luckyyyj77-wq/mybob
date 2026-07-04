@@ -36,14 +36,24 @@ export async function GET(request: Request) {
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: request.headers.get('Authorization')! } },
     });
-    const { data, error } = await supabase
-      .from('meals')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+    // Supabase는 쿼리당 최대 1000행만 반환 — 누적 1000건 초과 사용자를 위해 배치 조회
+    const PAGE_SIZE = 1000;
+    const MAX_PAGES = 20; // 안전 상한 2만 건
+    const allMeals: any[] = [];
+    for (let page = 0; page < MAX_PAGES; page++) {
+      const from = page * PAGE_SIZE;
+      const { data, error } = await supabase
+        .from('meals')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .range(from, from + PAGE_SIZE - 1);
 
-    if (error) throw error;
-    return NextResponse.json({ success: true, data });
+      if (error) throw error;
+      if (data) allMeals.push(...data);
+      if (!data || data.length < PAGE_SIZE) break;
+    }
+    return NextResponse.json({ success: true, data: allMeals });
 
   } catch (error: any) {
     console.error('[meals GET]', error?.message);

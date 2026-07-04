@@ -1,6 +1,8 @@
 // split-analyze.ts — 이미지를 4분할해서 각 영역을 분석 후 결과 합산
 // 전체 이미지 인식 실패 시 폴백으로 사용
 
+import { getFrequentFoodNames } from './frequent-foods';
+
 export type FoodItem = {
   name: string;
   calories: number;
@@ -51,7 +53,7 @@ async function analyzeOne(
     const res = await fetch('/api/analyze-food', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ image: imageBase64, mode: 'food', locale }),
+      body: JSON.stringify({ image: imageBase64, mode: 'food', locale, frequentFoods: getFrequentFoodNames() }),
     });
     if (!res.ok) return { success: false };
     const data = await res.json();

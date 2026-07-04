@@ -8,6 +8,29 @@
  */
 
 const CACHE_KEY = 'mybob_meals';
+const SYNC_KEY = 'mybob_meals_synced_at';
+const FRESH_MS = 60_000;
+
+/**
+ * 최근 60초 내 서버 동기화가 있었으면 true.
+ * 페이지 이동마다 전체 식단을 재조회하는 낭비를 막는다 — 저장/수정은
+ * 캐시를 직접 갱신하므로 신선도 윈도우 안에서도 화면은 최신 상태 유지.
+ */
+export function isCacheFresh(): boolean {
+  try {
+    const ts = Number(localStorage.getItem(SYNC_KEY) || 0);
+    return Date.now() - ts < FRESH_MS;
+  } catch {
+    return false;
+  }
+}
+
+/** 서버 동기화 성공 직후 호출 */
+export function markSynced(): void {
+  try {
+    localStorage.setItem(SYNC_KEY, String(Date.now()));
+  } catch { }
+}
 
 export interface CachedMeal {
   id: string;

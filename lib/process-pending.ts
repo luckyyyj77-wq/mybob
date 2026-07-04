@@ -9,6 +9,7 @@ import {
 import { savePhoto } from './indexed-db';
 import { analyzeWithSplit } from './split-analyze';
 import { updateGoalAchievement } from './goal-achievement';
+import { getFrequentFoodNames } from './frequent-foods';
 
 const MAX_RETRIES = 3;
 let isRunning = false;
@@ -101,7 +102,7 @@ async function processSingle(meal: PendingMeal, token: string): Promise<boolean>
     const res = await fetch('/api/analyze-food', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ image: meal.imageBase64, mode: 'food', locale: meal.locale }),
+      body: JSON.stringify({ image: meal.imageBase64, mode: 'food', locale: meal.locale, frequentFoods: getFrequentFoodNames() }),
     });
 
     if (res.ok) {

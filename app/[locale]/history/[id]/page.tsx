@@ -6,6 +6,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import { FaArrowLeft, FaChevronLeft, FaChevronRight, FaTh, FaThLarge } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/lib/auth-context';
+import { isCacheFresh, markSynced } from '@/lib/meals-cache';
 import { MealPhoto } from '@/components/MealPhoto';
 import { updateGoalAchievement } from '@/lib/goal-achievement';
 import { isUnrecognizedMeal } from '@/lib/unrecognized';
@@ -140,15 +141,17 @@ function MealDetailContent() {
         try {
           const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
           const [mealsRes, profileRes] = await Promise.all([
-            fetch('/api/meals', { headers }),
+            isCacheFresh() ? Promise.resolve(null) : fetch('/api/meals', { headers }),
             fetch('/api/profile', { headers }),
           ]);
-          if (mealsRes.ok) {
+          if (mealsRes?.ok) {
             const r = await mealsRes.json();
             if (r.success && Array.isArray(r.data)) {
               serverMeals = r.data;
               const serverIds = new Set(serverMeals.map((m: Meal) => m.id));
               all = [...serverMeals, ...all.filter((m: Meal) => !serverIds.has(m.id))];
+              try { localStorage.setItem('mybob_meals', JSON.stringify(all)); } catch { }
+              markSynced();
             }
           }
           if (profileRes?.ok) {

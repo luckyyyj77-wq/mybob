@@ -9,6 +9,7 @@ import { getStorageMode } from '@/lib/storage-mode';
 import { savePhoto } from '@/lib/indexed-db';
 import { updateGoalAchievement } from '@/lib/goal-achievement';
 import { enqueuePendingMeal } from '@/lib/pending-meals';
+import { getFrequentFoodNames } from '@/lib/frequent-foods';
 import { useTranslations, useLocale } from 'next-intl';
 
 type AnalysisResult = {
@@ -61,6 +62,26 @@ function captureFrameFromVideo(video: HTMLVideoElement, quality = 0.95): string 
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
   canvas.getContext('2d')!.drawImage(video, 0, 0);
+  return canvas.toDataURL('image/jpeg', quality);
+}
+
+// 가이드 프레임 영역만 잘라 캡처 — 배경 노이즈를 줄여 인식률·분석 속도 개선
+// 화면의 가이드 박스(min(78vw, 55vh) 정사각형)를 objectFit: cover 역산으로
+// video 좌표계에 매핑하고, 프레임에 살짝 걸친 음식까지 담기게 8% 여유를 둔다
+function captureCroppedFrame(video: HTMLVideoElement, quality = 0.95): string {
+  const vw = video.videoWidth;
+  const vh = video.videoHeight;
+  const cw = video.clientWidth || window.innerWidth;
+  const ch = video.clientHeight || window.innerHeight;
+  const guideSide = Math.min(cw * 0.78, ch * 0.55);
+  const coverScale = Math.max(cw / vw, ch / vh);
+  const cropSide = Math.min((guideSide / coverScale) * 1.08, vw, vh);
+  const sx = (vw - cropSide) / 2;
+  const sy = (vh - cropSide) / 2;
+  const canvas = document.createElement('canvas');
+  canvas.width = cropSide;
+  canvas.height = cropSide;
+  canvas.getContext('2d')!.drawImage(video, sx, sy, cropSide, cropSide, 0, 0, cropSide, cropSide);
   return canvas.toDataURL('image/jpeg', quality);
 }
 
@@ -311,7 +332,7 @@ export default function CameraCapturePage() {
   const capture = useCallback(() => {
     const video = foodVideoRef.current;
     if (video && video.readyState >= 2) {
-      const image = captureFrameFromVideo(video);
+      const image = captureCroppedFrame(video);
       if (image) {
         setImageSrc(image);
         setAnalysis(null);
@@ -370,7 +391,12 @@ export default function CameraCapturePage() {
       const res = await fetch('/api/analyze-food', {
         method: 'POST',
         headers,
-        body: JSON.stringify({ image: imageToSend, mode: apiMode, locale }),
+        body: JSON.stringify({
+          image: imageToSend,
+          mode: apiMode,
+          locale,
+          frequentFoods: apiMode === 'food' ? getFrequentFoodNames() : undefined,
+        }),
       });
       const result = await res.json();
 
@@ -800,8 +826,14 @@ export default function CameraCapturePage() {
             )}
 
             {captureMode === 'food' && (
-              <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{ width: '70px', height: '70px', border: '1.5px solid rgba(255,255,255,0.5)', borderRadius: '50%' }} />
+              <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '14px' }}>
+                <div style={{ width: 'min(78vw, 55vh)', aspectRatio: '1', border: '1.5px solid rgba(255,255,255,0.55)', borderRadius: '16px', boxShadow: '0 0 0 9999px rgba(0,0,0,0.32)', position: 'relative' }}>
+                  <div style={{ position: 'absolute', top: '-1px', left: '-1px', width: '24px', height: '24px', borderTop: '3px solid white', borderLeft: '3px solid white', borderRadius: '16px 0 0 0' }} />
+                  <div style={{ position: 'absolute', top: '-1px', right: '-1px', width: '24px', height: '24px', borderTop: '3px solid white', borderRight: '3px solid white', borderRadius: '0 16px 0 0' }} />
+                  <div style={{ position: 'absolute', bottom: '-1px', left: '-1px', width: '24px', height: '24px', borderBottom: '3px solid white', borderLeft: '3px solid white', borderRadius: '0 0 0 16px' }} />
+                  <div style={{ position: 'absolute', bottom: '-1px', right: '-1px', width: '24px', height: '24px', borderBottom: '3px solid white', borderRight: '3px solid white', borderRadius: '0 0 16px 0' }} />
+                </div>
+                <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '12px', letterSpacing: '0.5px', textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>{t('cropGuide')}</p>
               </div>
             )}
 

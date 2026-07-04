@@ -217,7 +217,7 @@ export async function POST(request: Request) {
   let creditConsumed = false;
   let creditUserId: string | null = null;
   try {
-    const { image, mode, locale = 'ko' } = await request.json();
+    const { image, mode, locale = 'ko', frequentFoods } = await request.json();
     const apiKey = process.env.GEMINI_API_KEY?.trim();
     if (!apiKey) return NextResponse.json({ error: 'No API Key' }, { status: 500 });
 
@@ -274,10 +274,24 @@ export async function POST(request: Request) {
     // ── Food mode ──────────────────────────────────────────────────────────
     const isPro = plan !== 'free';
 
+    // 자주 먹는 음식 힌트 — 반복 품목의 이름을 일관되게 확정시켜 식약처 DB 매칭률을 높임
+    const foodHints: string[] = Array.isArray(frequentFoods)
+      ? frequentFoods
+          .filter((s: any) => typeof s === 'string' && s.trim().length > 0)
+          .map((s: string) => s.trim().slice(0, 40))
+          .slice(0, 20)
+      : [];
+    const hintText = foodHints.length > 0
+      ? (locale === 'en'
+          ? ` For reference, this user frequently eats: ${foodHints.join(', ')}. If a food in the image is one of these, use that exact name.`
+          : ` 참고로 이 사용자가 자주 먹는 음식: ${foodHints.join(', ')}. 이미지 속 음식이 이 목록의 음식과 같다면 그 이름을 그대로 사용하세요.`)
+      : '';
+
     // 1단계: flash-lite로 음식 목록 확정 (NOT_FOOD 체크 겸용) — 빠르게 선행
-    const namePrompt = locale === 'en'
+    const namePrompt = (locale === 'en'
       ? 'List all distinct foods and drinks visible in this image. Reply with ONLY a JSON array of specific names, e.g. ["Iced Americano", "Kimchi Jjigae", "Rice"]. If there is nothing edible, reply exactly: NOT_FOOD'
-      : '이 이미지에 보이는 모든 음식과 음료를 나열하세요. 구체적인 이름을 JSON 배열로만 답하세요 (예: ["아이스 아메리카노", "김치찌개", "공기밥"]). 먹을 수 있는 것이 없으면 정확히 NOT_FOOD 라고만 답하세요.';
+      : '이 이미지에 보이는 모든 음식과 음료를 나열하세요. 구체적인 이름을 JSON 배열로만 답하세요 (예: ["아이스 아메리카노", "김치찌개", "공기밥"]). 먹을 수 있는 것이 없으면 정확히 NOT_FOOD 라고만 답하세요.'
+    ) + hintText;
 
     const confirmedNames: string[] = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey}`,
