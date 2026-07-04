@@ -535,7 +535,8 @@ function MealDetailContent() {
         {showRecover && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => !recovering && setShowRecover(false)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 100 }} />
-            <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'tween', duration: 0.25 }} style={{ position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: 'white', borderRadius: '16px 16px 0 0', padding: '24px 24px 36px', zIndex: 101 }}>
+            {/* 키보드가 하단을 덮어도 버튼이 가려지지 않도록 상단 고정 카드형 모달 */}
+            <motion.div initial={{ y: 16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 16, opacity: 0 }} transition={{ type: 'tween', duration: 0.2 }} style={{ position: 'fixed', top: 'calc(env(safe-area-inset-top, 0px) + 48px)', left: '20px', right: '20px', maxWidth: '400px', margin: '0 auto', backgroundColor: 'white', borderRadius: '16px', padding: '24px', zIndex: 101 }}>
               <p style={{ fontSize: '15px', fontWeight: 600, marginBottom: '6px' }}>{t('recoverTitle')}</p>
               <p style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '16px' }}>{t('recoverDesc')}</p>
               <input
