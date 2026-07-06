@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { FaArrowLeft } from 'react-icons/fa';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
+import { isNativeApp } from '@/lib/native-app';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 
@@ -41,6 +42,9 @@ export default function PlanPage() {
   const [cancelling, setCancelling] = useState(false);
   const [cancelMsg, setCancelMsg] = useState('');
   const [cancelStep, setCancelStep] = useState<0 | 1 | 2>(0); // 0=기본 1=1차확인 2=처리중
+  // Google Play 정책: 앱 내에서 외부 결제(LS 체크아웃) 동선 노출 금지 → 업그레이드 섹션 숨김
+  const [nativeApp, setNativeApp] = useState(false);
+  useEffect(() => { setNativeApp(isNativeApp()); }, []);
 
   useEffect(() => {
     if (session?.user?.email) setUserEmail(session.user.email);
@@ -266,7 +270,7 @@ export default function PlanPage() {
           </div>
         </div>
 
-        {planStatus?.plan === 'free' && (
+        {planStatus?.plan === 'free' && !nativeApp && (
           <>
             <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>{t('proBenefits')}</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: '#e5e7eb', border: '1px solid #e5e7eb', marginBottom: '28px' }}>
