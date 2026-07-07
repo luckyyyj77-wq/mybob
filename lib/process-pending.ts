@@ -9,9 +9,11 @@ import {
 import { savePhoto } from './indexed-db';
 import { analyzeWithSplit } from './split-analyze';
 import { updateGoalAchievement } from './goal-achievement';
-import { getFrequentFoodNames } from './frequent-foods';
+import { getFrequentFoodNames, getFoodCache } from './frequent-foods';
 
 const MAX_RETRIES = 3;
+// 재시도 간 최소 대기시간(ms) — retryCount별 백오프. 인덱스 = 다음 시도 전 이미 쌓인 retryCount.
+const RETRY_BACKOFF_MS = [0, 60_000, 5 * 60_000];
 let isRunning = false;
 
 const UNRECOGNIZED_NAME: Record<string, string> = {
@@ -102,7 +104,7 @@ async function processSingle(meal: PendingMeal, token: string): Promise<boolean>
     const res = await fetch('/api/analyze-food', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ image: meal.imageBase64, mode: 'food', locale: meal.locale, frequentFoods: getFrequentFoodNames() }),
+      body: JSON.stringify({ image: meal.imageBase64, mode: 'food', locale: meal.locale, frequentFoods: getFrequentFoodNames(), foodCache: getFoodCache() }),
     });
 
     if (res.ok) {
@@ -234,6 +236,10 @@ export async function processPendingMeals(token: string, locale: string): Promis
         // 최대 재시도 초과 → 미인식 식단으로 저장
         await saveUnrecognized(meal, token);
         continue;
+      }
+      const backoff = RETRY_BACKOFF_MS[meal.retryCount] ?? 0;
+      if (meal.lastAttemptAt && Date.now() - meal.lastAttemptAt < backoff) {
+        continue; // 아직 다음 재시도 시각이 안 됨 — 이번 pass는 건너뜀
       }
       await processSingle({ ...meal, locale }, token);
       // API 과부하 방지용 최소 간격

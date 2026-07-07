@@ -10,6 +10,7 @@ export type PendingMeal = {
   imageBase64: string;   // 리사이즈된 이미지 (data URL)
   capturedAt: string;    // ISO datetime — 원본 촬영 시각
   retryCount: number;
+  lastAttemptAt?: number; // 마지막 재시도 시각(epoch ms) — 시간 기반 백오프용
   locale: string;
   storageMode: 'local' | 'cloud';
   rating: number | null;
@@ -57,6 +58,7 @@ export async function updatePendingMealRetry(id: string, retryCount: number): Pr
       const meal = getReq.result as PendingMeal | undefined;
       if (!meal) { resolve(); return; }
       meal.retryCount = retryCount;
+      meal.lastAttemptAt = Date.now();
       store.put(meal, id);
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);

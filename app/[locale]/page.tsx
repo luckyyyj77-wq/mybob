@@ -180,6 +180,17 @@ export default function Home() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, locale]);
 
+  // 탭을 계속 열어둔 채로 있어도 백오프 시간이 지나면 재시도가 진행되도록 주기 체크
+  useEffect(() => {
+    if (!token) return;
+    const interval = setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      processPendingMeals(token, locale).catch(() => {});
+    }, 60_000);
+    return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, locale]);
+
   const runCoachLocal = (meals: Meal[], currentPersona: Persona, goalRaw: string | null) => {
     const finalStats = computeTodayStats(meals);
     const weekly = buildWeekly(meals);
