@@ -217,7 +217,7 @@ export async function POST(request: Request) {
   let creditConsumed = false;
   let creditUserId: string | null = null;
   try {
-    const { image, mode, locale = 'ko', frequentFoods } = await request.json();
+    const { image, mode, locale = 'ko', frequentFoods, foodCache } = await request.json();
     const apiKey = process.env.GEMINI_API_KEY?.trim();
     if (!apiKey) return NextResponse.json({ error: 'No API Key' }, { status: 500 });
 
@@ -319,6 +319,28 @@ export async function POST(request: Request) {
     if (confirmedNames === 'NOT_FOOD' as any) {
       await refundAnalysisCredit(adminSupabase, userId);
       return NextResponse.json({ error: 'NOT_FOOD' }, { status: 422 });
+    }
+
+    // 단일 품목 + 과거 캐시에 동일 이름이 있으면 Gemini 본분석/한식DB 조회 없이 즉시 재사용
+    // (Gemini 지연/실패 회피 + 호출 절감 목적. 복수 품목은 개별 영양소 분리가 안 되어 대상에서 제외)
+    if (confirmedNames.length === 1 && foodCache && typeof foodCache === 'object') {
+      const cached = foodCache[confirmedNames[0]];
+      if (cached && typeof cached.calories === 'number' && cached.calories > 0) {
+        return NextResponse.json({
+          success: true,
+          food: {
+            name: confirmedNames[0],
+            calories: cached.calories,
+            category: cached.category ?? '',
+            amount: '',
+            confidence: 'high',
+            nutrients: cached.nutrients ?? {},
+            itemCount: 1,
+          },
+          source: 'cache',
+          analysisStatus: { plan, used: limitCheck.used, limit: limitCheck.limit },
+        });
+      }
     }
 
     // 2단계: 확정된 이름 목록을 본분석에 주입 — 영양소 추정에만 집중

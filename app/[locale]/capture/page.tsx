@@ -9,7 +9,7 @@ import { getStorageMode } from '@/lib/storage-mode';
 import { savePhoto } from '@/lib/indexed-db';
 import { updateGoalAchievement } from '@/lib/goal-achievement';
 import { enqueuePendingMeal } from '@/lib/pending-meals';
-import { getFrequentFoodNames } from '@/lib/frequent-foods';
+import { getFrequentFoodNames, getFoodCache } from '@/lib/frequent-foods';
 import { useTranslations, useLocale } from 'next-intl';
 
 type AnalysisResult = {
@@ -396,6 +396,7 @@ export default function CameraCapturePage() {
           mode: apiMode,
           locale,
           frequentFoods: apiMode === 'food' ? getFrequentFoodNames() : undefined,
+          foodCache: apiMode === 'food' ? getFoodCache() : undefined,
         }),
       });
       const result = await res.json();
