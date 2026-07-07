@@ -36,3 +36,14 @@ yarn-error.log*
 # Capacitor
 /android
 /ios
+
+# typescript build cache
+*.tsbuildinfo
+
+# claude code local settings / worktree artifacts
+.claude/settings.local.json
+.claude/worktrees/
+
+# personal notes / memory (not project source)
+/관련정보/
+/memory/
