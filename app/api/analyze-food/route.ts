@@ -146,7 +146,7 @@ const ITEMS_RESPONSE_SCHEMA = {
 
 async function analyzeWithGemini(
   base64Data: string, apiKey: string, isPro: boolean, locale: string, confirmedNames: string[]
-): Promise<{ success: boolean; items?: any[]; modelUsed?: string; error?: string }> {
+): Promise<{ success: boolean; items?: any[]; modelUsed?: string; error?: string; tokensIn?: number; tokensOut?: number }> {
   // PRO는 2.5-pro를 순차 우선 시도(응답이 느려 타임아웃 여유), 실패 시 flash 폴백.
   // 병렬(Promise.any)로 돌리면 flash가 거의 항상 먼저 끝나 pro 결과를 버리고 비용만 2배가 됨.
   const modelPlans = isPro
@@ -170,11 +170,35 @@ async function analyzeWithGemini(
       const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
       if (res.ok && text) {
         const items = safeParseItems(text);
-        if (items && items.length > 0) return { success: true, items, modelUsed: model };
+        if (items && items.length > 0) {
+          return {
+            success: true,
+            items,
+            modelUsed: model,
+            tokensIn: result.usageMetadata?.promptTokenCount,
+            tokensOut: result.usageMetadata?.candidatesTokenCount,
+          };
+        }
       }
     } catch { /* 타임아웃/네트워크 오류 → 다음 모델 폴백 */ }
   }
   return { success: false, error: 'Gemini timeout' };
+}
+
+async function logGeminiUsage(
+  adminSupabase: any,
+  params: { userId: string; model: string; plan: string; tokensIn?: number; tokensOut?: number; mode: 'vision' | 'ocr' }
+) {
+  try {
+    await adminSupabase.from('gemini_usage').insert({
+      user_id: params.userId,
+      model: params.model,
+      plan: params.plan,
+      tokens_in: params.tokensIn ?? null,
+      tokens_out: params.tokensOut ?? null,
+      mode: params.mode,
+    });
+  } catch { /* 사용량 기록 실패는 분석 결과에 영향 주지 않음 */ }
 }
 
 
@@ -204,7 +228,13 @@ async function analyzeNutritionLabel(base64Data: string, apiKey: string, locale 
       const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: 'image/jpeg', data: base64Data } }] }], generationConfig: { response_mime_type: 'application/json', temperature: 0.05 } }) });
       const result = await res.json();
       if (res.ok && result.candidates?.[0]?.content?.parts?.[0]?.text) {
-        return { success: true, data: JSON.parse(result.candidates[0].content.parts[0].text), modelUsed: model };
+        return {
+          success: true,
+          data: JSON.parse(result.candidates[0].content.parts[0].text),
+          modelUsed: model,
+          tokensIn: result.usageMetadata?.promptTokenCount,
+          tokensOut: result.usageMetadata?.candidatesTokenCount,
+        };
       }
       if (result.error?.message?.includes('quota')) continue;
       return { success: false, error: result.error?.message };
@@ -261,6 +291,10 @@ export async function POST(request: Request) {
         await refundAnalysisCredit(adminSupabase, userId);
         return NextResponse.json({ error: 'OCR_NOT_READABLE' }, { status: 422 });
       }
+      await logGeminiUsage(adminSupabase, {
+        userId, plan, mode: 'ocr',
+        model: ocrResult.modelUsed!, tokensIn: ocrResult.tokensIn, tokensOut: ocrResult.tokensOut,
+      });
       const d = ocrResult.data; let p = d.per_serving; let source = 'ocr';
       if (d.barcode) {
         const barcodeData = await lookupBarcode(d.barcode);
@@ -357,6 +391,10 @@ export async function POST(request: Request) {
       await refundAnalysisCredit(adminSupabase, userId);
       return NextResponse.json({ error: geminiResult.error }, { status: 503 });
     }
+    await logGeminiUsage(adminSupabase, {
+      userId, plan, mode: 'vision',
+      model: geminiResult.modelUsed!, tokensIn: geminiResult.tokensIn, tokensOut: geminiResult.tokensOut,
+    });
 
     // 식약처 DB 매칭 품목은 DB 수치로 교체 — Gemini는 중량 추정 담당,
     // DB가 제공하지 않는 항목(식이섬유·비타민 등)은 Gemini 추정 유지
