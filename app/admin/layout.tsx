@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase/client';
 import { clearAllPhotos } from '@/lib/indexed-db';
 import {
   FaChartBar, FaUsers, FaUtensils, FaFileAlt,
-  FaHandshake, FaCog, FaBars, FaTimes, FaSignOutAlt, FaCreditCard, FaMedal,
+  FaHandshake, FaCog, FaBars, FaTimes, FaSignOutAlt, FaCreditCard, FaMedal, FaFlask,
 } from 'react-icons/fa';
 
 const NAV_ITEMS = [
@@ -17,6 +17,7 @@ const NAV_ITEMS = [
   { href: '/admin/subscriptions',    icon: FaCreditCard, label: '구독 관리',   implemented: true },
   { href: '/admin/founding',         icon: FaMedal,      label: '천인회',      implemented: true },
   { href: '/admin/reports',          icon: FaFileAlt,    label: '통계 리포트', implemented: true },
+  { href: '/admin/model-test',       icon: FaFlask,      label: '모델 비교',   implemented: true },
   { href: '/admin/feedback',         icon: FaHandshake,  label: '제휴/문의',   implemented: false },
   { href: '/admin/settings',         icon: FaCog,        label: '앱 설정',     implemented: true },
 ];
