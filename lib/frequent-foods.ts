@@ -18,16 +18,18 @@ export type FoodCacheEntry = {
 
 // 이름이 정확히 일치하는 과거 단일 품목 식단을 즉시 재사용하기 위한 캐시.
 // 복수 품목 식단('A + B')은 개별 품목 영양소를 분리할 수 없어 제외.
+// 나쁨(😞, rating===0) 평가를 받은 기록은 오분석일 가능성이 높으므로 캐시/힌트 대상에서 제외.
 // 가장 최근 기록이 우선하도록 배열 앞에서부터 채움(mybob_meals는 최신이 앞).
 export function getFoodCache(): Record<string, FoodCacheEntry> {
   try {
-    const meals: { food_name?: string; calories?: number; nutrient?: Record<string, number | null>; category?: string }[]
+    const meals: { food_name?: string; calories?: number; nutrient?: Record<string, number | null>; category?: string; rating?: number | null }[]
       = JSON.parse(localStorage.getItem(CACHE_KEY) || '[]');
     const cache: Record<string, FoodCacheEntry> = {};
     for (const m of meals) {
       if (!m.food_name || m.food_name.includes(' + ')) continue;
       if (m.calories == null || m.calories <= 0) continue;
       if (isUnrecognizedMeal(m)) continue;
+      if (m.rating === 0) continue;
       const name = m.food_name.trim();
       if (!name || cache[name]) continue; // 이미 최신 기록으로 채워짐
       cache[name] = { calories: m.calories, nutrients: m.nutrient ?? {}, category: m.category };
@@ -38,23 +40,31 @@ export function getFoodCache(): Record<string, FoodCacheEntry> {
   }
 }
 
+// 좋음(😊, rating===2) 평가는 힌트 우선순위에서 가중치를 더 준다 —
+// 사용자가 정확하다고 확인한 품목의 이름을 다음 분석에서 더 적극적으로 재사용.
+const GOOD_RATING_WEIGHT = 3;
+
 export function getFrequentFoodNames(limit = 20): string[] {
   try {
-    const meals: { food_name?: string; calories?: number; _unrecognized?: boolean }[]
+    const meals: { food_name?: string; calories?: number; _unrecognized?: boolean; rating?: number | null }[]
       = JSON.parse(localStorage.getItem(CACHE_KEY) || '[]');
     const counts = new Map<string, number>();
+    const scores = new Map<string, number>();
     for (const m of meals) {
       if (!m.food_name || isUnrecognizedMeal(m)) continue;
+      if (m.rating === 0) continue;
+      const weight = m.rating === 2 ? GOOD_RATING_WEIGHT : 1;
       // 복수 품목 식단은 ' + '로 합쳐 저장되므로 개별 품목으로 분리
       for (const raw of String(m.food_name).split(' + ')) {
         const name = raw.trim();
         if (!name || name.length > 40) continue;
         counts.set(name, (counts.get(name) || 0) + 1);
+        scores.set(name, (scores.get(name) || 0) + weight);
       }
     }
     return Array.from(counts.entries())
       .filter(([, count]) => count >= 2) // 2회 이상 먹은 품목만 힌트로
-      .sort((a, b) => b[1] - a[1])
+      .sort((a, b) => (scores.get(b[0])! - scores.get(a[0])!) || (b[1] - a[1]))
       .slice(0, limit)
       .map(([name]) => name);
   } catch {
