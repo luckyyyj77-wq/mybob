@@ -360,6 +360,7 @@ export async function POST(request: Request) {
     if (confirmedNames.length === 1 && foodCache && typeof foodCache === 'object') {
       const cached = foodCache[confirmedNames[0]];
       if (cached && typeof cached.calories === 'number' && cached.calories > 0) {
+        await refundAnalysisCredit(adminSupabase, userId);
         return NextResponse.json({
           success: true,
           food: {
@@ -372,7 +373,7 @@ export async function POST(request: Request) {
             itemCount: 1,
           },
           source: 'cache',
-          analysisStatus: { plan, used: limitCheck.used, limit: limitCheck.limit },
+          analysisStatus: { plan, used: Math.max(0, limitCheck.used - 1), limit: limitCheck.limit },
         });
       }
     }

@@ -166,6 +166,7 @@ export async function POST(request: Request) {
       original_nutrition: originalNutrition ?? null,
       is_public: Boolean(isPublic),
       visibility: ['private', 'neighbors', 'public'].includes(visibility) ? visibility : (isPublic ? 'neighbors' : 'private'),
+      ...(createdAt ? { created_at: createdAt.toISOString() } : {}),
     };
 
     const { data, error } = await adminSupabase
