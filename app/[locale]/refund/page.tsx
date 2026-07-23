@@ -1,8 +1,12 @@
+import { use } from 'react';
 import { Link } from '@/i18n/routing';
 import { FaArrowLeft } from 'react-icons/fa';
 import { useTranslations } from 'next-intl';
+import { setRequestLocale } from 'next-intl/server';
 
-export default function RefundPage() {
+export default function RefundPage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = use(params);
+  setRequestLocale(locale);
   const t = useTranslations('Refund');
   const tSettings = useTranslations('Settings');
 

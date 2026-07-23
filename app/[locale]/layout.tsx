@@ -1,7 +1,14 @@
-import { NextIntlClientProvider } from 'next-intl';
-import { getMessages, getTranslations } from 'next-intl/server';
+import { NextIntlClientProvider, hasLocale } from 'next-intl';
+import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server';
+import { notFound } from 'next/navigation';
+import { routing } from '@/i18n/routing';
 import { AuthProvider } from '@/lib/auth-context';
 import AppShell from '@/components/AppShell';
+
+// 로케일별 정적 프리렌더 — 페이지가 CDN에서 즉시 서빙되고 Link prefetch가 동작한다
+export function generateStaticParams() {
+  return routing.locales.map((locale) => ({ locale }));
+}
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -49,6 +56,8 @@ export default async function LocaleLayout({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
+  if (!hasLocale(routing.locales, locale)) notFound();
+  setRequestLocale(locale);
   const messages = await getMessages();
 
   return (

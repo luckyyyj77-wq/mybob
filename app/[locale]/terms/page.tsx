@@ -1,8 +1,12 @@
+import { use } from 'react';
 import { Link } from '@/i18n/routing';
 import { FaArrowLeft } from 'react-icons/fa';
 import { useTranslations } from 'next-intl';
+import { setRequestLocale } from 'next-intl/server';
 
-export default function TermsPage() {
+export default function TermsPage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = use(params);
+  setRequestLocale(locale);
   const t = useTranslations('Terms');
   const tSettings = useTranslations('Settings');
 

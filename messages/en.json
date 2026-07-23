@@ -613,6 +613,7 @@
       "cal_asc": "Lowest Cal"
     },
     "categories": {
+      "all": "All",
       "korean": "Korean",
       "chinese": "Chinese",
       "japanese": "Japanese",

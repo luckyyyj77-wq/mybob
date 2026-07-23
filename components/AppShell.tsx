@@ -115,34 +115,30 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }
   };
 
-  if (showSplash || loading) {
+  // 인증 확인(loading)은 화면을 막지 않는다 — 각 페이지가 로컬 캐시로 먼저 렌더하고
+  // token이 도착하면 스스로 동기화한다. 스플래시는 최초 실행 1회만.
+  if (showSplash) {
     return (
       <>
         <AnimatePresence>
-          {showSplash ? (
-            <motion.div
-              key="splash"
-              initial={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.5 }}
-              style={{ position: 'fixed', inset: 0, zIndex: 10000, backgroundColor: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
+          <motion.div
+            key="splash"
+            initial={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.5 }}
+            style={{ position: 'fixed', inset: 0, zIndex: 10000, backgroundColor: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <motion.h1
+              initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2, duration: 0.8 }}
+              style={{ fontSize: '48px', fontWeight: 400, letterSpacing: '-2px', marginBottom: '12px' }}
             >
-              <motion.h1
-                initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2, duration: 0.8 }}
-                style={{ fontSize: '48px', fontWeight: 400, letterSpacing: '-2px', marginBottom: '12px' }}
-              >
-                MYBOB
-              </motion.h1>
-              <motion.p
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1, duration: 0.5 }}
-                style={{ fontSize: '12px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase' }}
-              >
-                {tNav('tagline')}
-              </motion.p>
-            </motion.div>
-          ) : (
-            <div style={{ minHeight: '100svh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ width: '28px', height: '28px', border: '2px solid black', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-            </div>
-          )}
+              MYBOB
+            </motion.h1>
+            <motion.p
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1, duration: 0.5 }}
+              style={{ fontSize: '12px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase' }}
+            >
+              {tNav('tagline')}
+            </motion.p>
+          </motion.div>
         </AnimatePresence>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </>

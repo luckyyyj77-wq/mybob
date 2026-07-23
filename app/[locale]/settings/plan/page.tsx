@@ -3,7 +3,7 @@
 import { Link } from '@/i18n/routing';
 import { useSearchParams } from 'next/navigation';
 import { FaArrowLeft } from 'react-icons/fa';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { isNativeApp } from '@/lib/native-app';
 import { useTranslations } from 'next-intl';
@@ -31,7 +31,7 @@ type PlanStatus = {
 
 const PLAN_COLOR: Record<string, string> = { free: '#9ca3af', pro: '#6B21A8', lifetime: '#d97706' };
 
-export default function PlanPage() {
+function PlanContent() {
   const { token, session } = useAuth();
   const t = useTranslations('Settings');
   const searchParams = useSearchParams();
@@ -306,5 +306,13 @@ export default function PlanPage() {
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
+  );
+}
+
+export default function PlanPage() {
+  return (
+    <Suspense>
+      <PlanContent />
+    </Suspense>
   );
 }

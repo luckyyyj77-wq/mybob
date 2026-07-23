@@ -613,6 +613,7 @@
       "cal_asc": "칼로리 낮은순"
     },
     "categories": {
+      "all": "전체",
       "korean": "한식",
       "chinese": "중식",
       "japanese": "일식",
