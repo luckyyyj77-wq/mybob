@@ -22,41 +22,46 @@ export async function GET(request: Request) {
   const adminSupabase = createClient(supabaseUrl, supabaseServiceRoleKey);
   const today = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
-  // getOrCreateProfile 경유 → 신규 유저 천인회 슬롯 자동 선점
-  const [profile, slotsRes] = await Promise.all([
-    getOrCreateProfile(adminSupabase, user.id),
-    adminSupabase.from('founding_slots').select('total_slots, used_slots').eq('id', 1).single(),
-  ]);
+  try {
+    // getOrCreateProfile 경유 → 신규 유저 천인회 슬롯 자동 선점
+    const [profile, slotsRes] = await Promise.all([
+      getOrCreateProfile(adminSupabase, user.id),
+      adminSupabase.from('founding_slots').select('total_slots, used_slots').eq('id', 1).single(),
+    ]);
 
-  const plan = getEffectivePlan(profile);
+    const plan = getEffectivePlan(profile);
 
-  const uploadLimit = UPLOAD_LIMITS[plan];
-  const uploadUsed = profile.last_upload_date === today ? (profile.uploads_today || 0) : 0;
+    const uploadLimit = UPLOAD_LIMITS[plan];
+    const uploadUsed = profile.last_upload_date === today ? (profile.uploads_today || 0) : 0;
 
-  const analysisLimit = ANALYSIS_LIMITS[plan];
-  const analysisUsed = profile.last_analysis_date === today ? (profile.analyses_today || 0) : 0;
+    const analysisLimit = ANALYSIS_LIMITS[plan];
+    const analysisUsed = profile.last_analysis_date === today ? (profile.analyses_today || 0) : 0;
 
-  // 천인회 정보
-  const isFoundingMember = isFoundingActive(profile);
-  let foundingInfo = null;
-  if (isFoundingMember && profile.founding_joined_at) {
-    const joinedAt = new Date(profile.founding_joined_at);
-    const daysUsed = Math.floor((Date.now() - joinedAt.getTime()) / 86400000);
-    const rewardMonths = getFoundingRewardMonths(daysUsed);
-    const daysLeft = Math.max(0, Math.ceil((new Date(FOUNDING_PROMOTION_END).getTime() - Date.now()) / 86400000));
-    foundingInfo = { joinedAt: profile.founding_joined_at, daysUsed, rewardMonths, daysLeft, promotionEndsAt: FOUNDING_PROMOTION_END };
+    // 천인회 정보
+    const isFoundingMember = isFoundingActive(profile);
+    let foundingInfo = null;
+    if (isFoundingMember && profile.founding_joined_at) {
+      const joinedAt = new Date(profile.founding_joined_at);
+      const daysUsed = Math.floor((Date.now() - joinedAt.getTime()) / 86400000);
+      const rewardMonths = getFoundingRewardMonths(daysUsed);
+      const daysLeft = Math.max(0, Math.ceil((new Date(FOUNDING_PROMOTION_END).getTime() - Date.now()) / 86400000));
+      foundingInfo = { joinedAt: profile.founding_joined_at, daysUsed, rewardMonths, daysLeft, promotionEndsAt: FOUNDING_PROMOTION_END };
+    }
+
+    const slots = slotsRes.data;
+    const remainingSlots = slots ? Math.max(0, slots.total_slots - slots.used_slots) : null;
+
+    return NextResponse.json({
+      plan,
+      upload: { used: uploadUsed, limit: uploadLimit, remaining: uploadLimit - uploadUsed },
+      analysis: { used: analysisUsed, limit: analysisLimit, remaining: analysisLimit - analysisUsed },
+      autoCancel: profile.ls_auto_cancel ?? false,
+      isFoundingMember,
+      foundingInfo,
+      remainingSlots,
+    });
+  } catch (error: any) {
+    console.error('[upload-status GET]', error?.message);
+    return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
   }
-
-  const slots = slotsRes.data;
-  const remainingSlots = slots ? Math.max(0, slots.total_slots - slots.used_slots) : null;
-
-  return NextResponse.json({
-    plan,
-    upload: { used: uploadUsed, limit: uploadLimit, remaining: uploadLimit - uploadUsed },
-    analysis: { used: analysisUsed, limit: analysisLimit, remaining: analysisLimit - analysisUsed },
-    autoCancel: profile.ls_auto_cancel ?? false,
-    isFoundingMember,
-    foundingInfo,
-    remainingSlots,
-  });
 }

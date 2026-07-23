@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     });
 
     // profiles 없는 유저 = free로 처리
-    const { data: usersData } = await adminSupabase.auth.admin.listUsers();
+    const { data: usersData } = await adminSupabase.auth.admin.listUsers({ perPage: 1000 });
     const totalUsers = usersData?.users?.length ?? 0;
     const profiledUsers = (profiles ?? []).length;
     planCount.free += totalUsers - profiledUsers;

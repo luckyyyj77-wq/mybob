@@ -40,13 +40,21 @@ export async function DELETE(request: Request) {
     }
 
     if (profile?.ls_subscription_id && profile.plan === 'pro' && lsApiKey) {
-      await fetch(`https://api.lemonsqueezy.com/v1/subscriptions/${profile.ls_subscription_id}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${lsApiKey}`,
-          Accept: 'application/vnd.api+json',
-        },
-      }).catch(() => {}); // 실패해도 탈퇴는 계속 진행
+      // 해지 실패해도 탈퇴는 계속 진행하되, 유저 삭제 후엔 추적 불가하므로 반드시 로그를 남김
+      try {
+        const lsRes = await fetch(`https://api.lemonsqueezy.com/v1/subscriptions/${profile.ls_subscription_id}`, {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${lsApiKey}`,
+            Accept: 'application/vnd.api+json',
+          },
+        });
+        if (!lsRes.ok) {
+          console.error(`[auth/delete] LS 구독 해지 실패 — subscription ${profile.ls_subscription_id}, user ${user.id}, status ${lsRes.status}. LS 대시보드에서 수동 해지 필요`);
+        }
+      } catch (e: any) {
+        console.error(`[auth/delete] LS 구독 해지 요청 실패 — subscription ${profile.ls_subscription_id}, user ${user.id}:`, e?.message);
+      }
     }
 
     // 1. Supabase Storage 사진 삭제

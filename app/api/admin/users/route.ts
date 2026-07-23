@@ -14,7 +14,7 @@ export async function GET(request: Request) {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    const { data: usersData } = await adminSupabase.auth.admin.listUsers();
+    const { data: usersData } = await adminSupabase.auth.admin.listUsers({ perPage: 1000 });
     const users = usersData?.users ?? [];
 
     // profiles 테이블에서 플랜 정보 일괄 조회

@@ -69,9 +69,13 @@ export async function getOrCreateProfile(adminSupabase: AnySupabaseClient, userI
     .from('profiles')
     .select('plan, uploads_today, last_upload_date, analyses_today, last_analysis_date, is_founding_member, founding_joined_at, pro_credit_expires_at, ls_auto_cancel')
     .eq('id', userId)
-    .single();
+    .maybeSingle();
 
-  if (error || !profile) {
+  // 일시적 DB 오류를 "프로필 없음"으로 오인하면 아래 upsert가 기존 사용자의
+  // 카운터·천인회 상태를 덮어쓴다 — 진짜 없을 때(data null, error null)만 생성
+  if (error) throw error;
+
+  if (!profile) {
     const today = getKSTDateString();
     const founding = await tryClaimFoundingSlot(adminSupabase);
     await adminSupabase.from('profiles').upsert({
@@ -220,16 +224,33 @@ export async function consumeAnalysisCredit(
 }
 
 // AI 분석 크레딧 환불 (분석 실패 시)
+// supabase rpc는 실패해도 throw하지 않고 error 객체를 반환하므로 반드시 확인 —
+// RPC 미배포 환경에서는 consume이 비원자 폴백으로 차감하므로 환불도 직접 감소로 폴백
 export async function refundAnalysisCredit(
   adminSupabase: AnySupabaseClient,
   userId: string
 ): Promise<void> {
+  const today = getKSTDateString();
   try {
-    await adminSupabase.rpc('refund_analysis_credit', {
+    const { error } = await adminSupabase.rpc('refund_analysis_credit', {
       p_user_id: userId,
-      p_today: getKSTDateString(),
+      p_today: today,
     });
-  } catch { /* 환불 실패는 치명적이지 않음 */ }
+    if (!error) return;
+    console.error('[plan] refund_analysis_credit RPC 실패 — 비원자 폴백:', error.message);
+    const { data: profile } = await adminSupabase
+      .from('profiles')
+      .select('analyses_today, last_analysis_date')
+      .eq('id', userId)
+      .maybeSingle();
+    if (profile?.last_analysis_date === today && (profile.analyses_today || 0) > 0) {
+      await adminSupabase.from('profiles')
+        .update({ analyses_today: profile.analyses_today - 1, updated_at: new Date().toISOString() })
+        .eq('id', userId);
+    }
+  } catch (e: any) {
+    console.error('[plan] refundAnalysisCredit 실패:', e?.message);
+  }
 }
 
 // 업로드 크레딧 원자적 소진 — consumeAnalysisCredit과 동일 구조
@@ -260,17 +281,32 @@ export async function consumeUploadCredit(
   return { allowed: true, plan, used: data, limit };
 }
 
-// 업로드 크레딧 환불 (저장 실패 시)
+// 업로드 크레딧 환불 (저장 실패 시) — refundAnalysisCredit과 동일 구조
 export async function refundUploadCredit(
   adminSupabase: AnySupabaseClient,
   userId: string
 ): Promise<void> {
+  const today = getKSTDateString();
   try {
-    await adminSupabase.rpc('refund_upload_credit', {
+    const { error } = await adminSupabase.rpc('refund_upload_credit', {
       p_user_id: userId,
-      p_today: getKSTDateString(),
+      p_today: today,
     });
-  } catch { /* 환불 실패는 치명적이지 않음 */ }
+    if (!error) return;
+    console.error('[plan] refund_upload_credit RPC 실패 — 비원자 폴백:', error.message);
+    const { data: profile } = await adminSupabase
+      .from('profiles')
+      .select('uploads_today, last_upload_date')
+      .eq('id', userId)
+      .maybeSingle();
+    if (profile?.last_upload_date === today && (profile.uploads_today || 0) > 0) {
+      await adminSupabase.from('profiles')
+        .update({ uploads_today: profile.uploads_today - 1, updated_at: new Date().toISOString() })
+        .eq('id', userId);
+    }
+  } catch (e: any) {
+    console.error('[plan] refundUploadCredit 실패:', e?.message);
+  }
 }
 
 // AI 분석 카운트 +1

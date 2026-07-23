@@ -49,6 +49,7 @@ async function estimateNutrition(foodName: string): Promise<{
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: { responseMimeType: 'application/json', temperature: 0.1 },
       }),
+      signal: AbortSignal.timeout(10000),
     }
   );
 
@@ -76,6 +77,14 @@ export async function POST(request: Request) {
     if (!foodName?.trim()) return NextResponse.json({ error: 'foodName required' }, { status: 400 });
     if (foodName.trim().length > 100) return NextResponse.json({ error: '음식명은 100자 이내여야 합니다.' }, { status: 400 });
 
+    // 날짜·식사시간 검증 (meals POST와 동일 정책 — 미래 날짜 차단, 크레딧 소모 전에)
+    const parsedCreatedAt = createdAt ? new Date(createdAt) : null;
+    if (!parsedCreatedAt || isNaN(parsedCreatedAt.getTime()) || parsedCreatedAt.getTime() > Date.now() + 60 * 1000) {
+      return NextResponse.json({ error: '잘못된 날짜입니다.' }, { status: 400 });
+    }
+    const MEAL_TIMES = ['breakfast', 'lunch', 'dinner', 'snack', 'latenight'];
+    const safeMealTime = MEAL_TIMES.includes(mealTime) ? mealTime : 'snack';
+
     // 업로드 횟수 원자적 소진 (AI 분석 횟수는 소모 안 함, 실패 시 catch에서 환불)
     const supabaseService = createClient(supabaseUrl, supabaseServiceRoleKey);
     const limitCheck = await consumeUploadCredit(supabaseService, user.id);
@@ -97,8 +106,8 @@ export async function POST(request: Request) {
         category: nutrition.category,
         nutrient: nutrition.nutrients,
         photo_url: null,
-        meal_time: mealTime,
-        created_at: createdAt,
+        meal_time: safeMealTime,
+        created_at: parsedCreatedAt.toISOString(),
         is_manual: true,
       })
       .select()

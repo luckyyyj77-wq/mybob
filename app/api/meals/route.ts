@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
-import { consumeUploadCredit, refundUploadCredit } from '@/lib/plan';
+import { consumeUploadCredit, refundUploadCredit, getEffectivePlan } from '@/lib/plan';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -87,6 +87,12 @@ export async function POST(request: Request) {
     }
     const fileExtension = match[1] === 'jpg' ? 'jpeg' : match[1];
 
+    // 미래 날짜 차단 (클라이언트 조작 방지) — 크레딧 소모·사진 업로드 전에 검증
+    const createdAt = mealData.created_at ? new Date(mealData.created_at) : null;
+    if (createdAt && (isNaN(createdAt.getTime()) || createdAt.getTime() > Date.now() + 60 * 1000)) {
+      return NextResponse.json({ error: '잘못된 날짜입니다.' }, { status: 400 });
+    }
+
     // 업로드·쓰기는 service role key (Storage RLS 우회 필요)
     const adminSupabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
@@ -145,12 +151,6 @@ export async function POST(request: Request) {
         .map(([k, v]) => [k, toNum(v)])
     ) : null;
 
-    // 미래 날짜 차단 (클라이언트 조작 방지)
-    const createdAt = mealData.created_at ? new Date(mealData.created_at) : null;
-    if (createdAt && createdAt.getTime() > Date.now() + 60 * 1000) {
-      return NextResponse.json({ error: '잘못된 날짜입니다.' }, { status: 400 });
-    }
-
     const dataToInsert = {
       user_id: user.id,
       food_name: mealData.name || mealData.food_name || '알 수 없음',
@@ -201,14 +201,14 @@ export async function PATCH(request: Request) {
 
     const adminSupabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-    // PRO 확인
+    // PRO 확인 — 천인회/PRO 크레딧 포함 유효 플랜 기준
     const { data: profile } = await adminSupabase
       .from('profiles')
-      .select('plan')
+      .select('plan, is_founding_member, founding_joined_at, pro_credit_expires_at')
       .eq('id', user.id)
       .single();
 
-    if (!profile || profile.plan === 'free') {
+    if (!profile || getEffectivePlan(profile) === 'free') {
       return NextResponse.json({ error: 'PRO_REQUIRED' }, { status: 403 });
     }
 

@@ -434,6 +434,14 @@ export async function POST(request: Request) {
       }
     }
     const totalCalories = items.reduce((s: number, it: any) => s + (it?.calories ?? 0), 0);
+
+    // 안전망: 1단계(flash-lite) 실패로 NOT_FOOD 체크를 건너뛴 경우에도
+    // 본분석 결과가 0kcal이면 음식이 아닌 것으로 판정 (환불 후 422)
+    if (totalCalories <= 0) {
+      await refundAnalysisCredit(adminSupabase, userId);
+      return NextResponse.json({ error: 'NOT_FOOD' }, { status: 422 });
+    }
+
     const combinedName = items.map((it: any) => it?.name).filter(Boolean).join(' + ');
     const primaryCategory = items[0]?.category ?? '';
     const primaryAmount = items.map((it: any) => it?.amount).filter(Boolean).join(', ');

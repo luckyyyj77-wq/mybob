@@ -22,9 +22,14 @@ export async function POST(request: Request) {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // 가입된 이메일인지 확인
-    const { data } = await adminSupabase.auth.admin.listUsers();
-    const exists = data?.users?.some(u => u.email?.toLowerCase() === email.toLowerCase());
+    // 가입된 이메일인지 확인 — listUsers는 페이지당 기본 50명이라 전체 페이지 순회 필요
+    let exists = false;
+    for (let page = 1; page <= 20; page++) {
+      const { data } = await adminSupabase.auth.admin.listUsers({ page, perPage: 1000 });
+      const users = data?.users ?? [];
+      exists = users.some(u => u.email?.toLowerCase() === email.toLowerCase());
+      if (exists || users.length < 1000) break;
+    }
 
     if (!exists) {
       // 보안상 동일한 성공 응답 (이메일 존재 여부 노출 안 함)

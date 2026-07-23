@@ -22,7 +22,7 @@ export async function GET(request: Request) {
       .neq('plan', 'free')
       .order('updated_at', { ascending: false });
 
-    const { data: usersData } = await adminSb.auth.admin.listUsers();
+    const { data: usersData } = await adminSb.auth.admin.listUsers({ perPage: 1000 });
     const userMap = Object.fromEntries(
       (usersData?.users ?? []).map(u => [u.id, { email: u.email, created_at: u.created_at }])
     );
