@@ -21,7 +21,9 @@ const UNRECOGNIZED_NAME: Record<string, string> = {
   en: 'Unrecognized meal',
 };
 
-async function saveUnrecognized(meal: PendingMeal, token: string): Promise<void> {
+// 미인식 확정 저장. 저장이 실제로 성공했을 때만 pending을 삭제하고 true 반환 —
+// 실패(오프라인·401·한도 등) 시 큐에 남겨 다음 pass에서 재시도한다 (사진 유실 방지).
+async function saveUnrecognized(meal: PendingMeal, token: string): Promise<boolean> {
   const name = UNRECOGNIZED_NAME[meal.locale] ?? UNRECOGNIZED_NAME.ko;
   const unrecognizedFood = {
     name,
@@ -32,24 +34,28 @@ async function saveUnrecognized(meal: PendingMeal, token: string): Promise<void>
   };
 
   if (meal.storageMode === 'local') {
-    await savePhoto(meal.id, meal.imageBase64);
-    const localMeal = {
-      id: meal.id,
-      food_name: name,
-      calories: 0,
-      nutrient: {},
-      category: '기타',
-      photo_url: `local:${meal.id}`,
-      created_at: meal.capturedAt,
-      rating: meal.rating,
-      portion: meal.portion,
-      original_nutrition: null,
-      is_public: false,
-      visibility: 'private',
-      _unrecognized: true,
-    };
-    const existing = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
-    localStorage.setItem('mybob_meals', JSON.stringify([localMeal, ...existing]));
+    try {
+      await savePhoto(meal.id, meal.imageBase64);
+      const localMeal = {
+        id: meal.id,
+        food_name: name,
+        calories: 0,
+        nutrient: {},
+        category: '기타',
+        photo_url: `local:${meal.id}`,
+        created_at: meal.capturedAt,
+        rating: meal.rating,
+        portion: meal.portion,
+        original_nutrition: null,
+        is_public: false,
+        visibility: 'private',
+        _unrecognized: true,
+      };
+      const existing = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
+      localStorage.setItem('mybob_meals', JSON.stringify([localMeal, ...existing]));
+    } catch {
+      return false;
+    }
   } else {
     try {
       const res = await fetch('/api/meals', {
@@ -68,32 +74,34 @@ async function saveUnrecognized(meal: PendingMeal, token: string): Promise<void>
           visibility: 'private',
         }),
       });
-      if (res.ok) {
-        const result = await res.json();
-        const serverId = result.data?.[0]?.id ?? meal.id;
-        const serverPhotoUrl = result.data?.[0]?.photo_url ?? meal.imageBase64;
-        const localMeal = {
-          id: serverId,
-          food_name: name,
-          calories: 0,
-          nutrient: {},
-          category: '기타',
-          photo_url: serverPhotoUrl,
-          created_at: meal.capturedAt,
-          rating: meal.rating,
-          portion: meal.portion,
-          original_nutrition: null,
-          is_public: false,
-          visibility: 'private',
-          _unrecognized: true,
-        };
-        const existing = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
-        localStorage.setItem('mybob_meals', JSON.stringify([localMeal, ...existing]));
-      }
-    } catch { /* 저장 실패 시 무시 — pending은 어차피 삭제 */ }
+      if (!res.ok) return false;
+      const result = await res.json();
+      const serverId = result.data?.[0]?.id ?? meal.id;
+      const serverPhotoUrl = result.data?.[0]?.photo_url ?? meal.imageBase64;
+      const localMeal = {
+        id: serverId,
+        food_name: name,
+        calories: 0,
+        nutrient: {},
+        category: '기타',
+        photo_url: serverPhotoUrl,
+        created_at: meal.capturedAt,
+        rating: meal.rating,
+        portion: meal.portion,
+        original_nutrition: null,
+        is_public: false,
+        visibility: 'private',
+        _unrecognized: true,
+      };
+      const existing = JSON.parse(localStorage.getItem('mybob_meals') || '[]');
+      localStorage.setItem('mybob_meals', JSON.stringify([localMeal, ...existing]));
+    } catch {
+      return false;
+    }
   }
 
   await deletePendingMeal(meal.id);
+  return true;
 }
 
 async function processSingle(meal: PendingMeal, token: string): Promise<boolean> {
@@ -122,12 +130,14 @@ async function processSingle(meal: PendingMeal, token: string): Promise<boolean>
       return true;
     }
   } catch {
-    await updatePendingMealRetry(meal.id, meal.retryCount + 1);
+    // 네트워크 예외(오프라인 등)는 분석 실패가 아님 — 카운트 유지, 시각만 갱신
+    await updatePendingMealRetry(meal.id, meal.retryCount);
     return false;
   }
 
   // 2단계: 전체 분석 실패 시 4분할 분석 폴백 (클라이언트 사이드 split)
-  if (!food) {
+  // 크레딧을 최대 4개 추가 소모하므로 마지막 재시도에서만 실행
+  if (!food && meal.retryCount >= MAX_RETRIES - 1) {
     const splitResult = await analyzeWithSplit(meal.imageBase64, token, meal.locale);
     if (splitResult.success && splitResult.food) {
       food = splitResult.food as Record<string, any>;
@@ -216,7 +226,8 @@ async function processSingle(meal: PendingMeal, token: string): Promise<boolean>
       updateGoalAchievement();
     }
   } catch {
-    await updatePendingMealRetry(meal.id, meal.retryCount + 1);
+    // 저장 중 네트워크 예외 — 분석 실패가 아니므로 카운트 유지, 시각만 갱신
+    await updatePendingMealRetry(meal.id, meal.retryCount);
     return false;
   }
 
@@ -226,20 +237,24 @@ async function processSingle(meal: PendingMeal, token: string): Promise<boolean>
 
 export async function processPendingMeals(token: string, locale: string): Promise<void> {
   if (isRunning) return;
+  // 오프라인이면 어떤 시도도 성공할 수 없음 — 카운트 오염 방지 위해 pass 자체를 건너뜀
+  if (typeof navigator !== 'undefined' && !navigator.onLine) return;
   isRunning = true;
   try {
     const pending = await getAllPendingMeals();
     if (pending.length === 0) return;
 
     for (const meal of pending) {
-      if (meal.retryCount >= MAX_RETRIES) {
-        // 최대 재시도 초과 → 미인식 식단으로 저장
-        await saveUnrecognized(meal, token);
-        continue;
-      }
-      const backoff = RETRY_BACKOFF_MS[meal.retryCount] ?? 0;
+      // 재시도 소진 후에도 마지막 백오프 간격 적용 (미인식 저장 반복 실패 시 과호출 방지)
+      const backoff = RETRY_BACKOFF_MS[Math.min(meal.retryCount, RETRY_BACKOFF_MS.length - 1)];
       if (meal.lastAttemptAt && Date.now() - meal.lastAttemptAt < backoff) {
         continue; // 아직 다음 재시도 시각이 안 됨 — 이번 pass는 건너뜀
+      }
+      if (meal.retryCount >= MAX_RETRIES) {
+        // 최대 재시도 초과 → 미인식 식단으로 저장. 실패하면 큐에 남겨 다음 pass에서 재시도
+        const saved = await saveUnrecognized(meal, token);
+        if (!saved) await updatePendingMealRetry(meal.id, meal.retryCount);
+        continue;
       }
       await processSingle({ ...meal, locale }, token);
       // API 과부하 방지용 최소 간격
