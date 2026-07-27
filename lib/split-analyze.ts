@@ -39,6 +39,8 @@ function splitImageToQuadrants(dataUrl: string): Promise<string[]> {
       }
       resolve(quads);
     };
+    // 로드 실패 시 빈 배열 — 미해결 promise로 남으면 pending 엔진(isRunning)이 세션 내내 멈춘다
+    img.onerror = () => resolve([]);
     img.src = dataUrl;
   });
 }

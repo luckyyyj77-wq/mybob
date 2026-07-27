@@ -9,6 +9,7 @@ import { isCacheFresh, markSynced } from '@/lib/meals-cache';
 import { MealPhoto } from '@/components/MealPhoto';
 import { getStorageMode } from '@/lib/storage-mode';
 import { isUnrecognizedMeal } from '@/lib/unrecognized';
+import { getAllPendingMeals } from '@/lib/pending-meals';
 import { useTranslations, useLocale } from 'next-intl';
 
 const DAYS_PER_PAGE = 3;
@@ -23,6 +24,7 @@ type Meal = {
   nutrient?: any;
   is_manual?: boolean;
   _unrecognized?: boolean;
+  _pending?: boolean;
 };
 
 type ViewMode = 'full' | 'grid' | 'gallery';
@@ -37,6 +39,7 @@ export default function HistoryPage() {
   const locale = useLocale();
 
   const [meals, setMeals] = useState<Meal[]>([]);
+  const [pendingItems, setPendingItems] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('full');
@@ -170,6 +173,22 @@ export default function HistoryPage() {
       }).catch(() => {});
   }, [token]);
 
+  // 분석 대기 중(pending 큐) 사진을 타임라인에 표시 — 확정 전에도 촬영분이 보이도록
+  useEffect(() => {
+    getAllPendingMeals().then(items => {
+      setPendingItems(items.map(p => ({
+        id: `pending-${p.id}`,
+        food_name: t('pendingCard'),
+        calories: 0,
+        created_at: p.capturedAt,
+        photo_url: p.imageBase64,
+        category: '기타',
+        _pending: true,
+      })));
+    }).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (showSearch) setTimeout(() => searchInputRef.current?.focus(), 80);
   }, [showSearch]);
@@ -289,13 +308,31 @@ export default function HistoryPage() {
     }
   }, [qlFoodName, qlMealTime, qlDate, qlHour, qlMinute, token, t]);
 
-  const filtered = useMemo(() => applyFilters(meals, query, category, sort), [meals, query, category, sort, applyFilters]);
+  const filtered = useMemo(() => applyFilters([...pendingItems, ...meals], query, category, sort), [meals, pendingItems, query, category, sort, applyFilters]);
   const allGroups = useMemo(() => groupByDate(filtered), [filtered, groupByDate]);
   const groups = useMemo(() => allGroups.slice(0, visibleDays), [allGroups, visibleDays]);
   const visibleFiltered = useMemo(() => groups.flatMap(g => g.meals), [groups]);
   const isFiltered = query.trim() !== '' || category !== 'all' || sort !== 'date_desc';
 
   const clearAll = () => { setQuery(''); setCategory('all'); setSort('date_desc'); };
+
+  // 분석 대기 중 카드 — 아직 확정 전이라 상세 페이지가 없어 클릭 불가
+  const PendingMealCard = ({ meal }: { meal: Meal }) => (
+    <div style={{ flex: 1, border: '1px dashed #d1d5db', backgroundColor: '#fafafa', overflow: 'hidden' }}>
+      {meal.photo_url && (
+        <div style={{ width: '100%', aspectRatio: '4/3', overflow: 'hidden', position: 'relative' }}>
+          <MealPhoto photoUrl={meal.photo_url} alt={meal.food_name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: '8px 10px', background: 'linear-gradient(to bottom, rgba(0,0,0,0.45), transparent)' }}>
+            <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.9)', letterSpacing: '0.5px' }}>{new Date(meal.created_at).toLocaleTimeString(locale === 'ko' ? 'ko-KR' : 'en-US', { hour: '2-digit', minute: '2-digit' })}</p>
+          </div>
+        </div>
+      )}
+      <div style={{ padding: '10px 14px' }}>
+        <h3 style={{ fontSize: '17px', fontWeight: 400, color: '#6b7280', letterSpacing: '-0.3px' }}>⏳ {meal.food_name}</h3>
+        <p style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px', lineHeight: 1.5 }}>{t('pendingCardDesc')}</p>
+      </div>
+    </div>
+  );
 
   const ManualMealCard = ({ meal }: { meal: Meal }) => {
     const cat = meal.category || '기타';
@@ -471,7 +508,7 @@ export default function HistoryPage() {
                       {group.meals.map((meal, index) => (
                         <motion.div key={meal.id} initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.03 }} style={{ display: 'flex', gap: '20px', marginBottom: '16px', position: 'relative' }}>
                           <div style={{ width: '9px', height: '9px', borderRadius: '50%', border: '2px solid #6B21A8', backgroundColor: 'white', flexShrink: 0, marginTop: '16px', zIndex: 1 }} />
-                          {meal.is_manual ? <ManualMealCard meal={meal} /> : (
+                          {meal._pending ? <PendingMealCard meal={meal} /> : meal.is_manual ? <ManualMealCard meal={meal} /> : (
                             <div onClick={() => router.push(`/history/${meal.id}`)} style={{ flex: 1, border: '1px solid #e5e7eb', backgroundColor: 'white', cursor: 'pointer', overflow: 'hidden' }}>
                               {meal.photo_url && (
                                 <div style={{ width: '100%', aspectRatio: '4/3', overflow: 'hidden', position: 'relative' }}>
@@ -511,11 +548,16 @@ export default function HistoryPage() {
                 style={{ display: 'grid', gridTemplateColumns: `repeat(${viewMode === 'grid' ? 2 : galleryScale}, 1fr)`, gap: '2px', backgroundColor: '#e5e7eb' }}
               >
                 {visibleFiltered.map(meal => (
-                  <div key={meal.id} onClick={() => router.push(`/history/${meal.id}`)}
-                    style={{ position: 'relative', width: '100%', aspectRatio: '1/1', backgroundColor: meal.is_manual ? (CATEGORY_BG[meal.category || '기타']?.bg ?? '#f9fafb') : '#f3f4f6', cursor: 'pointer', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  <div key={meal.id} onClick={() => { if (meal._pending) return; router.push(`/history/${meal.id}`); }}
+                    style={{ position: 'relative', width: '100%', aspectRatio: '1/1', backgroundColor: meal.is_manual ? (CATEGORY_BG[meal.category || '기타']?.bg ?? '#f9fafb') : '#f3f4f6', cursor: meal._pending ? 'default' : 'pointer', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   >
                     {meal.photo_url ? <MealPhoto photoUrl={meal.photo_url} alt={meal.food_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: viewMode === 'grid' ? '48px' : '24px' }}>{CATEGORY_EMOJI[meal.category || '기타'] ?? '🍽️'}</span>}
-                    {viewMode === 'grid' && <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '16px 8px 8px', background: 'linear-gradient(to top, rgba(0,0,0,0.55), transparent)', pointerEvents: 'none', display: 'flex', justifyContent: 'center' }}><span style={{ fontSize: '17px', color: 'white', textShadow: '0 1px 4px rgba(0,0,0,0.5)', fontWeight: 400, letterSpacing: '0.5px' }}>{meal.calories}</span></div>}
+                    {viewMode === 'grid' && !meal._pending && <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '16px 8px 8px', background: 'linear-gradient(to top, rgba(0,0,0,0.55), transparent)', pointerEvents: 'none', display: 'flex', justifyContent: 'center' }}><span style={{ fontSize: '17px', color: 'white', textShadow: '0 1px 4px rgba(0,0,0,0.5)', fontWeight: 400, letterSpacing: '0.5px' }}>{meal.calories}</span></div>}
+                    {meal._pending && (
+                      <div style={{ position: 'absolute', top: '4px', left: '4px', fontSize: '9px', padding: '2px 5px', backgroundColor: 'rgba(243,244,246,0.9)', color: '#6b7280', borderRadius: '3px' }}>
+                        ⏳ {t('pendingCard')}
+                      </div>
+                    )}
                     {isUnrecognizedMeal(meal) && (
                       <div style={{ position: 'absolute', top: '4px', left: '4px', fontSize: '9px', padding: '2px 5px', backgroundColor: 'rgba(254,243,199,0.9)', color: '#92400e', borderRadius: '3px' }}>
                         {t('unrecognized')}

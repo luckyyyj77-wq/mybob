@@ -10,6 +10,7 @@ import { savePhoto } from './indexed-db';
 import { analyzeWithSplit } from './split-analyze';
 import { updateGoalAchievement } from './goal-achievement';
 import { getFrequentFoodNames, getFoodCache } from './frequent-foods';
+import { addPendingNotice } from './pending-notice';
 
 const MAX_RETRIES = 3;
 // 재시도 간 최소 대기시간(ms) — retryCount별 백오프. 인덱스 = 다음 시도 전 이미 쌓인 retryCount.
@@ -25,6 +26,7 @@ const UNRECOGNIZED_NAME: Record<string, string> = {
 // 실패(오프라인·401·한도 등) 시 큐에 남겨 다음 pass에서 재시도한다 (사진 유실 방지).
 async function saveUnrecognized(meal: PendingMeal, token: string): Promise<boolean> {
   const name = UNRECOGNIZED_NAME[meal.locale] ?? UNRECOGNIZED_NAME.ko;
+  let savedId = meal.id;
   const unrecognizedFood = {
     name,
     calories: 0,
@@ -78,6 +80,7 @@ async function saveUnrecognized(meal: PendingMeal, token: string): Promise<boole
       const result = await res.json();
       const serverId = result.data?.[0]?.id ?? meal.id;
       const serverPhotoUrl = result.data?.[0]?.photo_url ?? meal.imageBase64;
+      savedId = serverId;
       const localMeal = {
         id: serverId,
         food_name: name,
@@ -101,6 +104,8 @@ async function saveUnrecognized(meal: PendingMeal, token: string): Promise<boole
   }
 
   await deletePendingMeal(meal.id);
+  // 확정이 백그라운드에서 조용히 일어나므로 홈 배너로 알림 (이름 입력 복구 유도)
+  addPendingNotice({ mealId: savedId, capturedAt: meal.capturedAt, finalizedAt: new Date().toISOString() });
   return true;
 }
 

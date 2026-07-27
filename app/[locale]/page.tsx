@@ -9,6 +9,8 @@ import { isCacheFresh, markSynced } from '@/lib/meals-cache';
 import { useTranslations, useLocale } from 'next-intl';
 import { Link } from '@/i18n/routing';
 import { processPendingMeals } from '@/lib/process-pending';
+import { getPendingCount } from '@/lib/pending-meals';
+import { getPendingNotices, removePendingNotice, type PendingNotice } from '@/lib/pending-notice';
 
 type Meal = {
   id: string;
@@ -89,6 +91,14 @@ export default function Home() {
     daysLeft?: number;
     remainingSlots?: number;
   }>({ type: null });
+  const [pendingCount, setPendingCount] = useState(0);
+  const [pendingNotices, setPendingNotices] = useState<PendingNotice[]>([]);
+
+  // pending 큐 상태 + 미인식 확정 알림 갱신 — 마운트/탭 복귀/재처리 pass 완료 후 호출
+  const refreshPendingUI = () => {
+    getPendingCount().then(setPendingCount).catch(() => {});
+    setPendingNotices(getPendingNotices());
+  };
 
   const getKSTDateKey = () => {
     const kstHour = (new Date().getUTCHours() + 9) % 24;
@@ -162,18 +172,27 @@ export default function Home() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // pending 큐/알림 표시는 token 없이도 가능 — 마운트 즉시 반영
+  useEffect(() => {
+    refreshPendingUI();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // pending 백그라운드 재분석 — token 확보 후 1회 + 탭 복귀 시마다
   const pendingRunRef = useRef(false);
   useEffect(() => {
     if (!token || pendingRunRef.current) return;
     pendingRunRef.current = true;
-    processPendingMeals(token, locale).catch(() => {});
+    processPendingMeals(token, locale).catch(() => {}).finally(refreshPendingUI);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, locale]);
 
   useEffect(() => {
     const onVisible = () => {
-      if (document.visibilityState !== 'visible' || !token) return;
-      processPendingMeals(token, locale).catch(() => {});
+      if (document.visibilityState !== 'visible') return;
+      refreshPendingUI();
+      if (!token) return;
+      processPendingMeals(token, locale).catch(() => {}).finally(refreshPendingUI);
     };
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
@@ -185,7 +204,7 @@ export default function Home() {
     if (!token) return;
     const interval = setInterval(() => {
       if (document.visibilityState !== 'visible') return;
-      processPendingMeals(token, locale).catch(() => {});
+      processPendingMeals(token, locale).catch(() => {}).finally(refreshPendingUI);
     }, 60_000);
     return () => clearInterval(interval);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -368,6 +387,32 @@ export default function Home() {
           <span style={{ fontSize: '12px', color: '#6B21A8', letterSpacing: '0.3px' }}>{t('foundingAvailable', { count: foundingBanner.remainingSlots ?? 0 })}</span>
           <span style={{ fontSize: '11px', color: '#a855f7' }}>{t('viewDetail')}</span>
         </Link>
+      )}
+
+      {/* 미인식 확정 알림 — pending 큐 처리 결과가 백그라운드에서 조용히 확정되므로 여기서 안내 */}
+      {pendingNotices.map(n => (
+        <div key={n.mealId} style={{ flexShrink: 0, backgroundColor: '#fffbeb', borderBottom: '1px solid #fde68a', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <Link href={`/history/${n.mealId}`} style={{ flex: 1, textDecoration: 'none', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            <span style={{ fontSize: '12px', color: '#92400e', letterSpacing: '0.3px' }}>
+              📸 {t('pendingNotice', { date: new Date(n.capturedAt).toLocaleDateString(locale === 'ko' ? 'ko-KR' : 'en-US', { timeZone: 'Asia/Seoul', month: 'long', day: 'numeric' }) })}
+            </span>
+            <span style={{ fontSize: '11px', color: '#b45309' }}>{t('pendingNoticeAction')}</span>
+          </Link>
+          <button
+            onClick={() => { removePendingNotice(n.mealId); setPendingNotices(getPendingNotices()); }}
+            aria-label="close"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', fontSize: '13px', color: '#b45309', flexShrink: 0, lineHeight: 1 }}
+          >
+            ✕
+          </button>
+        </div>
+      ))}
+
+      {/* 분석 대기 중 표시 — 확정 전까지 앱 어디에도 흔적이 없던 공백 메움 */}
+      {pendingCount > 0 && (
+        <div style={{ flexShrink: 0, backgroundColor: '#f9fafb', borderBottom: '1px solid #e5e7eb', padding: '9px 20px' }}>
+          <span style={{ fontSize: '12px', color: '#6b7280', letterSpacing: '0.3px' }}>⏳ {t('pendingQueue', { count: pendingCount })}</span>
+        </div>
       )}
 
       {/* Section 1: 인삿말 */}

@@ -152,7 +152,10 @@
     "viewDetail": "Details →",
     "carbs": "Carbs",
     "protein": "Protein",
-    "fat": "Fat"
+    "fat": "Fat",
+    "pendingQueue": "{count, plural, one {# photo is} other {# photos are}} waiting for analysis · processed automatically soon",
+    "pendingNotice": "Your photo from {date} was saved as an unrecognized meal",
+    "pendingNoticeAction": "Enter its name to recover calories →"
   },
   "Capture": {
     "title": "Capture Meal",
@@ -677,7 +680,9 @@
       "hours": "{n}h ago",
       "days": "{n}d ago"
     },
-    "unrecognized": "Unrecognized"
+    "unrecognized": "Unrecognized",
+    "pendingCard": "Awaiting analysis",
+    "pendingCardDesc": "This photo has not been analyzed yet. It will be processed automatically soon."
   },
   "MealDetail": {
     "title": "Meal Detail",
