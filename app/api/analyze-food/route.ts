@@ -3,7 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 import { consumeAnalysisCredit, refundAnalysisCredit } from '@/lib/plan';
 import { lookupKoreanFoodsDB, normalizeFoodName, type FoodDbEntry } from '@/lib/food-db';
 
-export const maxDuration = 30;
+export const maxDuration = 60; // Gemini 실패 시 Claude 폴백까지 순차 시도할 여유
+
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -185,6 +186,58 @@ async function analyzeWithGemini(
   return { success: false, error: 'Gemini timeout' };
 }
 
+// Gemini 전면 실패(혼잡/장애/타임아웃) 시 같은 요청 안에서 Claude로 폴백.
+// pending 큐로 넘기지 않고 촬영 즉시 결과를 주는 것이 목적 — "한 번 찍으면 한 번에 칼로리".
+// Gemini가 정상일 땐 호출되지 않으므로 비용 영향은 미미하다.
+async function analyzeWithClaude(
+  base64Data: string, locale: string, confirmedNames: string[]
+): Promise<{ success: boolean; items?: any[]; modelUsed?: string; error?: string; tokensIn?: number; tokensOut?: number }> {
+  const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
+  if (!apiKey) return { success: false, error: 'fallback key missing' };
+  const model = 'claude-opus-4-8';
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 2048,
+        output_config: { effort: 'low' }, // 단순 추출 작업 — 지연·토큰 최소화
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: base64Data } },
+            { type: 'text', text: buildNutritionPrompt(locale, confirmedNames) },
+          ],
+        }],
+      }),
+      signal: AbortSignal.timeout(20000),
+    });
+    const result = await res.json();
+    if (!res.ok) return { success: false, error: result.error?.message || 'Claude API error' };
+    // 안전 분류기 거절 — content가 비어있을 수 있으므로 먼저 확인
+    if (result.stop_reason === 'refusal') return { success: false, error: 'Claude refusal' };
+    const text = result.content?.find((b: any) => b.type === 'text')?.text;
+    const items = text ? safeParseItems(text) : null;
+    if (items && items.length > 0) {
+      return {
+        success: true,
+        items,
+        modelUsed: model,
+        tokensIn: result.usage?.input_tokens,
+        tokensOut: result.usage?.output_tokens,
+      };
+    }
+    return { success: false, error: 'Claude parse fail' };
+  } catch (e: any) {
+    return { success: false, error: e?.message || 'Claude timeout' };
+  }
+}
+
 async function logGeminiUsage(
   adminSupabase: any,
   params: { userId: string; model: string; plan: string; tokensIn?: number; tokensOut?: number; mode: 'vision' | 'ocr' }
@@ -247,7 +300,7 @@ export async function POST(request: Request) {
   let creditConsumed = false;
   let creditUserId: string | null = null;
   try {
-    const { image, mode, locale = 'ko', frequentFoods, foodCache } = await request.json();
+    const { image, mode, locale = 'ko', frequentFoods, foodCache, debugForceFallback } = await request.json();
     const apiKey = process.env.GEMINI_API_KEY?.trim();
     if (!apiKey) return NextResponse.json({ error: 'No API Key' }, { status: 500 });
 
@@ -381,20 +434,29 @@ export async function POST(request: Request) {
     // 2단계: 확정된 이름 목록을 본분석에 주입 — 영양소 추정에만 집중
     // 식약처 DB 조회는 Gemini와 병렬 실행 (추가 지연 없음, 키 없으면 빈 Map)
     const nameList = confirmedNames as string[];
+    // 관리자 전용: Gemini 장애 상황을 강제해 Claude 폴백 경로를 프로덕션에서 점검
+    const forceFallback = Boolean(debugForceFallback) && user.email === process.env.ADMIN_EMAIL;
     const [geminiResult, dbMap] = await Promise.all([
-      analyzeWithGemini(base64Data, apiKey, isPro, locale, nameList),
+      forceFallback
+        ? Promise.resolve({ success: false as const, error: 'forced fallback (admin debug)' })
+        : analyzeWithGemini(base64Data, apiKey, isPro, locale, nameList),
       locale === 'ko' && nameList.length > 0
         ? lookupKoreanFoodsDB(nameList)
         : Promise.resolve(new Map<string, FoodDbEntry>()),
     ]);
 
-    if (!geminiResult.success) {
+    // Gemini 전 모델 실패(혼잡/장애) → Claude 폴백. 여기서도 실패하면 그때만 pending 큐로.
+    const analysisResult = geminiResult.success
+      ? geminiResult
+      : await analyzeWithClaude(base64Data, locale, nameList);
+
+    if (!analysisResult.success) {
       await refundAnalysisCredit(adminSupabase, userId);
       return NextResponse.json({ error: geminiResult.error }, { status: 503 });
     }
     await logGeminiUsage(adminSupabase, {
       userId, plan, mode: 'vision',
-      model: geminiResult.modelUsed!, tokensIn: geminiResult.tokensIn, tokensOut: geminiResult.tokensOut,
+      model: analysisResult.modelUsed!, tokensIn: analysisResult.tokensIn, tokensOut: analysisResult.tokensOut,
     });
 
     // 식약처 DB 매칭 품목은 DB 수치로 교체 — Gemini는 중량 추정 담당,
@@ -405,7 +467,7 @@ export async function POST(request: Request) {
     };
 
     let dbMatchedCount = 0;
-    const items = geminiResult.items!.map((item: any) => {
+    const items = analysisResult.items!.map((item: any) => {
       const entry = dbMap.get(normalizeFoodName(String(item?.name ?? '')));
       if (!entry) return item;
       const grams = parseGrams(item?.amount) ?? entry.basisGrams;
@@ -461,7 +523,7 @@ export async function POST(request: Request) {
       success: true,
       food: finalFood,
       source: dbMatchedCount > 0 ? 'korean_db+gemini' : 'gemini',
-      modelUsed: geminiResult.modelUsed,
+      modelUsed: analysisResult.modelUsed,
       analysisStatus: { plan, used: limitCheck.used, limit: limitCheck.limit },
     });
 
