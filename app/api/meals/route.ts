@@ -70,7 +70,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { mealData, imageBase64, rating, portion, originalNutrition, isPublic, visibility } = await request.json();
+    const { mealData, imageBase64, rating, portion, originalNutrition, isPublic, visibility, dedupeByCreatedAt } = await request.json();
     if (!mealData || !imageBase64) {
       return NextResponse.json({ error: 'mealData and imageBase64 are required.' }, { status: 400 });
     }
@@ -95,6 +95,21 @@ export async function POST(request: Request) {
 
     // 업로드·쓰기는 service role key (Storage RLS 우회 필요)
     const adminSupabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+
+    // pending 재처리의 중복 insert 방지 — 같은 촬영시각(ms 단위)의 행이 이미 있으면 그 행을 반환.
+    // 촬영시각은 캡처 시점의 밀리초라 서로 다른 식단이 충돌할 일이 없다. 저장 응답 유실 후
+    // 재시도하거나 두 컨텍스트가 같은 큐 항목을 처리해도 행은 하나만 남는다.
+    if (dedupeByCreatedAt && createdAt) {
+      const { data: existing } = await adminSupabase
+        .from('meals')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('created_at', createdAt.toISOString())
+        .limit(1);
+      if (existing && existing.length > 0) {
+        return NextResponse.json({ success: true, data: existing, deduped: true });
+      }
+    }
 
     // 일일 업로드 제한 — 원자적 체크+증가 (실패 시 catch에서 환불)
     const limitCheck = await consumeUploadCredit(adminSupabase, user.id);

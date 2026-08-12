@@ -10,6 +10,7 @@ import { isCacheFresh, markSynced } from '@/lib/meals-cache';
 import { MealPhoto } from '@/components/MealPhoto';
 import { updateGoalAchievement } from '@/lib/goal-achievement';
 import { isUnrecognizedMeal } from '@/lib/unrecognized';
+import { removePendingNotice } from '@/lib/pending-notice';
 import { useTranslations, useLocale } from 'next-intl';
 
 type Nutrient = {
@@ -235,6 +236,7 @@ function MealDetailContent() {
         existing.map(m => m.id === meal.id ? updatedMeal : m)
       ));
       updateGoalAchievement();
+      removePendingNotice(meal.id); // 수동 편집으로도 미인식 복구 가능 — 알림 제거 (미인식 아니어도 no-op)
       { const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' }); Object.keys(localStorage).filter(k => k.startsWith('mybob_coach_') && k.includes(today)).forEach(k => localStorage.removeItem(k)); }
       setIsEditing(false);
     } catch (err: any) {
@@ -287,6 +289,7 @@ function MealDetailContent() {
         existing.map(m => m.id === meal.id ? updatedMeal : m)
       ));
       updateGoalAchievement();
+      removePendingNotice(meal.id); // 복구 완료 — 홈의 미인식 알림 제거
       { const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' }); Object.keys(localStorage).filter(k => k.startsWith('mybob_coach_') && k.includes(today)).forEach(k => localStorage.removeItem(k)); }
       setShowRecover(false);
       setRecoverName('');

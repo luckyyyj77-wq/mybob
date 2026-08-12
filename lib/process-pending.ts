@@ -2,6 +2,7 @@
 
 import {
   getAllPendingMeals,
+  getPendingMeal,
   deletePendingMeal,
   updatePendingMealRetry,
   type PendingMeal,
@@ -15,6 +16,8 @@ import { addPendingNotice } from './pending-notice';
 const MAX_RETRIES = 3;
 // 재시도 간 최소 대기시간(ms) — retryCount별 백오프. 인덱스 = 다음 시도 전 이미 쌓인 retryCount.
 const RETRY_BACKOFF_MS = [0, 60_000, 5 * 60_000];
+// 촬영 후 이 시간이 지나면 재시도 없이 즉시 미인식 확정 (이름 입력 복구가 마냥 늦어지는 것 방지)
+const UNRECOGNIZED_AFTER_MS = 24 * 60 * 60 * 1000;
 let isRunning = false;
 
 const UNRECOGNIZED_NAME: Record<string, string> = {
@@ -74,6 +77,7 @@ async function saveUnrecognized(meal: PendingMeal, token: string): Promise<boole
           originalNutrition: null,
           isPublic: false,
           visibility: 'private',
+          dedupeByCreatedAt: true, // 이전 저장 응답이 유실됐어도 서버에 이미 있으면 중복 insert 방지
         }),
       });
       if (!res.ok) return false;
@@ -202,6 +206,7 @@ async function processSingle(meal: PendingMeal, token: string): Promise<boolean>
           originalNutrition: { calories: food.calories, nutrients: food.nutrients },
           isPublic: meal.visibility !== 'private',
           visibility: meal.visibility,
+          dedupeByCreatedAt: true, // 이전 저장 응답이 유실됐어도 서버에 이미 있으면 중복 insert 방지
         }),
       });
       if (!res.ok) {
@@ -240,30 +245,46 @@ async function processSingle(meal: PendingMeal, token: string): Promise<boolean>
   return true;
 }
 
+async function runPass(token: string, locale: string): Promise<void> {
+  const pending = await getAllPendingMeals();
+  if (pending.length === 0) return;
+
+  for (const stale of pending) {
+    // 처리 직전 재확인 — 다른 탭/PWA 컨텍스트가 이미 처리·삭제했으면 건너뜀 (중복 저장 방지)
+    const meal = await getPendingMeal(stale.id);
+    if (!meal) continue;
+
+    // 재시도 소진 후에도 마지막 백오프 간격 적용 (미인식 저장 반복 실패 시 과호출 방지)
+    const backoff = RETRY_BACKOFF_MS[Math.min(meal.retryCount, RETRY_BACKOFF_MS.length - 1)];
+    if (meal.lastAttemptAt && Date.now() - meal.lastAttemptAt < backoff) {
+      continue; // 아직 다음 재시도 시각이 안 됨 — 이번 pass는 건너뜀
+    }
+    // 촬영 후 24시간 경과 or 최대 재시도 초과 → 미인식 확정. 실패하면 큐에 남겨 다음 pass에서 재시도
+    const ageMs = Date.now() - new Date(meal.capturedAt).getTime();
+    if (meal.retryCount >= MAX_RETRIES || ageMs >= UNRECOGNIZED_AFTER_MS) {
+      const saved = await saveUnrecognized(meal, token);
+      if (!saved) await updatePendingMealRetry(meal.id, meal.retryCount);
+      continue;
+    }
+    await processSingle({ ...meal, locale }, token);
+    // API 과부하 방지용 최소 간격
+    await new Promise(r => setTimeout(r, 800));
+  }
+}
+
 export async function processPendingMeals(token: string, locale: string): Promise<void> {
   if (isRunning) return;
   // 오프라인이면 어떤 시도도 성공할 수 없음 — 카운트 오염 방지 위해 pass 자체를 건너뜀
   if (typeof navigator !== 'undefined' && !navigator.onLine) return;
   isRunning = true;
   try {
-    const pending = await getAllPendingMeals();
-    if (pending.length === 0) return;
-
-    for (const meal of pending) {
-      // 재시도 소진 후에도 마지막 백오프 간격 적용 (미인식 저장 반복 실패 시 과호출 방지)
-      const backoff = RETRY_BACKOFF_MS[Math.min(meal.retryCount, RETRY_BACKOFF_MS.length - 1)];
-      if (meal.lastAttemptAt && Date.now() - meal.lastAttemptAt < backoff) {
-        continue; // 아직 다음 재시도 시각이 안 됨 — 이번 pass는 건너뜀
-      }
-      if (meal.retryCount >= MAX_RETRIES) {
-        // 최대 재시도 초과 → 미인식 식단으로 저장. 실패하면 큐에 남겨 다음 pass에서 재시도
-        const saved = await saveUnrecognized(meal, token);
-        if (!saved) await updatePendingMealRetry(meal.id, meal.retryCount);
-        continue;
-      }
-      await processSingle({ ...meal, locale }, token);
-      // API 과부하 방지용 최소 간격
-      await new Promise(r => setTimeout(r, 800));
+    // Web Locks로 탭/PWA 컨텍스트 간 동시 pass 차단 (isRunning은 같은 컨텍스트 안에서만 유효)
+    if (typeof navigator !== 'undefined' && navigator.locks?.request) {
+      await navigator.locks.request('mybob_pending_pass', { ifAvailable: true }, async lock => {
+        if (lock) await runPass(token, locale);
+      });
+    } else {
+      await runPass(token, locale);
     }
   } finally {
     isRunning = false;

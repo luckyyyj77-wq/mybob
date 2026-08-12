@@ -28,6 +28,17 @@ export async function enqueuePendingMeal(meal: PendingMeal): Promise<void> {
   });
 }
 
+// 단건 조회 — 처리 직전 큐에 아직 남아있는지 재확인용 (다른 탭이 먼저 처리했으면 undefined)
+export async function getPendingMeal(id: string): Promise<PendingMeal | undefined> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_PENDING, 'readonly');
+    const req = tx.objectStore(STORE_PENDING).get(id);
+    req.onsuccess = () => resolve(req.result as PendingMeal | undefined);
+    req.onerror = () => reject(req.error);
+  });
+}
+
 export async function getAllPendingMeals(): Promise<PendingMeal[]> {
   const db = await openDB();
   return new Promise((resolve, reject) => {

@@ -10,7 +10,7 @@ import { useTranslations, useLocale } from 'next-intl';
 import { Link } from '@/i18n/routing';
 import { processPendingMeals } from '@/lib/process-pending';
 import { getPendingCount } from '@/lib/pending-meals';
-import { getPendingNotices, removePendingNotice, type PendingNotice } from '@/lib/pending-notice';
+import { getPendingNotices, removePendingNotice, pruneResolvedNotices, type PendingNotice } from '@/lib/pending-notice';
 
 type Meal = {
   id: string;
@@ -97,6 +97,7 @@ export default function Home() {
   // pending 큐 상태 + 미인식 확정 알림 갱신 — 마운트/탭 복귀/재처리 pass 완료 후 호출
   const refreshPendingUI = () => {
     getPendingCount().then(setPendingCount).catch(() => {});
+    pruneResolvedNotices(); // 이미 복구된 식단의 알림은 자동 제거
     setPendingNotices(getPendingNotices());
   };
 
@@ -389,25 +390,6 @@ export default function Home() {
         </Link>
       )}
 
-      {/* 미인식 확정 알림 — pending 큐 처리 결과가 백그라운드에서 조용히 확정되므로 여기서 안내 */}
-      {pendingNotices.map(n => (
-        <div key={n.mealId} style={{ flexShrink: 0, backgroundColor: '#fffbeb', borderBottom: '1px solid #fde68a', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Link href={`/history/${n.mealId}`} style={{ flex: 1, textDecoration: 'none', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-            <span style={{ fontSize: '12px', color: '#92400e', letterSpacing: '0.3px' }}>
-              📸 {t('pendingNotice', { date: new Date(n.capturedAt).toLocaleDateString(locale === 'ko' ? 'ko-KR' : 'en-US', { timeZone: 'Asia/Seoul', month: 'long', day: 'numeric' }) })}
-            </span>
-            <span style={{ fontSize: '11px', color: '#b45309' }}>{t('pendingNoticeAction')}</span>
-          </Link>
-          <button
-            onClick={() => { removePendingNotice(n.mealId); setPendingNotices(getPendingNotices()); }}
-            aria-label="close"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', fontSize: '13px', color: '#b45309', flexShrink: 0, lineHeight: 1 }}
-          >
-            ✕
-          </button>
-        </div>
-      ))}
-
       {/* 분석 대기 중 표시 — 확정 전까지 앱 어디에도 흔적이 없던 공백 메움 */}
       {pendingCount > 0 && (
         <div style={{ flexShrink: 0, backgroundColor: '#f9fafb', borderBottom: '1px solid #e5e7eb', padding: '9px 20px' }}>
@@ -420,9 +402,26 @@ export default function Home() {
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}
         style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '28px 28px 20px', borderBottom: '1px solid #e5e7eb' }}
       >
-        <h1 style={{ fontSize: '26px', fontWeight: 400, color: 'black', letterSpacing: '-0.5px', lineHeight: 1.2, marginBottom: '8px' }}>
-          {t('question')}
-        </h1>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', marginBottom: '8px' }}>
+          <h1 style={{ fontSize: '26px', fontWeight: 400, color: 'black', letterSpacing: '-0.5px', lineHeight: 1.2 }}>
+            {t('question')}
+          </h1>
+          {/* 미인식 확정 알림 — pending 큐가 백그라운드에서 조용히 확정되므로 작은 종 아이콘으로만 안내, 누르면 해당 식단으로 이동 */}
+          {pendingNotices.length > 0 && (
+            <Link
+              href={`/history/${pendingNotices[0].mealId}`}
+              onClick={() => { removePendingNotice(pendingNotices[0].mealId); setPendingNotices(getPendingNotices()); }}
+              aria-label={t('pendingBell', { count: pendingNotices.length })}
+              title={t('pendingBell', { count: pendingNotices.length })}
+              style={{ position: 'relative', textDecoration: 'none', flexShrink: 0, padding: '4px 2px', lineHeight: 1 }}
+            >
+              <span style={{ fontSize: '18px' }}>🔔</span>
+              <span style={{ position: 'absolute', top: '-2px', right: '-5px', minWidth: '15px', height: '15px', borderRadius: '8px', backgroundColor: '#f59e0b', color: 'white', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px' }}>
+                {pendingNotices.length}
+              </span>
+            </Link>
+          )}
+        </div>
         {todayStats.count > 0 ? (
           <p style={{ fontSize: '12px', color: '#6B21A8', letterSpacing: '0.5px' }}>
             {t('todayMeals', { count: todayStats.count })}

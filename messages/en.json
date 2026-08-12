@@ -154,8 +154,7 @@
     "protein": "Protein",
     "fat": "Fat",
     "pendingQueue": "{count, plural, one {# photo is} other {# photos are}} waiting for analysis · processed automatically soon",
-    "pendingNotice": "Your photo from {date} was saved as an unrecognized meal",
-    "pendingNoticeAction": "Enter its name to recover calories →"
+    "pendingBell": "{count, plural, one {# unrecognized meal} other {# unrecognized meals}} · tap to review"
   },
   "Capture": {
     "title": "Capture Meal",

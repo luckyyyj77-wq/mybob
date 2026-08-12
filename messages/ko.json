@@ -154,8 +154,7 @@
     "protein": "단",
     "fat": "지",
     "pendingQueue": "촬영한 사진 {count}장이 분석 대기 중이에요 · 잠시 후 자동으로 처리돼요",
-    "pendingNotice": "{date} 촬영분이 미인식 식단으로 저장됐어요",
-    "pendingNoticeAction": "이름을 입력하면 칼로리를 복구할 수 있어요 →"
+    "pendingBell": "미인식 식단 {count}건 · 눌러서 확인"
   },
   "Capture": {
     "title": "식단 촬영",
