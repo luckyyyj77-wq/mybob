@@ -3,6 +3,7 @@
 import { Link } from '@/i18n/routing';
 import { FaArrowLeft, FaCheck } from 'react-icons/fa';
 import { useTranslations } from 'next-intl';
+import { FOUNDING_PAUSED, PAYMENTS_PAUSED } from '@/lib/launch-flags';
 
 export default function PricingPage() {
   const t = useTranslations('Pricing');
@@ -49,6 +50,7 @@ export default function PricingPage() {
           </div>
         </div>
 
+        {!PAYMENTS_PAUSED && (
         <div style={{ border: '2px solid #6B21A8', padding: '24px', backgroundColor: '#faf5ff', position: 'relative' }}>
           <div style={{
             position: 'absolute', top: '-1px', right: '20px',
@@ -73,7 +75,9 @@ export default function PricingPage() {
             ))}
           </div>
         </div>
+        )}
 
+        {!FOUNDING_PAUSED && (
         <div style={{ backgroundColor: '#f5f3ff', border: '1px solid #e9d5ff', padding: '20px', textAlign: 'center' }}>
           <p style={{ fontSize: '20px', marginBottom: '8px' }}>🎖️</p>
           <p style={{ fontSize: '14px', color: '#6B21A8', fontWeight: 600, marginBottom: '6px' }}>{t('foundingBannerTitle')}</p>
@@ -81,6 +85,7 @@ export default function PricingPage() {
             {t('foundingBannerDesc')}
           </p>
         </div>
+        )}
 
         <Link href="/" style={{ textDecoration: 'none' }}>
           <div style={{
@@ -92,11 +97,13 @@ export default function PricingPage() {
           </div>
         </Link>
 
+        {!PAYMENTS_PAUSED && (
         <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '16px' }}>
           <p style={{ fontSize: '11px', color: '#9ca3af', lineHeight: 1.7, textAlign: 'center', whiteSpace: 'pre-line' }}>
             {t('paymentNote')} <Link href="/refund" style={{ color: '#6B21A8' }}>{t('refundPolicy')}</Link> {t('paymentNoteEnd')}
           </p>
         </div>
+        )}
 
       </div>
     </div>

@@ -10,6 +10,7 @@ import { savePhoto } from '@/lib/indexed-db';
 import { updateGoalAchievement } from '@/lib/goal-achievement';
 import { enqueuePendingMeal } from '@/lib/pending-meals';
 import { getFrequentFoodNames, getFoodCache } from '@/lib/frequent-foods';
+import { FOUNDING_PAUSED } from '@/lib/launch-flags';
 import { useTranslations, useLocale } from 'next-intl';
 
 type AnalysisResult = {
@@ -697,7 +698,7 @@ export default function CameraCapturePage() {
             </p>
           </div>
 
-          {isFree && (
+          {isFree && !FOUNDING_PAUSED && (
             <div style={{ backgroundColor: '#f5f3ff', border: '1px solid #e9d5ff', padding: '16px', marginBottom: '16px', textAlign: 'center' }}>
               <p style={{ fontSize: '12px', color: '#6B21A8', marginBottom: '4px' }}>🎖️ {t('Home.foundingMember')}</p>
               <p style={{ fontSize: '11px', color: '#9ca3af', lineHeight: 1.5 }}>{t('limit.desc', { limit: current?.limit ?? 0 })}</p>

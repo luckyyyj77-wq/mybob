@@ -6,6 +6,7 @@ import { FaArrowLeft } from 'react-icons/fa';
 import { useState, useEffect, Suspense } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { isNativeApp } from '@/lib/native-app';
+import { FOUNDING_PAUSED, PAYMENTS_PAUSED } from '@/lib/launch-flags';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 
@@ -199,7 +200,7 @@ function PlanContent() {
                   </div>
                 </div>
 
-                {planStatus.plan === 'free' && !planStatus.isFoundingMember && (
+                {planStatus.plan === 'free' && !planStatus.isFoundingMember && !FOUNDING_PAUSED && (
                   <p style={{ fontSize: '10px', color: '#9ca3af', lineHeight: 1.5 }}>
                     {t('promotionNote')}
                   </p>
@@ -270,7 +271,7 @@ function PlanContent() {
           </div>
         </div>
 
-        {planStatus?.plan === 'free' && !nativeApp && (
+        {planStatus?.plan === 'free' && !nativeApp && !PAYMENTS_PAUSED && (
           <>
             <p style={{ fontSize: '10px', color: '#9ca3af', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px' }}>{t('proBenefits')}</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', backgroundColor: '#e5e7eb', border: '1px solid #e5e7eb', marginBottom: '28px' }}>

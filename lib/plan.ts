@@ -1,3 +1,5 @@
+import { FOUNDING_PAUSED } from './launch-flags';
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnySupabaseClient = any;
 
@@ -103,6 +105,7 @@ export async function getOrCreateProfile(adminSupabase: AnySupabaseClient, userI
 
 // 천인회 슬롯 선점 시도 (optimistic lock + 1회 재시도)
 async function tryClaimFoundingSlot(adminSupabase: AnySupabaseClient): Promise<boolean> {
+  if (FOUNDING_PAUSED) return false;
   const today = getKSTDateString();
   if (today > FOUNDING_PROMOTION_END) return false;
 
