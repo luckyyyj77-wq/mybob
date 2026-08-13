@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from '@/components/charts/LazyRecharts';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { useRouter } from '@/i18n/routing';
 import { useAuth } from '@/lib/auth-context';

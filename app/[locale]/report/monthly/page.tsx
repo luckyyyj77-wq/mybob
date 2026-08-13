@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from 'react';
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceLine, Cell, PieChart, Pie } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceLine, Cell, PieChart, Pie } from '@/components/charts/LazyRecharts';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { useAuth } from '@/lib/auth-context';
 import { isCacheFresh, markSynced } from '@/lib/meals-cache';

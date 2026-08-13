@@ -36,6 +36,8 @@ export async function GET(request: Request) {
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: request.headers.get('Authorization')! } },
     });
+    // 클라이언트가 실제로 쓰는 컬럼만 선택 — amount/price/location은 어느 화면도 참조하지 않음
+    const MEAL_COLUMNS = 'id, food_name, category, calories, nutrient, photo_url, rating, portion, original_nutrition, edited_nutrition, is_edited, is_public, visibility, created_at';
     // Supabase는 쿼리당 최대 1000행만 반환 — 누적 1000건 초과 사용자를 위해 배치 조회
     const PAGE_SIZE = 1000;
     const MAX_PAGES = 20; // 안전 상한 2만 건
@@ -44,7 +46,7 @@ export async function GET(request: Request) {
       const from = page * PAGE_SIZE;
       const { data, error } = await supabase
         .from('meals')
-        .select('*')
+        .select(MEAL_COLUMNS)
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .range(from, from + PAGE_SIZE - 1);

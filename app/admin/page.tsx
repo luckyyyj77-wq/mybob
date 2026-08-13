@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from '@/components/charts/LazyRecharts';
 import { FaUsers, FaUtensils, FaCalendarDay, FaCalendarWeek } from 'react-icons/fa';
 
 type Stats = {
